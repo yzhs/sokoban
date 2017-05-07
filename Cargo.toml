@@ -1,0 +1,11 @@
+[package]
+authors = ["Colin Benner <colin@yzhs.de>"]
+name = "sokoban"
+version = "0.1.0"
+
+[dependencies]
+gfx_core = "0.7.0"
+piston = "0.32.0"
+piston2d-gfx_graphics = "0.39.0"
+piston2d-graphics = "0.21.1"
+piston_window = "0.65.0"
