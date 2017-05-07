@@ -36,8 +36,8 @@ impl Level {
                 let index = i * width + j;
                 background[index] = cell.background;
                 foreground[index] = cell.foreground;
-                if inside && cell.background == Background::Empty && i == 0 ||
-                   background[index - width] != Background::Empty {
+                if inside && cell.background == Background::Empty &&
+                   (index < width || background[index - width] != Background::Empty) {
                     background[index] = Background::Floor;
                 }
             }
