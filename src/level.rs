@@ -10,6 +10,7 @@ pub struct Level {
     pub width: usize,
     pub height: usize,
 
+    empty_goals: usize,
     /// width * height cells backgrounds in row-major order
     pub background: Vec<Background>,
 
@@ -23,6 +24,8 @@ impl Level {
         let lines: Vec<_> = string.split("\n").collect();
         let height = lines.len();
         let width = lines.iter().map(|x| x.len()).max().unwrap();
+
+        let mut empty_goals = 0;
         let mut background = vec![Background::Empty; width * height];
         let mut foreground = vec![Foreground::None; width * height];
 
@@ -55,6 +58,11 @@ impl Level {
                    (index < width || background[index - width] != Background::Empty) {
                     background[index] = Background::Floor;
                 }
+
+                // Count goals still to be filled.
+                if background[index] == Background::Goal && foreground[index] != Foreground::Crate {
+                    empty_goals += 1;
+                }
             }
         }
 
@@ -67,6 +75,7 @@ impl Level {
                level_number: num + 1, // The first level is level 1
                width,
                height,
+               empty_goals,
                background,
                foreground,
            })
