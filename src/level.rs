@@ -2,6 +2,7 @@ use std::convert::TryFrom;
 use std::fmt;
 
 use cell::*;
+use util::*;
 
 #[derive(Debug, Clone)]
 pub struct Level {
@@ -25,6 +26,8 @@ impl Level {
         let mut background = vec![Background::Empty; width * height];
         let mut foreground = vec![Foreground::None; width * height];
 
+        let mut goals_minus_crates = 0i32;
+
         for (i, line) in lines.iter().enumerate() {
             let mut inside = false;
             for (j, chr) in line.chars().enumerate() {
@@ -34,6 +37,14 @@ impl Level {
                 let index = i * width + j;
                 background[index] = cell.background;
                 foreground[index] = cell.foreground;
+
+                // Make sure there are exactly the same number of crates and goals.
+                if cell.background == Background::Goal {
+                    goals_minus_crates += 1;
+                }
+                if cell.foreground == Foreground::Crate {
+                    goals_minus_crates -= 1;
+                }
 
                 // Try to figure out whether a given cell is inside the walls.
                 if !inside && cell.background == Background::Wall {
@@ -45,6 +56,10 @@ impl Level {
                     background[index] = Background::Floor;
                 }
             }
+        }
+
+        if goals_minus_crates != 0 {
+            return Err(SokobanError::CratesGoalsMismatch(num+1, goals_minus_crates));
         }
 
         }
@@ -78,5 +93,18 @@ impl fmt::Display for Level {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_crate_missing() {
+        let s = ".*.*.";
+        let res = Level::parse(0, s);
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err().to_string(), "CratesGoalsMismatch(1, 3)");
     }
 }
