@@ -68,13 +68,13 @@ impl TryFrom<char> for Cell {
             }
             '*' => {
                 Ok(Cell {
-                       background: Floor,
+                       background: Goal,
                        foreground: Crate,
                    })
             }
             '$' => {
                 Ok(Cell {
-                       background: Goal,
+                       background: Floor,
                        foreground: Crate,
                    })
             }
@@ -116,11 +116,11 @@ impl Cell {
                 foreground: Worker,
             } => '@',
             Cell {
-                background: Floor,
+                background: Goal,
                 foreground: Crate,
             } => '*',
             Cell {
-                background: Goal,
+                background: Floor,
                 foreground: Crate,
             } => '$',
             Cell {
