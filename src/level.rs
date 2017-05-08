@@ -87,6 +87,26 @@ impl Level {
             return Err(SokobanError::CratesGoalsMismatch(num+1, goals_minus_crates));
         }
 
+        // Fix the mistakes of the above heuristic for detecting which cells are on the inside.
+        let mut changed = true;
+        while changed {
+            changed = false;
+            for i in 0..height {
+                for j in 0..width {
+                    let index = i * width + j;
+                    if background[index] != Background::Floor {
+                        continue;
+                    }
+
+                    // A non-wall cell next to an outside cell has to be on the outside itself.
+                    if index > width && background[index - width] == Background::Empty ||
+                       i < height - 1 && background[index + width] == Background::Empty ||
+                       j < width - 1 && background[index + 1] == Background::Empty {
+                        background[index] = Background::Empty;
+                        changed = true;
+                    }
+                }
+            }
         }
 
         Ok(Level {
