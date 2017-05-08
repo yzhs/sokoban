@@ -119,6 +119,12 @@ impl Level {
                foreground,
            })
     }
+
+    /// Check whether the given level is completed, i.e. every goal has a crate on it, and every
+    /// crate is on a goal.
+    pub fn is_finished(&self) -> bool {
+        self.empty_goals == 0
+    }
 }
 
 impl fmt::Display for Level {
