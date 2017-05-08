@@ -9,8 +9,10 @@ pub struct Level {
     pub width: usize,
     pub height: usize,
 
-    /// width * height cells in row-major order
+    /// width * height cells backgrounds in row-major order
     pub background: Vec<Background>,
+
+    /// width * height cell array of worker and crates in row-major order
     pub foreground: Vec<Foreground>,
 }
 
@@ -32,6 +34,8 @@ impl Level {
                 let index = i * width + j;
                 background[index] = cell.background;
                 foreground[index] = cell.foreground;
+
+                // Try to figure out whether a given cell is inside the walls.
                 if !inside && cell.background == Background::Wall {
                     inside = true;
                 }

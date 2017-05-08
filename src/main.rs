@@ -65,9 +65,12 @@ fn main() {
         window.draw_2d(&e, |c, g| {
             // Set background
             clear(EMPTY, g);
+
+            // Render the current level
             let level = &app.level(2);
             let background = &level.background;
-            let foreground = &level.foreground;
+
+            // Draw the background
             for (i, bg) in background.iter().enumerate() {
                 if bg == &Background::Empty {
                     continue;
@@ -78,8 +81,10 @@ fn main() {
                 image(&backgrounds[bg],
                       c.transform.trans(x, y).scale(IMAGE_SCALE, IMAGE_SCALE),
                       g);
-                // TODO load images instead
             }
+
+            // and the foreground
+            let foreground = &level.foreground;
             for (i, fg) in foreground.iter().enumerate() {
                 if fg == &Foreground::None {
                     continue;
@@ -90,7 +95,6 @@ fn main() {
                 image(&foregrounds[fg],
                       c.transform.trans(x, y).scale(IMAGE_SCALE, IMAGE_SCALE),
                       g);
-                // TODO load images instead
             }
         });
 
