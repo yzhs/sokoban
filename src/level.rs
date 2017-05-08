@@ -11,6 +11,8 @@ pub struct Level {
     pub height: usize,
 
     empty_goals: usize,
+    worker_position: (usize, usize),
+
     /// width * height cells backgrounds in row-major order
     pub background: Vec<Background>,
 
@@ -25,6 +27,8 @@ impl Level {
         let height = lines.len();
         let width = lines.iter().map(|x| x.len()).max().unwrap();
 
+        let mut found_worker = false;
+        let mut worker_position = (0, 0);
         let mut empty_goals = 0;
         let mut background = vec![Background::Empty; width * height];
         let mut foreground = vec![Foreground::None; width * height];
@@ -63,6 +67,15 @@ impl Level {
                 if background[index] == Background::Goal && foreground[index] != Foreground::Crate {
                     empty_goals += 1;
                 }
+
+                // Find the initial worker position.
+                if foreground[index] == Foreground::Worker {
+                    if found_worker {
+                        return Err(SokobanError::TwoWorkers);
+                    }
+                    worker_position = (i, j);
+                    found_worker = true;
+                }
             }
         }
 
@@ -71,11 +84,13 @@ impl Level {
         }
 
         }
+
         Ok(Level {
                level_number: num + 1, // The first level is level 1
                width,
                height,
                empty_goals,
+               worker_position,
                background,
                foreground,
            })
@@ -115,5 +130,22 @@ mod test {
         let res = Level::parse(0, s);
         assert!(res.is_err());
         assert_eq!(res.unwrap_err().to_string(), "CratesGoalsMismatch(1, 3)");
+    }
+
+    #[test]
+    fn test_two_workers() {
+        let s = "############\n\
+                 #..  #     ###\n\
+                 #.. @# $  $  #\n\
+                 #..  #$####  #\n\
+                 #..    @ ##  #\n\
+                 #..  # #  $ ##\n\
+                 ###### ##$ $ #\n\
+                   # $  $ $ $ #\n\
+                   #    #     #\n\
+                   ############";
+        let res = Level::parse(0, s);
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err().to_string(), "TwoWorkers");
     }
 }
