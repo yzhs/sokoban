@@ -79,6 +79,10 @@ impl Level {
             }
         }
 
+        if !found_worker {
+            return Err(SokobanError::NoWorker);
+        }
+
         if goals_minus_crates != 0 {
             return Err(SokobanError::CratesGoalsMismatch(num+1, goals_minus_crates));
         }
@@ -126,7 +130,7 @@ mod test {
 
     #[test]
     fn test_crate_missing() {
-        let s = ".*.*.";
+        let s = "@.*.*.";
         let res = Level::parse(0, s);
         assert!(res.is_err());
         assert_eq!(res.unwrap_err().to_string(), "CratesGoalsMismatch(1, 3)");
@@ -147,5 +151,22 @@ mod test {
         let res = Level::parse(0, s);
         assert!(res.is_err());
         assert_eq!(res.unwrap_err().to_string(), "TwoWorkers");
+    }
+
+    #[test]
+    fn test_no_workers() {
+        let s = "############\n\
+                 #..  #     ###\n\
+                 #..  # $  $  #\n\
+                 #..  #$####  #\n\
+                 #..    # ##  #\n\
+                 #..  # #  $ ##\n\
+                 ###### ##$ $ #\n\
+                   # $  $ $ $ #\n\
+                   #    #     #\n\
+                   ############";
+        let res = Level::parse(0, s);
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err().to_string(), "NoWorker");
     }
 }
