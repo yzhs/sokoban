@@ -25,7 +25,11 @@ impl Collection {
         let mut level_file = File::open(level_path)?;
         let mut content = "".to_string();
         level_file.read_to_string(&mut content)?;
-        let level_strings: Vec<_> = content.split("\n\n").collect();
+        let level_strings: Vec<_> = content
+            .split("\n\n")
+            .map(|x| x.trim_matches('\n'))
+            .filter(|x| !x.is_empty())
+            .collect();
         let name = level_strings[0];
 
         Ok(Collection {

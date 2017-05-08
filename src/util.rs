@@ -7,8 +7,8 @@ pub const ASSETS_PATH: &'static str = "/home/yzhs/prj/sokoban/assets";
 #[derive(Debug)]
 pub enum SokobanError {
     IoError(io::Error),
-    NoWorker,
-    TwoWorkers,
+    NoWorker(usize),
+    TwoWorkers(usize),
     CratesGoalsMismatch(usize, i32),
 }
 
@@ -17,8 +17,8 @@ impl fmt::Display for SokobanError {
         use self::SokobanError::*;
         match self {
             &IoError(ref err) => write!(f, "{}", err),
-            &NoWorker => write!(f, "NoWorker"),
-            &TwoWorkers => write!(f, "TwoWorkers"),
+            &NoWorker(lvl) => write!(f, "NoWorker({})", lvl),
+            &TwoWorkers(lvl) => write!(f, "TwoWorkers({})", lvl),
             &CratesGoalsMismatch(lvl, goals_minus_crates) => {
                 write!(f, "CratesGoalsMismatch({}, {})", lvl, goals_minus_crates)
             }
@@ -32,8 +32,8 @@ impl Error for SokobanError {
         use self::SokobanError::*;
         match self {
             &IoError(ref err) => err.description(),
-            &TwoWorkers => "More than one worker found.",
-            &NoWorker => "No worker found.",
+            &TwoWorkers(_) => "More than one worker found.",
+            &NoWorker(_) => "No worker found.",
             &CratesGoalsMismatch(_, _) => "The number of crates and goals does not match",
         }
     }

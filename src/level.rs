@@ -71,7 +71,7 @@ impl Level {
                 // Find the initial worker position.
                 if foreground[index] == Foreground::Worker {
                     if found_worker {
-                        return Err(SokobanError::TwoWorkers);
+                        return Err(SokobanError::TwoWorkers(num + 1));
                     }
                     worker_position = (i, j);
                     found_worker = true;
@@ -80,7 +80,7 @@ impl Level {
         }
 
         if !found_worker {
-            return Err(SokobanError::NoWorker);
+            return Err(SokobanError::NoWorker(num + 1));
         }
 
         if goals_minus_crates != 0 {
@@ -176,7 +176,7 @@ mod test {
                    ############";
         let res = Level::parse(0, s);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err().to_string(), "TwoWorkers");
+        assert_eq!(res.unwrap_err().to_string(), "TwoWorkers(1)");
     }
 
     #[test]
@@ -193,6 +193,6 @@ mod test {
                    ############";
         let res = Level::parse(0, s);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err().to_string(), "NoWorker");
+        assert_eq!(res.unwrap_err().to_string(), "NoWorker(1)");
     }
 }
