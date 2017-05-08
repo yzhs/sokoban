@@ -16,7 +16,7 @@ pub struct Level {
 
 impl Level {
     /// Parse the ASCII representation of a level.
-    pub fn parse(num: usize, string: &str) -> Level {
+    pub fn parse(num: usize, string: &str) -> Result<Level, SokobanError> {
         let lines: Vec<_> = string.split("\n").collect();
         let height = lines.len();
         let width = lines.iter().map(|x| x.len()).max().unwrap();
@@ -29,13 +29,13 @@ impl Level {
                 let cell = Cell::try_from(chr)
                     .expect(format!("Invalid character '{}' in line {}, column {}.", chr, i, j)
                                 .as_ref());
+                let index = i * width + j;
+                background[index] = cell.background;
+                foreground[index] = cell.foreground;
                 if !inside && cell.background == Background::Wall {
                     inside = true;
                 }
 
-                let index = i * width + j;
-                background[index] = cell.background;
-                foreground[index] = cell.foreground;
                 if inside && cell.background == Background::Empty &&
                    (index < width || background[index - width] != Background::Empty) {
                     background[index] = Background::Floor;
@@ -43,13 +43,14 @@ impl Level {
             }
         }
 
-        Level {
-            level_number: num + 1,
-            width: width,
-            height: height,
-            background: background,
-            foreground: foreground,
         }
+        Ok(Level {
+               level_number: num + 1, // The first level is level 1
+               width,
+               height,
+               background,
+               foreground,
+           })
     }
 }
 

@@ -1,4 +1,3 @@
-use std::io;
 use std::io::Read;
 use std::fs::File;
 use std::path::Path;
@@ -15,7 +14,8 @@ pub struct Collection {
 }
 
 impl Collection {
-    pub fn load(name: &str) -> Result<Collection, io::Error> {
+    /// Load a file containing a bunch of levels separated by an empty line.
+    pub fn load(name: &str) -> Result<Collection, SokobanError> {
         let assets_path: &Path = ASSETS_PATH.as_ref();
         let mut level_path = assets_path.to_path_buf();
         level_path.push("levels");
@@ -35,7 +35,7 @@ impl Collection {
                    .iter()
                    .enumerate()
                    .map(|(i, l)| Level::parse(i, l))
-                   .collect(),
+                   .collect::<Result<Vec<_>, _>>()?,
            })
     }
 
