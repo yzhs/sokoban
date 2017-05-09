@@ -221,12 +221,71 @@ impl Level {
         }
     }
 
+    /// Move whatever object is in the foreground at the given position in the given direction if
+    /// undo is false, and in the opposite direction otherwise. Return the new position of that
+    /// object, as well as the position of the object behind the original position. This is needed
+    /// to move crates backwards when undoing a push.
+    fn move_object(&mut self,
+                       from: (usize, usize),
+                       direction: Direction,
+                       undo: bool)
+                       -> ((usize, usize), (usize, usize)) {
+        use self::Direction::*;
+
+        let index = from.0 + self.width * from.1;
+
+        let pos: (isize, isize) = (from.0 as isize, from.1 as isize);
+        let (mut dx, mut dy): (isize, isize) = match direction {
+            Left => (-1, 0),
+            Right => (1, 0),
+            Up => (0, -1),
+            Down => (0, 1),
+        };
+        if undo {
+            // Reverse direction
+            dx = -dx;
+            dy = -dy;
+        }
+
+        let new = ((pos.0 + dx) as usize, (pos.1 + dy) as usize);
+        let new_index = new.0 + self.width * new.1;
+
+        info!("Moving {:?} from {:?} to {:?}",
+              self.foreground[index],
+              pos,
+              new);
+        self.foreground[new_index] = self.foreground[index];
+        self.foreground[index] = Foreground::None;
+
+        (new, ((pos.0 - dx) as usize, (pos.1 - dy) as usize))
+    }
+
+    /// Undo the most recent move.
+    pub fn undo(&mut self) {
+        if self.moves_recorded == 0 {
+            warn!("Nothing to undo!");
+            return;
+        } else {
+            self.moves_recorded -= 1;
+        }
+
+        let direction = self.moves[self.moves_recorded].direction;
+        let pos = self.worker_position;
+        let (worker_pos, crate_pos) = self.move_object(pos, direction, true);
+        self.worker_position = worker_pos;
+
+        if self.moves[self.moves_recorded].moves_crate {
+            let _ = self.move_object(crate_pos, direction, true);
+        }
+    }
+
     /// Check whether the given level is completed, i.e. every goal has a crate on it, and every
     /// crate is on a goal.
     pub fn is_finished(&self) -> bool {
         self.empty_goals == 0
     }
 }
+
 
 impl fmt::Display for Level {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

@@ -123,6 +123,9 @@ fn main() {
             Some(Button::Keyboard(Key::Down)) => {
                 app.current_level.try_move(Down);
             }
+            Some(Button::Keyboard(Key::U)) => {
+                app.current_level.undo();
+            }
             Some(Button::Keyboard(_)) => error!("unkown key"),
             Some(_) => error!("unkown event"),
         };
