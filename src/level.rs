@@ -263,4 +263,46 @@ mod test {
         assert!(res.is_err());
         assert_eq!(res.unwrap_err().to_string(), "NoWorker(1)");
     }
+
+    #[test]
+    fn test_trivial_move_1() {
+        use self::Direction::*;
+        let mut lvl = Level::parse(0,
+                                   "####\n\
+                                       #@ #\n\
+                                       ####\n")
+                .unwrap();
+        assert_eq!(lvl.worker_position.0, 1);
+        assert_eq!(lvl.worker_position.1, 1);
+
+        assert!(lvl.is_empty((2, 1)));
+        assert!(!lvl.is_empty((0, 1)));
+        for y in 0..3 {
+            for x in 0..4 {
+                assert!(!lvl.is_crate((x, y)));
+            }
+        }
+
+        assert!(lvl.try_move(Right).is_ok());
+        assert!(lvl.try_move(Left).is_ok());
+        assert!(lvl.try_move(Left).is_err());
+        assert!(lvl.try_move(Up).is_err());
+        assert!(lvl.try_move(Down).is_err());
+    }
+
+    #[test]
+    fn test_trivial_move_2() {
+        use self::Direction::*;
+        let mut lvl = Level::parse(0,
+                                   "#######\n\
+                                       #.$@$.#\n\
+                                       #######\n")
+                .unwrap();
+        assert_eq!(lvl.worker_position.0, 3);
+        assert_eq!(lvl.worker_position.1, 1);
+        assert!(lvl.try_move(Right).is_ok());
+        assert!(lvl.try_move(Left).is_ok());
+        assert!(lvl.try_move(Up).is_err());
+        assert!(lvl.try_move(Down).is_err());
+    }
 }
