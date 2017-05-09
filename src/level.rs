@@ -8,7 +8,7 @@ use util::*;
 
 #[derive(Debug, Clone)]
 pub struct Level {
-    level_number: usize,
+    pub level_number: usize,
     pub width: usize,
     pub height: usize,
 
@@ -20,7 +20,15 @@ pub struct Level {
 
     empty_goals: usize,
     worker_position: (usize, usize),
+
+    /// The sequence of moves performed so far. Everything after the first moves_recorded moves is
+    /// used to redo moves, i.e. undoing a previous undo operation.
+    moves: Vec<Move>,
+
+    /// This describes how many moves have to be performed to arrive at the current state.
+    moves_recorded: usize,
 }
+
 
 impl Level {
     /// Parse the ASCII representation of a level.
@@ -118,6 +126,9 @@ impl Level {
 
                empty_goals,
                worker_position,
+
+               moves: vec![],
+               moves_recorded: 0,
            })
     }
 
@@ -158,6 +169,24 @@ impl Level {
         self.foreground[index] = Foreground::None;
         self.worker_position = (next.0 as usize, next.1 as usize);
         // TODO check how this affects the number of crates on goals
+
+        // Bookkeeping for undo and printing a solution
+        let current_move = Move {
+            direction,
+            moves_crate,
+        };
+        let n = self.moves_recorded;
+        self.moves_recorded += 1;
+
+        if n != self.moves.len() && self.moves[n] == current_move {
+            // In this case, we are just redoing a move previously undone
+        } else {
+            if n != self.moves.len() {
+                // Discard redo buffer as we are in a different state than before
+                self.moves.truncate(n);
+            }
+            self.moves.push(current_move);
+        }
 
         Ok(())
     }
