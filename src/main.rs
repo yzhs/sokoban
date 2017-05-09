@@ -8,12 +8,14 @@ extern crate gfx_core;
 
 use piston_window::*;
 
-mod cell;
-mod collection;
-mod level;
-mod util;
+pub mod cell;
+pub mod collection;
+pub mod direction;
+pub mod level;
+pub mod move_;
+pub mod util;
 
-mod texture;
+pub mod texture;
 
 use cell::*;
 use collection::*;
@@ -27,27 +29,28 @@ const TILE_SIZE: f64 = 50.0;
 const IMAGE_SCALE: f64 = TILE_SIZE / 360.0;
 
 pub struct App {
-    current_level_set: Option<Collection>,
+    current_collection: Collection,
+    current_level: Level,
 }
 
 impl App {
-    fn level(&self, n: usize) -> Level {
-        self.current_level_set
-            .clone()
-            .map(|x| x.level(n))
-            .unwrap()
+    pub fn new() -> App {
+        let collection = Collection::load("original");
+        if collection.is_err() {
+            panic!("Failed to load level set: {:?}", collection.unwrap_err());
+        }
+        let collection = collection.unwrap();
+
+        App {
+            current_level: collection.level(0).clone(),
+            current_collection: collection,
+        }
     }
 }
 
 fn main() {
-    let collection = Collection::load("original");
-    if collection.is_err() {
-        panic!("Failed to load level set: {:?}", collection.unwrap_err());
-    }
-
-    let app = App { current_level_set: Some(collection.unwrap()) };
-
-    println!("{}", app.level(2));
+    let mut app = App::new();
+    info!("{}", app.current_level);
 
     let title = "Sokoban";
     let mut window: PistonWindow =
@@ -67,7 +70,7 @@ fn main() {
             clear(EMPTY, g);
 
             // Render the current level
-            let level = &app.level(2);
+            let level = &app.current_level;
             let background = &level.background;
 
             // Draw the background
@@ -98,14 +101,23 @@ fn main() {
             }
         });
 
+        use direction::Direction::*;
         match e.press_args() {
             None => {}
-            Some(Button::Keyboard(Key::Left)) => println!("app.move(Direction::Left)"),
-            Some(Button::Keyboard(Key::Right)) => println!("app.move(Direction::Right)"),
-            Some(Button::Keyboard(Key::Up)) => println!("app.move(Direction::Up)"),
-            Some(Button::Keyboard(Key::Down)) => println!("app.move(Direction::Down)"),
-            Some(Button::Keyboard(_)) => println!("unkown key"),
-            Some(_) => println!("unkown event"),
+            Some(Button::Keyboard(Key::Left)) => {
+                app.current_level.try_move(Left);
+            }
+            Some(Button::Keyboard(Key::Right)) => {
+                app.current_level.try_move(Right);
+            }
+            Some(Button::Keyboard(Key::Up)) => {
+                app.current_level.try_move(Up);
+            }
+            Some(Button::Keyboard(Key::Down)) => {
+                app.current_level.try_move(Down);
+            }
+            Some(Button::Keyboard(_)) => error!("unkown key"),
+            Some(_) => error!("unkown event"),
         };
     }
 }

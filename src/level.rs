@@ -2,6 +2,8 @@ use std::convert::TryFrom;
 use std::fmt;
 
 use cell::*;
+use direction::*;
+use move_::*;
 use util::*;
 
 #[derive(Debug, Clone)]
@@ -10,14 +12,14 @@ pub struct Level {
     pub width: usize,
     pub height: usize,
 
-    empty_goals: usize,
-    worker_position: (usize, usize),
-
     /// width * height cells backgrounds in row-major order
     pub background: Vec<Background>,
 
     /// width * height cell array of worker and crates in row-major order
     pub foreground: Vec<Foreground>,
+
+    empty_goals: usize,
+    worker_position: (usize, usize),
 }
 
 impl Level {
@@ -81,10 +83,8 @@ impl Level {
 
         if !found_worker {
             return Err(SokobanError::NoWorker(num + 1));
-        }
-
-        if goals_minus_crates != 0 {
-            return Err(SokobanError::CratesGoalsMismatch(num+1, goals_minus_crates));
+        } else if goals_minus_crates != 0 {
+            return Err(SokobanError::CratesGoalsMismatch(num + 1, goals_minus_crates));
         }
 
         // Fix the mistakes of the above heuristic for detecting which cells are on the inside.
@@ -113,11 +113,79 @@ impl Level {
                level_number: num + 1, // The first level is level 1
                width,
                height,
-               empty_goals,
-               worker_position,
                background,
                foreground,
+
+               empty_goals,
+               worker_position,
            })
+    }
+
+    /// Try to move in the given direction. Return an error if that is not possile.
+    pub fn try_move(&mut self, direction: Direction) -> Result<(), ()> {
+        use self::Direction::*;
+
+        let (x, y) = (self.worker_position.0 as isize, self.worker_position.1 as isize);
+        let (dx, dy): (isize, isize) = match direction {
+            Left => (-1, 0),
+            Right => (1, 0),
+            Up => (0, -1),
+            Down => (0, 1),
+        };
+        let next = (x + dx, y + dy);
+        let next_index = next.0 as usize + next.1 as usize * self.width;
+        let next_but_one = (x + 2 * dx, y + 2 * dy);
+        let moves_crate = if self.is_empty(next) {
+            // Move to empty cell
+            false
+        } else if self.is_crate(next) && self.is_empty(next_but_one) {
+            // Push crate into empty next cell
+            let next_but_one_index = next_but_one.0 as usize + next_but_one.1 as usize * self.width;
+            self.foreground[next_but_one_index] = Foreground::Crate;
+            self.foreground[next_index] = Foreground::None;
+            true
+        } else {
+            return Err(());
+        };
+
+        // Move worker to new position
+        let index = x as usize + y as usize * self.width;
+        self.foreground[next_index] = Foreground::Worker;
+        self.foreground[index] = Foreground::None;
+        self.worker_position = (next.0 as usize, next.1 as usize);
+        // TODO check how this affects the number of crates on goals
+
+        Ok(())
+    }
+
+    /// Is there a crate at the given position?
+    fn is_crate(&self, pos: (isize, isize)) -> bool {
+        // Check bounds
+        if pos.0 < 0 || pos.1 < 0 || pos.0 as usize >= self.width || pos.1 as usize >= self.height {
+            return false;
+        }
+
+        // Check the cell itself
+        let index = pos.0 as usize + self.width * pos.1 as usize;
+        self.foreground[index] == Foreground::Crate
+    }
+
+    /// Is the cell with the given coordinates empty, i.e. could a crate be moved into it?
+    fn is_empty(&self, pos: (isize, isize)) -> bool {
+        use self::Background::*;
+        use self::Foreground::*;
+
+        // Check bounds
+        if pos.0 < 0 || pos.1 < 0 || pos.0 as usize >= self.width || pos.1 as usize >= self.height {
+            return false;
+        }
+
+        // Check the cell itself
+        let index = pos.0 as usize + self.width * pos.1 as usize;
+        match (self.background[index], self.foreground[index]) {
+            (Floor, None) | (Goal, None) => true,
+            _ => false,
+        }
     }
 
     /// Check whether the given level is completed, i.e. every goal has a crate on it, and every
