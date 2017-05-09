@@ -1,10 +1,16 @@
 #![feature(try_from)]
 
+// GUI
 extern crate piston;
 extern crate piston_window;
 extern crate graphics;
 extern crate gfx_graphics;
 extern crate gfx_core;
+
+// Logging
+#[macro_use]
+extern crate log;
+extern crate colog;
 
 use piston_window::*;
 
@@ -49,6 +55,7 @@ impl App {
 }
 
 fn main() {
+    colog::init();
     let mut app = App::new();
     info!("{}", app.current_level);
 

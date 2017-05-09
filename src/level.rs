@@ -135,16 +135,20 @@ impl Level {
         let next = (x + dx, y + dy);
         let next_index = next.0 as usize + next.1 as usize * self.width;
         let next_but_one = (x + 2 * dx, y + 2 * dy);
+
         let moves_crate = if self.is_empty(next) {
             // Move to empty cell
+            info!("Moving into empty cell");
             false
         } else if self.is_crate(next) && self.is_empty(next_but_one) {
             // Push crate into empty next cell
+            info!("Moving crate into next cell");
             let next_but_one_index = next_but_one.0 as usize + next_but_one.1 as usize * self.width;
             self.foreground[next_but_one_index] = Foreground::Crate;
             self.foreground[next_index] = Foreground::None;
             true
         } else {
+            info!("Invalid move");
             return Err(());
         };
 
