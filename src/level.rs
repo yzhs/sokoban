@@ -75,7 +75,7 @@ impl Level {
                     if found_worker {
                         return Err(SokobanError::TwoWorkers(num + 1));
                     }
-                    worker_position = (i, j);
+                    worker_position = (j, i); // column, then row!
                     found_worker = true;
                 }
             }
