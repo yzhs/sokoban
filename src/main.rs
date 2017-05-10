@@ -133,5 +133,10 @@ fn main() {
                 },
             Some(x) => error!("Unkown event: {:?}", x),
         };
+
+        if app.current_level().is_finished() {
+            info!("Level solved!");
+            app.collection.next_level();
+        }
     }
 }
