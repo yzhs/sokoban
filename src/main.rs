@@ -56,6 +56,18 @@ impl App {
     }
 }
 
+fn key_to_direction(key: Key) -> direction::Direction {
+    use direction::Direction::*;
+    match key {
+        Key::Left => Left,
+        Key::Right => Right,
+        Key::Up => Up,
+        Key::Down => Down,
+        _ => panic!("Invalid direction key"),
+    }
+}
+
+
 fn main() {
     colog::init();
     let mut app = App::new();
@@ -110,26 +122,16 @@ fn main() {
             }
         });
 
-        use direction::Direction::*;
         match e.press_args() {
             None => {}
-            Some(Button::Keyboard(Key::Left)) => {
-                app.current_level.try_move(Left);
-            }
-            Some(Button::Keyboard(Key::Right)) => {
-                app.current_level.try_move(Right);
-            }
-            Some(Button::Keyboard(Key::Up)) => {
-                app.current_level.try_move(Up);
-            }
-            Some(Button::Keyboard(Key::Down)) => {
-                app.current_level.try_move(Down);
-            }
-            Some(Button::Keyboard(Key::U)) => {
-                app.current_level.undo();
-            }
-            Some(Button::Keyboard(_)) => error!("unkown key"),
-            Some(_) => error!("unkown event"),
+            Some(Button::Keyboard(key)) => match key {
+                    Key::Left | Key::Right | Key::Up | Key::Down => {
+                        let _ = app.current_level().try_move(key_to_direction(key));
+                    },
+                    Key::U => app.current_level().undo(),
+                    _ => error!("Unkown key: {:?}", key),
+                },
+            Some(x) => error!("Unkown event: {:?}", x),
         };
     }
 }
