@@ -156,7 +156,7 @@ impl Level {
         } else if self.is_crate(next) && self.is_empty(next_but_one) {
             // Push crate into empty next cell
             let next = (next.0 as usize, next.1 as usize);
-            let (foo, _) = self.move_object(next, direction, false);
+            let _ = self.move_object(next, direction, false);
             true
         } else {
             return Err(());
@@ -166,7 +166,6 @@ impl Level {
         let pos = self.worker_position;
         let _ = self.move_object(pos, direction, false);
         self.worker_position = (next.0 as usize, next.1 as usize);
-        // TODO check how this affects the number of crates on goals
 
         // Bookkeeping for undo and printing a solution
         let current_move = Move {
@@ -246,6 +245,16 @@ impl Level {
 
         let new = ((pos.0 + dx) as usize, (pos.1 + dy) as usize);
         let new_index = new.0 + self.width * new.1;
+
+        // Make sure empty_goals is updated as needed.
+        if self.foreground[self.index(from)] == Foreground::Crate {
+            if self.background[self.index(from)] == Background::Goal {
+                self.empty_goals += 1;
+            }
+            if self.background[self.index(new)] == Background::Goal {
+                self.empty_goals -= 1;
+            }
+        }
 
         self.foreground[new_index] = self.foreground[index];
         self.foreground[index] = Foreground::None;
