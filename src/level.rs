@@ -33,7 +33,7 @@ pub struct Level {
 impl Level {
     /// Parse the ASCII representation of a level.
     pub fn parse(num: usize, string: &str) -> Result<Level, SokobanError> {
-        let lines: Vec<_> = string.split("\n").collect();
+        let lines: Vec<_> = string.split('\n').collect();
         let height = lines.len();
         let width = lines.iter().map(|x| x.len()).max().unwrap();
 
@@ -222,10 +222,10 @@ impl Level {
     /// object, as well as the position of the object behind the original position. This is needed
     /// to move crates backwards when undoing a push.
     fn move_object(&mut self,
-                       from: (usize, usize),
-                       direction: Direction,
-                       undo: bool)
-                       -> ((usize, usize), (usize, usize)) {
+                   from: (usize, usize),
+                   direction: Direction,
+                   undo: bool)
+                   -> ((usize, usize), (usize, usize)) {
         use self::Direction::*;
 
         let index = from.0 + self.width * from.1;

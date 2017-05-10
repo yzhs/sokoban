@@ -33,10 +33,10 @@ impl Collection {
         let name = level_strings[0];
 
         let levels = level_strings[1..]
-                   .iter()
-                   .enumerate()
-                   .map(|(i, l)| Level::parse(i, l))
-                   .collect::<Result<Vec<_>, _>>()?;
+            .iter()
+            .enumerate()
+            .map(|(i, l)| Level::parse(i, l))
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(Collection {
                name: name.to_string(),
                current_level: levels[0].clone(),
