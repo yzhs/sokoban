@@ -132,6 +132,8 @@ fn main() {
     // Initialize colog after window to suppress some log output.
     colog::init();
 
+    let mut cursor_pos = [0.0, 0.0];
+
     let backgrounds = load_backgrounds(&mut window.factory);
     let foregrounds = load_foregrounds(&mut window.factory);
 
@@ -139,7 +141,12 @@ fn main() {
         window.draw_2d(&e,
                        |c, g| render_level(c, g, app.current_level(), &backgrounds, &foregrounds));
 
+        // Keep track of where the cursor is pointing
+        if let Some(new_pos) = e.mouse_cursor_args() {
+            cursor_pos = new_pos;
+        }
 
+        // Handle key press events
         match e.press_args() {
             None => {}
             Some(Button::Keyboard(key)) => {
@@ -151,6 +158,11 @@ fn main() {
                     Key::Escape => {} // Closing app, nothing to do here
                     _ => error!("Unkown key: {:?}", key),
                 }
+            }
+            Some(Button::Mouse(mouse_button)) => {
+                let x = (cursor_pos[0] / TILE_SIZE) as usize;
+                let y = (cursor_pos[1] / TILE_SIZE) as usize;
+                info!("Click at ({}, {})", x, y);
             }
             Some(x) => error!("Unkown event: {:?}", x),
         };
