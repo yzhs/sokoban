@@ -111,7 +111,6 @@ fn render_level(c: Context,
 }
 
 fn main() {
-    colog::init();
     let mut app = App::new("microban");
     info!("{}", app.current_level());
 
@@ -123,6 +122,9 @@ fn main() {
             .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
 
     window.set_lazy(true);
+
+    // Initialize colog after window to suppress some log output.
+    colog::init();
 
     let backgrounds = load_backgrounds(&mut window.factory);
     let foregrounds = load_foregrounds(&mut window.factory);
@@ -140,6 +142,7 @@ fn main() {
                         let _ = app.current_level_mut().try_move(key_to_direction(key));
                     }
                     Key::U => app.current_level_mut().undo(),
+                    Key::Escape => {} // Closing app, nothing to do here
                     _ => error!("Unkown key: {:?}", key),
                 }
             }
