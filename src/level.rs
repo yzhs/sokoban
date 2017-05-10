@@ -152,16 +152,13 @@ impl Level {
 
         let moves_crate = if self.is_empty(next) {
             // Move to empty cell
-            info!("Moving into empty cell");
             false
         } else if self.is_crate(next) && self.is_empty(next_but_one) {
             // Push crate into empty next cell
-            info!("Moving crate into next cell");
             let next = (next.0 as usize, next.1 as usize);
             let (foo, _) = self.move_object(next, direction, false);
             true
         } else {
-            info!("Invalid move");
             return Err(());
         };
 
@@ -250,10 +247,6 @@ impl Level {
         let new = ((pos.0 + dx) as usize, (pos.1 + dy) as usize);
         let new_index = new.0 + self.width * new.1;
 
-        info!("Moving {:?} from {:?} to {:?}",
-              self.foreground[index],
-              pos,
-              new);
         self.foreground[new_index] = self.foreground[index];
         self.foreground[index] = Foreground::None;
 
