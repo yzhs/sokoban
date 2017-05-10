@@ -35,8 +35,7 @@ const TILE_SIZE: f64 = 50.0;
 const IMAGE_SCALE: f64 = TILE_SIZE / 360.0;
 
 pub struct App {
-    current_collection: Collection,
-    current_level: Level,
+    collection: Collection,
 }
 
 impl App {
@@ -48,16 +47,19 @@ impl App {
         let collection = collection.unwrap();
 
         App {
-            current_level: collection.level(0).clone(),
-            current_collection: collection,
+            collection: collection,
         }
+    }
+
+    pub fn current_level(&mut self) -> &mut Level {
+        &mut self.collection.current_level
     }
 }
 
 fn main() {
     colog::init();
     let mut app = App::new();
-    info!("{}", app.current_level);
+    info!("{}", app.current_level());
 
     let title = "Sokoban";
     let mut window: PistonWindow =
@@ -77,7 +79,7 @@ fn main() {
             clear(EMPTY, g);
 
             // Render the current level
-            let level = &app.current_level;
+            let level = &app.current_level();
             let background = &level.background;
 
             // Draw the background

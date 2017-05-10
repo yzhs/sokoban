@@ -9,7 +9,7 @@ use util::*;
 #[derive(Debug, Clone)]
 pub struct Collection {
     pub name: String,
-    pub current_level: usize,
+    pub current_level: Level,
     pub levels: Vec<Level>,
 }
 
@@ -32,14 +32,15 @@ impl Collection {
             .collect();
         let name = level_strings[0];
 
-        Ok(Collection {
-               name: name.to_string(),
-               current_level: 0,
-               levels: level_strings[1..]
+        let levels = level_strings[1..]
                    .iter()
                    .enumerate()
                    .map(|(i, l)| Level::parse(i, l))
-                   .collect::<Result<Vec<_>, _>>()?,
+                   .collect::<Result<Vec<_>, _>>()?;
+        Ok(Collection {
+               name: name.to_string(),
+               current_level: levels[0].clone(),
+               levels,
            })
     }
 
