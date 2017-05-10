@@ -6,6 +6,7 @@ version = "0.1.0"
 [dependencies]
 colog = "0.1.1"
 gfx_core = "0.7.0"
+gfx_device_gl = "0.14.0"
 log = "0.3.7"
 piston = "0.32.0"
 piston2d-gfx_graphics = "0.39.0"

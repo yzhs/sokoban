@@ -6,11 +6,14 @@ extern crate piston_window;
 extern crate graphics;
 extern crate gfx_graphics;
 extern crate gfx_core;
+extern crate gfx_device_gl;
 
 // Logging
 #[macro_use]
 extern crate log;
 extern crate colog;
+
+use std::collections::HashMap;
 
 use piston_window::*;
 
@@ -39,19 +42,20 @@ pub struct App {
 }
 
 impl App {
-    pub fn new() -> App {
-        let collection = Collection::load("original");
+    pub fn new(collection_name: &str) -> App {
+        let collection = Collection::load(collection_name);
         if collection.is_err() {
             panic!("Failed to load level set: {:?}", collection.unwrap_err());
         }
         let collection = collection.unwrap();
-
-        App {
-            collection: collection,
-        }
+        App { collection }
     }
 
-    pub fn current_level(&mut self) -> &mut Level {
+    pub fn current_level(&self) -> &Level {
+        &self.collection.current_level
+    }
+
+    pub fn current_level_mut(&mut self) -> &mut Level {
         &mut self.collection.current_level
     }
 }
@@ -67,10 +71,48 @@ fn key_to_direction(key: Key) -> direction::Direction {
     }
 }
 
+fn render_level(c: Context,
+                g: &mut G2d,
+                level: &Level,
+                backgrounds: &HashMap<Background, Texture<gfx_device_gl::Resources>>,
+                foregrounds: &HashMap<Foreground, Texture<gfx_device_gl::Resources>>) {
+    // Set background
+    clear(EMPTY, g);
+
+    // Render the current level
+    let background = &level.background;
+
+    // Draw the background
+    for (i, bg) in background.iter().enumerate() {
+        if bg == &Background::Empty {
+            continue;
+        }
+
+        let x = TILE_SIZE * (i % level.width) as f64;
+        let y = TILE_SIZE * (i / level.width) as f64;
+        image(&backgrounds[bg],
+              c.transform.trans(x, y).scale(IMAGE_SCALE, IMAGE_SCALE),
+              g);
+    }
+
+    // and the foreground
+    let foreground = &level.foreground;
+    for (i, fg) in foreground.iter().enumerate() {
+        if fg == &Foreground::None {
+            continue;
+        }
+
+        let x = TILE_SIZE * (i % level.width) as f64;
+        let y = TILE_SIZE * (i / level.width) as f64;
+        image(&foregrounds[fg],
+              c.transform.trans(x, y).scale(IMAGE_SCALE, IMAGE_SCALE),
+              g);
+    }
+}
 
 fn main() {
     colog::init();
-    let mut app = App::new();
+    let mut app = App::new("microban");
     info!("{}", app.current_level());
 
     let title = "Sokoban";
@@ -86,51 +128,21 @@ fn main() {
     let foregrounds = load_foregrounds(&mut window.factory);
 
     while let Some(e) = window.next() {
-        window.draw_2d(&e, |c, g| {
-            // Set background
-            clear(EMPTY, g);
+        window.draw_2d(&e,
+                       |c, g| render_level(c, g, app.current_level(), &backgrounds, &foregrounds));
 
-            // Render the current level
-            let level = &app.current_level();
-            let background = &level.background;
-
-            // Draw the background
-            for (i, bg) in background.iter().enumerate() {
-                if bg == &Background::Empty {
-                    continue;
-                }
-
-                let x = TILE_SIZE * (i % level.width) as f64;
-                let y = TILE_SIZE * (i / level.width) as f64;
-                image(&backgrounds[bg],
-                      c.transform.trans(x, y).scale(IMAGE_SCALE, IMAGE_SCALE),
-                      g);
-            }
-
-            // and the foreground
-            let foreground = &level.foreground;
-            for (i, fg) in foreground.iter().enumerate() {
-                if fg == &Foreground::None {
-                    continue;
-                }
-
-                let x = TILE_SIZE * (i % level.width) as f64;
-                let y = TILE_SIZE * (i / level.width) as f64;
-                image(&foregrounds[fg],
-                      c.transform.trans(x, y).scale(IMAGE_SCALE, IMAGE_SCALE),
-                      g);
-            }
-        });
 
         match e.press_args() {
             None => {}
-            Some(Button::Keyboard(key)) => match key {
+            Some(Button::Keyboard(key)) => {
+                match key {
                     Key::Left | Key::Right | Key::Up | Key::Down => {
-                        let _ = app.current_level().try_move(key_to_direction(key));
-                    },
-                    Key::U => app.current_level().undo(),
+                        let _ = app.current_level_mut().try_move(key_to_direction(key));
+                    }
+                    Key::U => app.current_level_mut().undo(),
                     _ => error!("Unkown key: {:?}", key),
-                },
+                }
+            }
             Some(x) => error!("Unkown event: {:?}", x),
         };
 
