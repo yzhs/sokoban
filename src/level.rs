@@ -132,6 +132,10 @@ impl Level {
            })
     }
 
+    fn index(&self, pos: (usize, usize)) -> usize {
+        pos.0 + pos.1 * self.width
+    }
+
     /// Try to move in the given direction. Return an error if that is not possile.
     pub fn try_move(&mut self, direction: Direction) -> Result<(), ()> {
         use self::Direction::*;
@@ -144,7 +148,6 @@ impl Level {
             Down => (0, 1),
         };
         let next = (x + dx, y + dy);
-        let next_index = next.0 as usize + next.1 as usize * self.width;
         let next_but_one = (x + 2 * dx, y + 2 * dy);
 
         let moves_crate = if self.is_empty(next) {
@@ -154,9 +157,8 @@ impl Level {
         } else if self.is_crate(next) && self.is_empty(next_but_one) {
             // Push crate into empty next cell
             info!("Moving crate into next cell");
-            let next_but_one_index = next_but_one.0 as usize + next_but_one.1 as usize * self.width;
-            self.foreground[next_but_one_index] = Foreground::Crate;
-            self.foreground[next_index] = Foreground::None;
+            let next = (next.0 as usize, next.1 as usize);
+            let (foo, _) = self.move_object(next, direction, false);
             true
         } else {
             info!("Invalid move");
@@ -164,9 +166,8 @@ impl Level {
         };
 
         // Move worker to new position
-        let index = x as usize + y as usize * self.width;
-        self.foreground[next_index] = Foreground::Worker;
-        self.foreground[index] = Foreground::None;
+        let pos = self.worker_position;
+        let _ = self.move_object(pos, direction, false);
         self.worker_position = (next.0 as usize, next.1 as usize);
         // TODO check how this affects the number of crates on goals
 
@@ -199,8 +200,7 @@ impl Level {
         }
 
         // Check the cell itself
-        let index = pos.0 as usize + self.width * pos.1 as usize;
-        self.foreground[index] == Foreground::Crate
+        self.foreground[self.index((pos.0 as usize, pos.1 as usize))] == Foreground::Crate
     }
 
     /// Is the cell with the given coordinates empty, i.e. could a crate be moved into it?
@@ -214,7 +214,7 @@ impl Level {
         }
 
         // Check the cell itself
-        let index = pos.0 as usize + self.width * pos.1 as usize;
+        let index = self.index((pos.0 as usize, pos.1 as usize));
         match (self.background[index], self.foreground[index]) {
             (Floor, None) | (Goal, None) => true,
             _ => false,
