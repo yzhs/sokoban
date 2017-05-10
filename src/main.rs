@@ -60,6 +60,12 @@ impl App {
     }
 }
 
+impl Default for App {
+    fn default() -> Self {
+        Self::new("original")
+    }
+}
+
 fn key_to_direction(key: Key) -> direction::Direction {
     use direction::Direction::*;
     match key {
