@@ -98,7 +98,7 @@ impl Cell {
             Cell {
                 background: Empty,
                 foreground: Foreground::None,
-            } => ' ',
+            } |
             Cell {
                 background: Floor,
                 foreground: Foreground::None,
