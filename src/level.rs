@@ -19,7 +19,7 @@ pub struct Level {
     pub foreground: Vec<Foreground>,
 
     empty_goals: usize,
-    worker_position: (usize, usize),
+    pub worker_position: (usize, usize),
 
     /// The sequence of moves performed so far. Everything after the first moves_recorded moves is
     /// used to redo moves, i.e. undoing a previous undo operation.
@@ -136,8 +136,53 @@ impl Level {
         pos.0 + pos.1 * self.width
     }
 
+    fn find_path(&mut self, to: (usize, usize)) {
+        info!("Running pathfinding algorithm");
+        unimplemented!();
+    }
+
+    /// Move the worker towards `to`. If may_push_crate is set, `to` must be in the same row or
+    /// column as the worker. In that case, the worker moves to `to`
+    pub fn move_to(&mut self, to: (usize, usize), may_push_crate: bool) {
+        use self::Direction::*;
+
+        let dx = to.0 as isize - self.worker_position.0 as isize;
+        let dy = to.1 as isize - self.worker_position.1 as isize;
+
+        let direction = if dx != 0 && dy != 0 {
+            if may_push_crate {
+                error!("Can only move in the same row or column while pushing crates");
+            } else {
+                self.find_path(to);
+            }
+            return;
+        } else if dx == 0 && dy == 0 {
+            // Already there
+            return;
+        } else if dx == 0 {
+            if dy < 0 {
+                Up
+            } else {
+                Down
+            }
+        } else { // dy == 0
+            if dx < 0 {
+                Left
+            } else {
+                Right
+            }
+        };
+
+        while self.move_helper(direction, may_push_crate).is_ok() && self.worker_position != to {
+        }
+    }
+
     /// Try to move in the given direction. Return an error if that is not possile.
     pub fn try_move(&mut self, direction: Direction) -> Result<(), ()> {
+        self.move_helper(direction, true)
+    }
+
+    fn move_helper(&mut self, direction: Direction, may_push_crate: bool) -> Result<(), ()> {
         use self::Direction::*;
 
         let (x, y) = (self.worker_position.0 as isize, self.worker_position.1 as isize);
@@ -153,7 +198,7 @@ impl Level {
         let moves_crate = if self.is_empty(next) {
             // Move to empty cell
             false
-        } else if self.is_crate(next) && self.is_empty(next_but_one) {
+        } else if self.is_crate(next) && self.is_empty(next_but_one) && may_push_crate {
             // Push crate into empty next cell
             let next = (next.0 as usize, next.1 as usize);
             let _ = self.move_object(next, direction, false);

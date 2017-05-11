@@ -162,7 +162,7 @@ fn main() {
             Some(Button::Mouse(mouse_button)) => {
                 let x = (cursor_pos[0] / TILE_SIZE) as usize;
                 let y = (cursor_pos[1] / TILE_SIZE) as usize;
-                info!("Click at ({}, {})", x, y);
+                app.current_level_mut().move_to((x, y), mouse_button == MouseButton::Right);
             }
             Some(x) => error!("Unkown event: {:?}", x),
         };
