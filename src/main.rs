@@ -117,7 +117,7 @@ fn render_level(c: Context,
 }
 
 fn main() {
-    let mut app = App::new("microban");
+    let mut app: App = Default::default();
     info!("{}", app.current_level());
 
     let title = "Sokoban";
