@@ -48,13 +48,13 @@ impl Collection {
         self.levels[n].clone()
     }
 
+    /// If `current_level` is finished, switch to the next level.
     pub fn next_level(&mut self) {
         let n = self.current_level.level_number;
         if self.current_level.is_finished() && n < self.levels.len() {
             self.current_level = self.levels[n].clone();
         } else if self.current_level.is_finished() {
             error!("Reached the end of the current collection.");
-            ::std::process::exit(0);
         } else {
             error!("Current level is not finished!");
         }
