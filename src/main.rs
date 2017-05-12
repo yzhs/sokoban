@@ -13,6 +13,7 @@ extern crate gfx_device_gl;
 extern crate log;
 extern crate colog;
 
+use std::cmp::min;
 use std::collections::HashMap;
 
 use piston_window::*;
@@ -34,11 +35,12 @@ use texture::*;
 
 
 const EMPTY: [f32; 4] = [0.0, 0.0, 0.0, 1.0]; // black
-const TILE_SIZE: f64 = 50.0;
-const IMAGE_SCALE: f64 = TILE_SIZE / 360.0;
 
 pub struct App {
     collection: Collection,
+    tile_size: f64,
+    offset_left: f64,
+    offset_top: f64,
 }
 
 impl App {
@@ -48,7 +50,12 @@ impl App {
             panic!("Failed to load level set: {:?}", collection.unwrap_err());
         }
         let collection = collection.unwrap();
-        App { collection }
+        App {
+            collection,
+            tile_size: 50.0,
+            offset_left: 0.0,
+            offset_top: 0.0,
+        }
     }
 
     pub fn current_level(&self) -> &Level {
@@ -77,11 +84,32 @@ fn key_to_direction(key: Key) -> direction::Direction {
     }
 }
 
+fn draw_entity(c: Context,
+               g: &mut G2d,
+               entity: &Texture<gfx_device_gl::Resources>,
+               i: usize,
+               width: usize,
+               tile_size: f64,
+               image_scale: f64,
+               offset_left: f64,
+               offset_top: f64) {
+    let x = tile_size * (i % width) as f64 + offset_left;
+    let y = tile_size * (i / width) as f64 + offset_top;
+    image(entity,
+          c.transform.trans(x, y).scale(image_scale, image_scale),
+          g);
+}
+
 fn render_level(c: Context,
                 g: &mut G2d,
                 level: &Level,
+                tile_size: f64,
+                offset_left: f64,
+                offset_top: f64,
                 backgrounds: &HashMap<Background, Texture<gfx_device_gl::Resources>>,
                 foregrounds: &HashMap<Foreground, Texture<gfx_device_gl::Resources>>) {
+    let image_scale = tile_size / 360.0;
+
     // Set background
     clear(EMPTY, g);
 
@@ -93,12 +121,15 @@ fn render_level(c: Context,
         if bg == &Background::Empty {
             continue;
         }
-
-        let x = TILE_SIZE * (i % level.width) as f64;
-        let y = TILE_SIZE * (i / level.width) as f64;
-        image(&backgrounds[bg],
-              c.transform.trans(x, y).scale(IMAGE_SCALE, IMAGE_SCALE),
-              g);
+        draw_entity(c,
+                    g,
+                    &backgrounds[bg],
+                    i,
+                    level.width,
+                    tile_size,
+                    image_scale,
+                    offset_left,
+                    offset_top);
     }
 
     // and the foreground
@@ -107,12 +138,15 @@ fn render_level(c: Context,
         if fg == &Foreground::None {
             continue;
         }
-
-        let x = TILE_SIZE * (i % level.width) as f64;
-        let y = TILE_SIZE * (i / level.width) as f64;
-        image(&foregrounds[fg],
-              c.transform.trans(x, y).scale(IMAGE_SCALE, IMAGE_SCALE),
-              g);
+        draw_entity(c,
+                    g,
+                    &foregrounds[fg],
+                    i,
+                    level.width,
+                    tile_size,
+                    image_scale,
+                    offset_left,
+                    offset_top);
     }
 }
 
@@ -138,8 +172,16 @@ fn main() {
     let foregrounds = load_foregrounds(&mut window.factory);
 
     while let Some(e) = window.next() {
-        window.draw_2d(&e,
-                       |c, g| render_level(c, g, app.current_level(), &backgrounds, &foregrounds));
+        window.draw_2d(&e, |c, g| {
+            render_level(c,
+                         g,
+                         app.current_level(),
+                         app.tile_size,
+                         app.offset_left,
+                         app.offset_top,
+                         &backgrounds,
+                         &foregrounds)
+        });
 
         // Keep track of where the cursor is pointing
         if let Some(new_pos) = e.mouse_cursor_args() {
@@ -160,9 +202,10 @@ fn main() {
                 }
             }
             Some(Button::Mouse(mouse_button)) => {
-                let x = (cursor_pos[0] / TILE_SIZE) as usize;
-                let y = (cursor_pos[1] / TILE_SIZE) as usize;
-                app.current_level_mut().move_to((x, y), mouse_button == MouseButton::Right);
+                let x = (cursor_pos[0] / app.tile_size) as usize;
+                let y = (cursor_pos[1] / app.tile_size) as usize;
+                app.current_level_mut()
+                    .move_to((x, y), mouse_button == MouseButton::Right);
             }
             Some(x) => error!("Unkown event: {:?}", x),
         };
@@ -171,5 +214,21 @@ fn main() {
             info!("Level solved!");
             app.collection.next_level();
         }
+
+        e.resize(|w, h| {
+            let lvl = app.current_level();
+            let mut horizontal_margins = w as i32 - lvl.width as i32 * app.tile_size as i32;
+            let mut vertical_margins = h as i32 - lvl.height as i32 * app.tile_size as i32;
+
+            if horizontal_margins < 0 || vertical_margins < 0 ||
+               horizontal_margins as usize > lvl.width && vertical_margins as usize > lvl.height {
+                app.tile_size = min(w / lvl.width as u32, h / lvl.height as u32) as f64;
+                horizontal_margins = w as i32 - lvl.width as i32 * app.tile_size as i32;
+                vertical_margins = h as i32 - lvl.height as i32 * app.tile_size as i32;
+            }
+
+            app.offset_left = horizontal_margins as f64 / 2.0;
+            app.offset_top = vertical_margins as f64 / 2.0;
+        });
     }
 }
