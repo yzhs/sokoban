@@ -207,8 +207,10 @@ fn main() {
                     }
                     Key::U => lvl.undo(),
                     Key::Z => {
-                        if control_pressed {
+                        if control_pressed && !shift_pressed {
                             lvl.undo();
+                        } else if control_pressed {
+                            lvl.redo();
                         }
                     }
 

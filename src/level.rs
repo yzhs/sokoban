@@ -323,6 +323,14 @@ impl Level {
         }
     }
 
+    /// If a move has been undone previously, redo it.
+    pub fn redo(&mut self) {
+        if self.moves.len() > self.moves_recorded {
+            let dir = self.moves[self.moves_recorded].direction;
+            let _ = self.try_move(dir);
+        }
+    }
+
     /// Check whether the given level is completed, i.e. every goal has a crate on it, and every
     /// crate is on a goal.
     pub fn is_finished(&self) -> bool {
