@@ -160,21 +160,13 @@ impl Level {
             // Already there
             return;
         } else if dx == 0 {
-            if dy < 0 {
-                Up
-            } else {
-                Down
-            }
-        } else { // dy == 0
-            if dx < 0 {
-                Left
-            } else {
-                Right
-            }
+            if dy < 0 { Up } else { Down }
+        } else {
+            // dy == 0
+            if dx < 0 { Left } else { Right }
         };
 
-        while self.move_helper(direction, may_push_crate).is_ok() && self.worker_position != to {
-        }
+        while self.move_helper(direction, may_push_crate).is_ok() && self.worker_position != to {}
     }
 
     /// Try to move in the given direction. Return an error if that is not possile.
@@ -185,6 +177,7 @@ impl Level {
     pub fn move_until(&mut self, direction: Direction, may_push_crate: bool) {
         while self.move_helper(direction, may_push_crate).is_ok() {}
     }
+
     fn move_helper(&mut self, direction: Direction, may_push_crate: bool) -> Result<(), ()> {
         use self::Direction::*;
 
@@ -201,7 +194,8 @@ impl Level {
         let moves_crate = if self.is_empty(next) {
             // Move to empty cell
             false
-        } else if self.is_crate(next) && self.is_empty(next_but_one) && may_push_crate {
+        } else if self.is_crate(next) && self.is_empty(next_but_one) &&
+                  may_push_crate {
             // Push crate into empty next cell
             let next = (next.0 as usize, next.1 as usize);
             let _ = self.move_object(next, direction, false);
