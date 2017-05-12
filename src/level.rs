@@ -182,6 +182,9 @@ impl Level {
         self.move_helper(direction, true)
     }
 
+    pub fn move_until(&mut self, direction: Direction, may_push_crate: bool) {
+        while self.move_helper(direction, may_push_crate).is_ok() {}
+    }
     fn move_helper(&mut self, direction: Direction, may_push_crate: bool) -> Result<(), ()> {
         use self::Direction::*;
 

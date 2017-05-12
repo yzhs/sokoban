@@ -171,6 +171,9 @@ fn main() {
     let backgrounds = load_backgrounds(&mut window.factory);
     let foregrounds = load_foregrounds(&mut window.factory);
 
+    let mut control_pressed = false;
+    let mut shift_pressed = false;
+
     while let Some(e) = window.next() {
         window.draw_2d(&e, |c, g| {
             render_level(c,
@@ -192,11 +195,26 @@ fn main() {
         match e.press_args() {
             None => {}
             Some(Button::Keyboard(key)) => {
+                let mut lvl = app.current_level_mut();
                 match key {
                     Key::Left | Key::Right | Key::Up | Key::Down => {
-                        let _ = app.current_level_mut().try_move(key_to_direction(key));
+                        let dir = key_to_direction(key);
+                        if control_pressed && !shift_pressed || !control_pressed && shift_pressed {
+                            lvl.move_until(dir, shift_pressed)
+                        } else {
+                            let _ = lvl.try_move(dir);
+                        }
                     }
-                    Key::U => app.current_level_mut().undo(),
+                    Key::U => lvl.undo(),
+                    Key::Z => {
+                        if control_pressed {
+                            lvl.undo();
+                        }
+                    }
+
+                    Key::LCtrl | Key::RCtrl => control_pressed = true,
+                    Key::LShift | Key::RShift => shift_pressed = true,
+
                     Key::Escape => {} // Closing app, nothing to do here
                     _ => error!("Unkown key: {:?}", key),
                 }
@@ -210,23 +228,38 @@ fn main() {
             Some(x) => error!("Unkown event: {:?}", x),
         };
 
+        if let Some(Button::Keyboard(key)) = e.release_args() {
+            match key {
+                Key::LCtrl | Key::RCtrl => control_pressed = false,
+                Key::LShift | Key::RShift => shift_pressed = false,
+                _ => {}
+            }
+        }
+
         if app.current_level().is_finished() {
             info!("Level solved!");
             app.collection.next_level();
         }
 
         e.resize(|w, h| {
-            let lvl = app.current_level();
-            let mut horizontal_margins = w as i32 - lvl.width as i32 * app.tile_size as i32;
-            let mut vertical_margins = h as i32 - lvl.height as i32 * app.tile_size as i32;
-
-            if horizontal_margins < 0 || vertical_margins < 0 ||
-               horizontal_margins as usize > lvl.width && vertical_margins as usize > lvl.height {
-                app.tile_size = min(w / lvl.width as u32, h / lvl.height as u32) as f64;
+            let mut tile_size = app.tile_size;
+            let mut horizontal_margins;
+            let mut vertical_margins;
+            {
+                let lvl = app.current_level();
                 horizontal_margins = w as i32 - lvl.width as i32 * app.tile_size as i32;
                 vertical_margins = h as i32 - lvl.height as i32 * app.tile_size as i32;
-            }
 
+                if horizontal_margins < 0 || vertical_margins < 0 ||
+                   horizontal_margins as usize > lvl.width &&
+                   vertical_margins as usize > lvl.height {
+                    tile_size = min(w / lvl.width as u32, h / lvl.height as u32) as f64;
+                    horizontal_margins = w as i32 - lvl.width as i32 * app.tile_size as i32;
+                    vertical_margins = h as i32 - lvl.height as i32 * app.tile_size as i32;
+                }
+
+            }
+            app.tile_size = tile_size;
             app.offset_left = horizontal_margins as f64 / 2.0;
             app.offset_top = vertical_margins as f64 / 2.0;
         });
