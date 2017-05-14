@@ -1,10 +1,45 @@
 use std::convert::TryFrom;
 use std::fmt;
+use std::ops::Sub;
 
 use cell::*;
 use direction::*;
 use move_::*;
 use util::*;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Position {
+    pub x: isize,
+    pub y: isize,
+}
+
+impl Position {
+    pub fn new(x: usize, y: usize) -> Position {
+        Position {
+            x: x as isize,
+            y: y as isize,
+        }
+    }
+
+    pub fn neighbour(&self, direction: Direction) -> Position {
+        use direction::Direction::*;
+        let (x, y) = match direction {
+            Left => (self.x - 1, self.y),
+            Right => (self.x + 1, self.y),
+            Up => (self.x, self.y - 1),
+            Down => (self.x, self.y + 1),
+        };
+        Position { x, y }
+    }
+}
+
+impl Sub for Position {
+    type Output = (isize, isize);
+    fn sub(self, other: Position) -> (isize, isize) {
+        (self.x - other.x, self.y - other.y)
+
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Level {
@@ -19,7 +54,7 @@ pub struct Level {
     pub foreground: Vec<Foreground>,
 
     empty_goals: usize,
-    pub worker_position: (usize, usize),
+    pub worker_position: Position,
 }
 
 #[derive(Debug, Clone)]
@@ -34,7 +69,7 @@ pub struct CurrentLevel {
     moves_recorded: usize,
 
     empty_goals: usize,
-    pub worker_position: (usize, usize),
+    pub worker_position: Position,
 }
 
 
@@ -46,7 +81,7 @@ impl Level {
         let width = lines.iter().map(|x| x.len()).max().unwrap();
 
         let mut found_worker = false;
-        let mut worker_position = (0, 0);
+        let mut worker_position = Position { x: 0, y: 0 };
         let mut empty_goals = 0;
         let mut background = vec![Background::Empty; width * height];
         let mut foreground = vec![Foreground::None; width * height];
@@ -91,7 +126,7 @@ impl Level {
                     if found_worker {
                         return Err(SokobanError::TwoWorkers(num + 1));
                     }
-                    worker_position = (j, i); // column, then row!
+                    worker_position = Position::new(j, i);
                     found_worker = true;
                 }
             }
@@ -150,32 +185,31 @@ impl CurrentLevel {
         }
     }
 
-    pub fn background(&self, x: usize, y: usize) -> &Background {
-        &self.level.background[x + y * self.level.width]
+    pub fn background(&self, x: isize, y: isize) -> &Background {
+        &self.level.background[x as usize + y as usize * self.level.width]
     }
 
-    pub fn foreground(&self, x: usize, y: usize) -> &Foreground {
-        &self.level.foreground[x + y * self.level.width]
+    pub fn foreground(&self, x: isize, y: isize) -> &Foreground {
+        &self.level.foreground[x as usize + y as usize * self.level.width]
     }
 
-    pub fn foreground_mut(&mut self, x: usize, y: usize) -> &mut Foreground {
-        &mut self.level.foreground[x + y * self.level.width]
+    pub fn foreground_mut(&mut self, x: isize, y: isize) -> &mut Foreground {
+        &mut self.level.foreground[(x as usize + y as usize * self.level.width)]
     }
 
     /// Try to find a shortest path from the workers current position to `to` and execute it if one
     /// exists.
-    fn find_path(&mut self, to: (usize, usize)) {
+    fn find_path(&mut self, to: Position) {
         info!("Finding path to {:?}…", to);
         unimplemented!();
     }
 
     /// Move the worker towards `to`. If may_push_crate is set, `to` must be in the same row or
     /// column as the worker. In that case, the worker moves to `to`
-    pub fn move_to(&mut self, to: (usize, usize), may_push_crate: bool) {
+    pub fn move_to(&mut self, to: Position, may_push_crate: bool) {
         use self::Direction::*;
 
-        let dx = to.0 as isize - self.level.worker_position.0 as isize;
-        let dy = to.1 as isize - self.level.worker_position.1 as isize;
+        let (dx, dy) = to - self.worker_position;
 
         let direction = if dx != 0 && dy != 0 {
             if may_push_crate {
@@ -194,7 +228,7 @@ impl CurrentLevel {
             if dx < 0 { Left } else { Right }
         };
 
-        while self.move_helper(direction, may_push_crate).is_ok() && self.level.worker_position != to {}
+        while self.move_helper(direction, may_push_crate).is_ok() && self.worker_position != to {}
     }
 
     /// Try to move in the given direction. Return an error if that is not possile.
@@ -207,17 +241,8 @@ impl CurrentLevel {
     }
 
     fn move_helper(&mut self, direction: Direction, may_push_crate: bool) -> Result<(), ()> {
-        use self::Direction::*;
-
-        let (x, y) = (self.worker_position.0 as isize, self.worker_position.1 as isize);
-        let (dx, dy): (isize, isize) = match direction {
-            Left => (-1, 0),
-            Right => (1, 0),
-            Up => (0, -1),
-            Down => (0, 1),
-        };
-        let next = (x + dx, y + dy);
-        let next_but_one = (x + 2 * dx, y + 2 * dy);
+        let next = self.worker_position.neighbour(direction);
+        let next_but_one = next.neighbour(direction);
 
         let moves_crate = if self.is_empty(next) {
             // Move to empty cell
@@ -225,7 +250,6 @@ impl CurrentLevel {
         } else if self.is_crate(next) && self.is_empty(next_but_one) &&
                   may_push_crate {
             // Push crate into empty next cell
-            let next = (next.0 as usize, next.1 as usize);
             let _ = self.move_object(next, direction, false);
             true
         } else {
@@ -234,8 +258,8 @@ impl CurrentLevel {
 
         // Move worker to new position
         let pos = self.worker_position;
-        let _ = self.move_object(pos, direction, false);
-        self.worker_position = (next.0 as usize, next.1 as usize);
+        let (worker_pos, _) = self.move_object(pos, direction, false);
+        self.worker_position = worker_pos;
 
         // Bookkeeping for undo and printing a solution
         let current_move = Move {
@@ -259,24 +283,26 @@ impl CurrentLevel {
     }
 
     /// Is there a crate at the given position?
-    fn is_crate(&self, pos: (isize, isize)) -> bool {
+    fn is_crate(&self, pos: Position) -> bool {
         // Check bounds
-        if pos.0 < 0 || pos.1 < 0 || pos.0 as usize >= self.level.width || pos.1 as usize >= self.level.height {
+        if pos.x < 0 || pos.y < 0 || pos.x as usize >= self.level.width ||
+           pos.y as usize >= self.level.height {
             return false;
         }
 
         // Check the cell itself
-        self.foreground(pos.0 as usize, pos.1 as usize) == &Foreground::Crate
+        self.foreground(pos.x, pos.y) == &Foreground::Crate
     }
 
     /// Is the cell with the given coordinates empty, i.e. could a crate be moved into it?
-    fn is_empty(&self, pos: (isize, isize)) -> bool {
+    fn is_empty(&self, pos: Position) -> bool {
         use self::Background::*;
         use self::Foreground::*;
-        let (x, y) = (pos.0 as usize, pos.1 as usize);
+        let (x, y) = (pos.x as isize, pos.y as isize);
 
         // Check bounds
-        if pos.0 < 0 || pos.1 < 0 || x as usize >= self.level.width || y as usize >= self.level.height {
+        if pos.x < 0 || pos.y < 0 || x as usize >= self.level.width ||
+           y as usize >= self.level.height {
             return false;
         }
 
@@ -292,41 +318,27 @@ impl CurrentLevel {
     /// object, as well as the position of the object behind the original position. This is needed
     /// to move crates backwards when undoing a push.
     fn move_object(&mut self,
-                   from: (usize, usize),
+                   from: Position,
                    direction: Direction,
                    undo: bool)
-                   -> ((usize, usize), (usize, usize)) {
-        use self::Direction::*;
-
-        let pos: (isize, isize) = (from.0 as isize, from.1 as isize);
-        let (mut dx, mut dy): (isize, isize) = match direction {
-            Left => (-1, 0),
-            Right => (1, 0),
-            Up => (0, -1),
-            Down => (0, 1),
-        };
-        if undo {
-            // Reverse direction
-            dx = -dx;
-            dy = -dy;
-        }
-
-        let new = ((pos.0 + dx) as usize, (pos.1 + dy) as usize);
+                   -> (Position, Position) {
+        let direction = if undo { direction.reverse() } else { direction };
+        let new = from.neighbour(direction);
 
         // Make sure empty_goals is updated as needed.
-        if self.foreground_mut(from.0, from.1) == &Foreground::Crate {
-            if self.background(from.0, from.1) == &Background::Goal {
+        if self.foreground_mut(from.x, from.y) == &Foreground::Crate {
+            if self.background(from.x, from.y) == &Background::Goal {
                 self.empty_goals += 1;
             }
-            if self.background(new.0, new.1) == &Background::Goal {
+            if self.background(new.x, new.y) == &Background::Goal {
                 self.empty_goals -= 1;
             }
         }
 
-        *self.foreground_mut(new.0, new.1) = *self.foreground_mut(from.0, from.1);
-        *self.foreground_mut(from.0, from.1) = Foreground::None;
+        *self.foreground_mut(new.x, new.y) = *self.foreground_mut(from.x, from.y);
+        *self.foreground_mut(from.x, from.y) = Foreground::None;
 
-        (new, ((pos.0 - dx) as usize, (pos.1 - dy) as usize))
+        (new, from.neighbour(direction.reverse()))
     }
 
     /// Undo the most recent move.
@@ -447,15 +459,15 @@ mod test {
                                 #@ #\n\
                                 ####\n")
                 .unwrap();
-        assert_eq!(lvl.worker_position.0, 1);
-        assert_eq!(lvl.worker_position.1, 1);
+        assert_eq!(lvl.worker_position.x, 1);
+        assert_eq!(lvl.worker_position.y, 1);
         let mut lvl = CurrentLevel::new(lvl);
 
-        assert!(lvl.is_empty((2, 1)));
-        assert!(!lvl.is_empty((0, 1)));
+        assert!(lvl.is_empty(Position::new(2, 1)));
+        assert!(!lvl.is_empty(Position::new(0, 1)));
         for y in 0..3 {
             for x in 0..4 {
-                assert!(!lvl.is_crate((x, y)));
+                assert!(!lvl.is_crate(Position::new(x, y)));
             }
         }
 
@@ -475,8 +487,8 @@ mod test {
                                 #######\n")
                 .unwrap();
         let mut lvl = CurrentLevel::new(lvl);
-        assert_eq!(lvl.worker_position.0, 3);
-        assert_eq!(lvl.worker_position.1, 1);
+        assert_eq!(lvl.worker_position.x, 3);
+        assert_eq!(lvl.worker_position.y, 1);
         assert!(lvl.try_move(Right).is_ok());
         assert!(lvl.try_move(Left).is_ok());
         assert!(lvl.try_move(Up).is_err());

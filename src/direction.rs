@@ -5,3 +5,15 @@ pub enum Direction {
     Up,
     Down,
 }
+
+impl Direction {
+    pub fn reverse(self) -> Self {
+        use self::Direction::*;
+        match self {
+            Left => Right,
+            Right => Left,
+            Up => Down,
+            Down => Up,
+        }
+    }
+}

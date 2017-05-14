@@ -224,7 +224,7 @@ fn main() {
                 let x = (cursor_pos[0] / app.tile_size) as usize;
                 let y = (cursor_pos[1] / app.tile_size) as usize;
                 app.current_level_mut()
-                    .move_to((x, y), mouse_button == MouseButton::Right);
+                        .move_to(level::Position { x, y }, mouse_button == MouseButton::Right);
             }
             Some(x) => error!("Unkown event: {:?}", x),
         };
