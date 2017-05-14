@@ -23,6 +23,7 @@ pub mod collection;
 pub mod direction;
 pub mod level;
 pub mod move_;
+pub mod position;
 pub mod util;
 
 pub mod texture;

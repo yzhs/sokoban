@@ -1,45 +1,12 @@
 use std::convert::TryFrom;
 use std::fmt;
-use std::ops::Sub;
 
 use cell::*;
 use direction::*;
 use move_::*;
 use util::*;
+pub use position::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Position {
-    pub x: isize,
-    pub y: isize,
-}
-
-impl Position {
-    pub fn new(x: usize, y: usize) -> Position {
-        Position {
-            x: x as isize,
-            y: y as isize,
-        }
-    }
-
-    pub fn neighbour(&self, direction: Direction) -> Position {
-        use direction::Direction::*;
-        let (x, y) = match direction {
-            Left => (self.x - 1, self.y),
-            Right => (self.x + 1, self.y),
-            Up => (self.x, self.y - 1),
-            Down => (self.x, self.y + 1),
-        };
-        Position { x, y }
-    }
-}
-
-impl Sub for Position {
-    type Output = (isize, isize);
-    fn sub(self, other: Position) -> (isize, isize) {
-        (self.x - other.x, self.y - other.y)
-
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct Level {
