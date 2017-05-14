@@ -221,10 +221,12 @@ fn main() {
                 }
             }
             Some(Button::Mouse(mouse_button)) => {
-                let x = (cursor_pos[0] / app.tile_size) as usize;
-                let y = (cursor_pos[1] / app.tile_size) as usize;
-                app.current_level_mut()
+                let x = ((cursor_pos[0] - app.offset_left) / app.tile_size).floor() as isize;
+                let y = ((cursor_pos[1] - app.offset_top) / app.tile_size).floor() as isize;
+                if x >= 0 && y >= 0 {
+                    app.current_level_mut()
                         .move_to(level::Position { x, y }, mouse_button == MouseButton::Right);
+                }
             }
             Some(x) => error!("Unkown event: {:?}", x),
         };
