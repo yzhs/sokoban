@@ -9,7 +9,7 @@ use util::*;
 #[derive(Debug, Clone)]
 pub struct Collection {
     pub name: String,
-    pub current_level: Level,
+    pub current_level: CurrentLevel,
     pub levels: Vec<Level>,
 }
 
@@ -39,7 +39,7 @@ impl Collection {
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Collection {
                name: name.to_string(),
-               current_level: levels[0].clone(),
+               current_level: CurrentLevel::new(levels[0].clone()),
                levels,
            })
     }
@@ -50,9 +50,9 @@ impl Collection {
 
     /// If `current_level` is finished, switch to the next level.
     pub fn next_level(&mut self) {
-        let n = self.current_level.level_number;
+        let n = self.current_level.level.level_number;
         if self.current_level.is_finished() && n < self.levels.len() {
-            self.current_level = self.levels[n].clone();
+            self.current_level = CurrentLevel::new(self.levels[n].clone());
         } else if self.current_level.is_finished() {
             error!("Reached the end of the current collection.");
         } else {

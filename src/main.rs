@@ -58,11 +58,11 @@ impl App {
         }
     }
 
-    pub fn current_level(&self) -> &Level {
+    pub fn current_level(&self) -> &CurrentLevel {
         &self.collection.current_level
     }
 
-    pub fn current_level_mut(&mut self) -> &mut Level {
+    pub fn current_level_mut(&mut self) -> &mut CurrentLevel {
         &mut self.collection.current_level
     }
 }
@@ -178,7 +178,7 @@ fn main() {
         window.draw_2d(&e, |c, g| {
             render_level(c,
                          g,
-                         app.current_level(),
+                         &app.current_level().level,
                          app.tile_size,
                          app.offset_left,
                          app.offset_top,
@@ -248,7 +248,7 @@ fn main() {
             let mut horizontal_margins;
             let mut vertical_margins;
             {
-                let lvl = app.current_level();
+                let lvl = &app.current_level().level;
                 horizontal_margins = w as i32 - lvl.width as i32 * app.tile_size as i32;
                 vertical_margins = h as i32 - lvl.height as i32 * app.tile_size as i32;
 
