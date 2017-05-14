@@ -171,7 +171,6 @@ impl Level {
                worker_position,
            })
     }
-
 }
 
 impl CurrentLevel {
