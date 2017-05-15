@@ -171,14 +171,10 @@ fn main() {
                             let _ = lvl.try_move(dir);
                         }
                     }
-                    Key::U => lvl.undo(),
-                    Key::Z if control_pressed => {
-                        if !shift_pressed {
-                            lvl.undo();
-                        } else {
-                            lvl.redo();
-                        }
-                    }
+                    Key::Z if !control_pressed => {}
+                    Key::U if control_pressed => {}
+                    Key::U | Key::Z if shift_pressed => lvl.redo(),
+                    Key::U | Key::Z => lvl.undo(),
 
                     Key::LCtrl | Key::RCtrl => control_pressed = true,
                     Key::LShift | Key::RShift => shift_pressed = true,
