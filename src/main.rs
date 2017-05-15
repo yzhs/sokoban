@@ -102,6 +102,7 @@ fn render_level(c: Context,
 
     // Set background
     clear(EMPTY, g);
+    // TODO background image?
 
     // Draw the background
     app.current_level()

@@ -242,6 +242,8 @@ impl CurrentLevel {
         }
     }
 
+    /// A vector of all neighbours of the cell with the given position that contain neither a wall
+    /// nor a crate.
     fn empty_neighbours(&self, position: Position) -> Vec<Position> {
         DIRECTIONS
             .iter()
@@ -259,6 +261,8 @@ impl CurrentLevel {
                 if !may_push_crate && dx.abs() + dy.abs() > 1 {
                     self.find_path(to);
                 } else {
+                    // Note that this takes care of both movements of just one step and all cases
+                    // in which crates may be pushed.
                     while self.move_helper(dir, may_push_crate).is_ok() &&
                           self.worker_position != to {}
                 }
@@ -369,6 +373,7 @@ impl CurrentLevel {
                    -> (Position, Position) {
         let direction = if undo { direction.reverse() } else { direction };
         let new = from.neighbour(direction);
+        // FIXME having these two return values does not seem like a great solution
 
         // Make sure empty_goals is updated as needed.
         if self.foreground_mut(from) == &Foreground::Crate {
