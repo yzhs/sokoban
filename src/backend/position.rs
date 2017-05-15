@@ -1,6 +1,6 @@
 use std::ops::Sub;
 
-use direction::Direction;
+use backend::direction::Direction;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Position {
@@ -18,7 +18,7 @@ impl Position {
 
     /// Return the neighbouring Position in the given direction.
     pub fn neighbour(&self, direction: Direction) -> Position {
-        use direction::Direction::*;
+        use super::Direction::*;
         let (x, y) = match direction {
             Left => (self.x - 1, self.y),
             Right => (self.x + 1, self.y),

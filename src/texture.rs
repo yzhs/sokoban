@@ -10,8 +10,7 @@ use std::path::PathBuf;
 use piston_window::*;
 use gfx_graphics::{Texture, TextureSettings};
 
-use cell::*;
-use util::*;
+use backend::*;
 
 
 fn load_texture<R, F>(factory: &mut F, name: &str) -> Texture<R>

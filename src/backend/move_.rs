@@ -1,4 +1,4 @@
-use direction::Direction;
+use backend::direction::Direction;
 
 /// This structure contains everything needed to do or undo a Sokoban move.
 #[derive(Debug, Clone, PartialEq)]

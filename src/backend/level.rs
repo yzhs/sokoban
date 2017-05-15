@@ -1,12 +1,12 @@
 use std::convert::TryFrom;
 use std::fmt;
+use std::collections::VecDeque;
 
-use cell::*;
-use direction::*;
-use move_::*;
-use util::*;
-pub use position::*;
-
+use backend::cell::*;
+use backend::direction::*;
+use backend::move_::*;
+use backend::position::*;
+use backend::util::*;
 
 #[derive(Debug, Clone)]
 pub struct Level {
@@ -131,12 +131,21 @@ impl Level {
                level_number: num + 1, // The first level is level 1
                width,
                height,
+
                background,
                foreground,
 
                empty_goals,
                worker_position,
            })
+    }
+
+    pub fn height(&self) -> usize {
+        self.height
+    }
+
+    pub fn width(&self) -> usize {
+        self.width
     }
 }
 
@@ -151,50 +160,113 @@ impl CurrentLevel {
         }
     }
 
-    pub fn background(&self, x: isize, y: isize) -> &Background {
-        &self.level.background[x as usize + y as usize * self.level.width]
+    pub fn height(&self) -> usize {
+        self.level.height
     }
 
-    pub fn foreground(&self, x: isize, y: isize) -> &Foreground {
-        &self.level.foreground[x as usize + y as usize * self.level.width]
+    pub fn width(&self) -> usize {
+        self.level.width
     }
 
-    pub fn foreground_mut(&mut self, x: isize, y: isize) -> &mut Foreground {
-        &mut self.level.foreground[(x as usize + y as usize * self.level.width)]
+    fn index(&self, pos: Position) -> usize {
+        pos.x as usize + pos.y as usize * self.width()
+    }
+
+    pub fn background(&self, pos: Position) -> &Background {
+        &self.level.background[self.index(pos)]
+    }
+
+    pub fn foreground(&self, pos: Position) -> &Foreground {
+        &self.level.foreground[self.index(pos)]
+    }
+
+    pub fn foreground_mut(&mut self, pos: Position) -> &mut Foreground {
+        let index = self.index(pos);
+        &mut self.level.foreground[index]
     }
 
     /// Try to find a shortest path from the workers current position to `to` and execute it if one
     /// exists.
     fn find_path(&mut self, to: Position) {
-        info!("Finding path to {:?}…", to);
-        unimplemented!();
+        let width = self.width();
+        let height = self.height();
+
+        if self.worker_position == to {
+            return;
+        }
+
+        let mut distances = vec![::std::usize::MAX; width * height];
+        distances[self.index(to)] = 0;
+
+        let mut found_path = false;
+        let mut queue = VecDeque::with_capacity(500);
+        queue.push_back(to);
+
+        loop {
+            let pos = match queue.pop_front() {
+                None => break,
+                Some(pos) => pos,
+            };
+
+            // Have wo found a path?
+            if pos == self.worker_position {
+                found_path = true;
+                break;
+            }
+
+            // Is there a neighbour of pos to which we do not currently know the shortest path?
+            for neighbour in self.empty_neighbours(pos) {
+                let new_dist = distances[self.index(pos)] + 1;
+
+                if distances[self.index(neighbour)] > new_dist {
+                    distances[self.index(neighbour)] = new_dist;
+                    queue.push_back(neighbour);
+                }
+            }
+        }
+
+        if found_path {
+            // Move worker along the path
+            loop {
+                for neighbour in self.empty_neighbours(self.worker_position) {
+                    if distances[self.index(neighbour)] <
+                       distances[self.index(self.worker_position)] {
+                        let dir = direction(self.worker_position, neighbour);
+                        let _ = self.try_move(dir.unwrap());
+                    }
+                }
+                if self.worker_position == to {
+                    break;
+                }
+            }
+        }
+    }
+
+    fn empty_neighbours(&self, position: Position) -> Vec<Position> {
+        DIRECTIONS
+            .iter()
+            .map(|&dir| position.neighbour(dir))
+            .filter(|&neighbour| self.is_empty(neighbour) || self.is_worker(neighbour))
+            .collect()
     }
 
     /// Move the worker towards `to`. If may_push_crate is set, `to` must be in the same row or
     /// column as the worker. In that case, the worker moves to `to`
     pub fn move_to(&mut self, to: Position, may_push_crate: bool) {
-        use self::Direction::*;
-
-        let (dx, dy) = to - self.worker_position;
-
-        let direction = if dx != 0 && dy != 0 {
-            if may_push_crate {
-                error!("Can only move in the same row or column while pushing crates");
-            } else {
-                self.find_path(to);
+        match direction(self.worker_position, to) {
+            Ok(dir) => {
+                let (dx, dy) = to - self.worker_position;
+                if !may_push_crate && dx.abs() + dy.abs() > 1 {
+                    self.find_path(to);
+                } else {
+                    while self.move_helper(dir, may_push_crate).is_ok() &&
+                          self.worker_position != to {}
+                }
             }
-            return;
-        } else if dx == 0 && dy == 0 {
-            // Already there
-            return;
-        } else if dx == 0 {
-            if dy < 0 { Up } else { Down }
-        } else {
-            // dy == 0
-            if dx < 0 { Left } else { Right }
-        };
-
-        while self.move_helper(direction, may_push_crate).is_ok() && self.worker_position != to {}
+            Err(None) => {}// Nothing to do
+            Err(_) if !may_push_crate => self.find_path(to),
+            Err(_) => error!("Can only move along a row or column when pushing crates"),
+        }
     }
 
     /// Try to move in the given direction. Return an error if that is not possile.
@@ -202,6 +274,8 @@ impl CurrentLevel {
         self.move_helper(direction, true)
     }
 
+    /// Move as far as possible in the given direction (without pushing crates if `may_push_crate`
+    /// is `false`).
     pub fn move_until(&mut self, direction: Direction, may_push_crate: bool) {
         while self.move_helper(direction, may_push_crate).is_ok() {}
     }
@@ -251,13 +325,13 @@ impl CurrentLevel {
     /// Is there a crate at the given position?
     fn is_crate(&self, pos: Position) -> bool {
         // Check bounds
-        if pos.x < 0 || pos.y < 0 || pos.x as usize >= self.level.width ||
-           pos.y as usize >= self.level.height {
+        if pos.x < 0 || pos.y < 0 || pos.x as usize >= self.width() ||
+           pos.y as usize >= self.height() {
             return false;
         }
 
         // Check the cell itself
-        self.foreground(pos.x, pos.y) == &Foreground::Crate
+        self.foreground(pos) == &Foreground::Crate
     }
 
     /// Is the cell with the given coordinates empty, i.e. could a crate be moved into it?
@@ -267,17 +341,22 @@ impl CurrentLevel {
         let (x, y) = (pos.x as isize, pos.y as isize);
 
         // Check bounds
-        if pos.x < 0 || pos.y < 0 || x as usize >= self.level.width ||
-           y as usize >= self.level.height {
+        if pos.x < 0 || pos.y < 0 || x as usize >= self.width() || y as usize >= self.height() {
             return false;
         }
 
         // Check the cell itself
-        match (*self.background(x, y), *self.foreground(x, y)) {
+        match (*self.background(pos), *self.foreground(pos)) {
             (Floor, None) | (Goal, None) => true,
             _ => false,
         }
     }
+
+    /// Is the cell with the given coordinates empty, i.e. could a crate be moved into it?
+    fn is_worker(&self, pos: Position) -> bool {
+        *self.foreground(pos) == Foreground::Worker
+    }
+
 
     /// Move whatever object is in the foreground at the given position in the given direction if
     /// undo is false, and in the opposite direction otherwise. Return the new position of that
@@ -292,17 +371,17 @@ impl CurrentLevel {
         let new = from.neighbour(direction);
 
         // Make sure empty_goals is updated as needed.
-        if self.foreground_mut(from.x, from.y) == &Foreground::Crate {
-            if self.background(from.x, from.y) == &Background::Goal {
+        if self.foreground_mut(from) == &Foreground::Crate {
+            if self.background(from) == &Background::Goal {
                 self.empty_goals += 1;
             }
-            if self.background(new.x, new.y) == &Background::Goal {
+            if self.background(new) == &Background::Goal {
                 self.empty_goals -= 1;
             }
         }
 
-        *self.foreground_mut(new.x, new.y) = *self.foreground_mut(from.x, from.y);
-        *self.foreground_mut(from.x, from.y) = Foreground::None;
+        *self.foreground_mut(new) = *self.foreground_mut(from);
+        *self.foreground_mut(from) = Foreground::None;
 
         (new, from.neighbour(direction.reverse()))
     }
@@ -330,7 +409,7 @@ impl CurrentLevel {
     pub fn redo(&mut self) {
         if self.moves.len() > self.moves_recorded {
             let dir = self.moves[self.moves_recorded].direction;
-            let _ = self.try_move(dir);
+            self.try_move(dir).unwrap();
         }
     }
 
@@ -344,21 +423,20 @@ impl CurrentLevel {
 
 impl fmt::Display for Level {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for i in 0..self.height {
+        let width = self.width();
+        for i in 0..self.height() {
             if i != 0 {
                 write!(f, "\n")?;
             }
-            for j in 0..self.width {
-                let index = i * self.width + j;
+            for j in 0..width {
+                let index = i * width + j;
                 let foreground = self.foreground[index];
                 let background = self.background[index];
-                write!(f,
-                       "{}",
-                       Cell {
-                               foreground,
-                               background,
-                           }
-                           .to_char())?;
+                let cell = Cell {
+                    foreground,
+                    background,
+                };
+                write!(f, "{}", cell.to_char())?;
             }
         }
         Ok(())

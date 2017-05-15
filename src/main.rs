@@ -18,20 +18,10 @@ use std::collections::HashMap;
 
 use piston_window::*;
 
-pub mod cell;
-pub mod collection;
-pub mod direction;
-pub mod level;
-pub mod move_;
-pub mod position;
-pub mod util;
-
+pub mod backend;
 pub mod texture;
 
-use cell::*;
-use collection::*;
-use level::*;
-
+use backend::*;
 use texture::*;
 
 
@@ -74,8 +64,9 @@ impl Default for App {
     }
 }
 
-fn key_to_direction(key: Key) -> direction::Direction {
-    use direction::Direction::*;
+/// Map arrow keys to the corresponding directions, panic on other keys.
+fn key_to_direction(key: Key) -> Direction {
+    use self::Direction::*;
     match key {
         Key::Left => Left,
         Key::Right => Right,
@@ -85,70 +76,52 @@ fn key_to_direction(key: Key) -> direction::Direction {
     }
 }
 
-fn draw_entity(c: Context,
-               g: &mut G2d,
+/// Draw the single tile with index `index`.
+fn draw_entity(ctx: Context,
+               g2d: &mut G2d,
                entity: &Texture<gfx_device_gl::Resources>,
-               i: usize,
-               width: usize,
-               tile_size: f64,
-               image_scale: f64,
-               offset_left: f64,
-               offset_top: f64) {
-    let x = tile_size * (i % width) as f64 + offset_left;
-    let y = tile_size * (i / width) as f64 + offset_top;
+               index: usize,
+               app: &App) {
+    let image_scale = app.tile_size / 360.0;
+    let x = app.tile_size * (index % app.current_level().width()) as f64 + app.offset_left;
+    let y = app.tile_size * (index / app.current_level().width()) as f64 + app.offset_top;
     image(entity,
-          c.transform.trans(x, y).scale(image_scale, image_scale),
-          g);
+          ctx.transform
+              .trans(x, y)
+              .scale(image_scale, image_scale),
+          g2d);
 }
 
+
+/// Render the current level
 fn render_level(c: Context,
                 g: &mut G2d,
-                level: &Level,
-                tile_size: f64,
-                offset_left: f64,
-                offset_top: f64,
+                app: &App,
                 backgrounds: &HashMap<Background, Texture<gfx_device_gl::Resources>>,
                 foregrounds: &HashMap<Foreground, Texture<gfx_device_gl::Resources>>) {
-    let image_scale = tile_size / 360.0;
 
     // Set background
     clear(EMPTY, g);
 
-    // Render the current level
-    let background = &level.background;
-
     // Draw the background
-    for (i, bg) in background.iter().enumerate() {
-        if bg == &Background::Empty {
-            continue;
-        }
-        draw_entity(c,
-                    g,
-                    &backgrounds[bg],
-                    i,
-                    level.width,
-                    tile_size,
-                    image_scale,
-                    offset_left,
-                    offset_top);
-    }
+    app.current_level()
+        .level
+        .background
+        .iter()
+        .enumerate()
+        .filter(|&(_, cell)| cell != &Background::Empty)
+        .map(|(i, cell)| draw_entity(c, g, &backgrounds[cell], i, app))
+        .last();
 
     // and the foreground
-    let foreground = &level.foreground;
-    for (i, fg) in foreground.iter().enumerate() {
-        if fg == &Foreground::None {
-            continue;
-        }
-        draw_entity(c,
-                    g,
-                    &foregrounds[fg],
-                    i,
-                    level.width,
-                    tile_size,
-                    image_scale,
-                    offset_left,
-                    offset_top);
-    }
+    app.current_level()
+        .level
+        .foreground
+        .iter()
+        .enumerate()
+        .filter(|&(_, cell)| cell != &Foreground::None)
+        .map(|(i, cell)| draw_entity(c, g, &foregrounds[cell], i, app))
+        .last();
 }
 
 fn main() {
@@ -176,16 +149,8 @@ fn main() {
     let mut shift_pressed = false;
 
     while let Some(e) = window.next() {
-        window.draw_2d(&e, |c, g| {
-            render_level(c,
-                         g,
-                         &app.current_level().level,
-                         app.tile_size,
-                         app.offset_left,
-                         app.offset_top,
-                         &backgrounds,
-                         &foregrounds)
-        });
+        window.draw_2d(&e,
+                       |c, g| render_level(c, g, &app, &backgrounds, &foregrounds));
 
         // Keep track of where the cursor is pointing
         if let Some(new_pos) = e.mouse_cursor_args() {
@@ -200,7 +165,7 @@ fn main() {
                 match key {
                     Key::Left | Key::Right | Key::Up | Key::Down => {
                         let dir = key_to_direction(key);
-                        if control_pressed && !shift_pressed || !control_pressed && shift_pressed {
+                        if control_pressed != shift_pressed {
                             lvl.move_until(dir, shift_pressed)
                         } else {
                             let _ = lvl.try_move(dir);
@@ -227,7 +192,8 @@ fn main() {
                 let y = ((cursor_pos[1] - app.offset_top) / app.tile_size).floor() as isize;
                 if x >= 0 && y >= 0 {
                     app.current_level_mut()
-                        .move_to(level::Position { x, y }, mouse_button == MouseButton::Right);
+                        .move_to(backend::Position { x, y },
+                                 mouse_button == MouseButton::Right);
                 }
             }
             Some(x) => error!("Unkown event: {:?}", x),
@@ -246,21 +212,24 @@ fn main() {
             app.collection.next_level();
         }
 
+        // TODO find a nicer way to to this
+        // FIXME frequently the size is wrong
         e.resize(|w, h| {
             let mut tile_size = app.tile_size;
             let mut horizontal_margins;
             let mut vertical_margins;
             {
                 let lvl = &app.current_level().level;
-                horizontal_margins = w as i32 - lvl.width as i32 * app.tile_size as i32;
-                vertical_margins = h as i32 - lvl.height as i32 * app.tile_size as i32;
+                let width = lvl.width();
+                let height = lvl.height();
+                horizontal_margins = w as i32 - width as i32 * app.tile_size as i32;
+                vertical_margins = h as i32 - height as i32 * app.tile_size as i32;
 
                 if horizontal_margins < 0 || vertical_margins < 0 ||
-                   horizontal_margins as usize > lvl.width &&
-                   vertical_margins as usize > lvl.height {
-                    tile_size = min(w / lvl.width as u32, h / lvl.height as u32) as f64;
-                    horizontal_margins = w as i32 - lvl.width as i32 * app.tile_size as i32;
-                    vertical_margins = h as i32 - lvl.height as i32 * app.tile_size as i32;
+                   horizontal_margins as usize > width && vertical_margins as usize > height {
+                    tile_size = min(w / width as u32, h / height as u32) as f64;
+                    horizontal_margins = w as i32 - width as i32 * app.tile_size as i32;
+                    vertical_margins = h as i32 - height as i32 * app.tile_size as i32;
                 }
 
             }
