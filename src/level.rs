@@ -434,6 +434,17 @@ impl CurrentLevel {
     pub fn moves_to_string(&self) -> String {
         self.moves.iter().map(|mv| mv.to_char()).collect()
     }
+
+    pub fn number_of_moves(&self) -> usize {
+        self.moves_recorded
+    }
+
+    pub fn number_of_pushes(&self) -> usize {
+        self.moves[0..self.moves_recorded]
+            .iter()
+            .filter(|x| x.moves_crate)
+            .count()
+    }
 }
 
 

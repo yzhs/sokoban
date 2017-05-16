@@ -204,7 +204,13 @@ fn main() {
         }
 
         if app.current_level().is_finished() {
-            info!("Level solved!");
+            {
+                let lvl = app.current_level();
+                info!("Level solved using {} moves, {} of which moved a crate.",
+                      lvl.number_of_moves(),
+                      lvl.number_of_pushes());
+                info!("Solution: {}", lvl.moves_to_string());
+            }
             app.collection.next_level();
         }
 
