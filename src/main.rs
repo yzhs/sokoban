@@ -28,9 +28,9 @@ const EMPTY: [f32; 4] = [0.0, 0.0, 0.0, 1.0]; // black
 
 pub struct App {
     collection: Collection,
-    tile_size: f64,
-    offset_left: f64,
-    offset_top: f64,
+    tile_size: i32,
+    offset_left: i32,
+    offset_top: i32,
 }
 
 impl App {
@@ -42,9 +42,9 @@ impl App {
         let collection = collection.unwrap();
         App {
             collection,
-            tile_size: 50.0,
-            offset_left: 0.0,
-            offset_top: 0.0,
+            tile_size: 50,
+            offset_left: 0,
+            offset_top: 0,
         }
     }
 
@@ -81,12 +81,12 @@ fn draw_entity(ctx: Context,
                entity: &Texture<gfx_device_gl::Resources>,
                index: usize,
                app: &App) {
-    let image_scale = app.tile_size / 360.0;
-    let x = app.tile_size * (index % app.current_level().width()) as f64 + app.offset_left;
-    let y = app.tile_size * (index / app.current_level().width()) as f64 + app.offset_top;
+    let image_scale = app.tile_size as f64 / 360.0;
+    let x = app.tile_size * (index % app.current_level().width()) as i32 + app.offset_left;
+    let y = app.tile_size * (index / app.current_level().width()) as i32 + app.offset_top;
     image(entity,
           ctx.transform
-              .trans(x, y)
+              .trans(x as f64, y as f64)
               .scale(image_scale, image_scale),
           g2d);
 }
@@ -184,8 +184,8 @@ fn main() {
                 }
             }
             Some(Button::Mouse(mouse_button)) => {
-                let x = ((cursor_pos[0] - app.offset_left) / app.tile_size).floor() as isize;
-                let y = ((cursor_pos[1] - app.offset_top) / app.tile_size).floor() as isize;
+                let x = ((cursor_pos[0] as i32 - app.offset_left) / app.tile_size) as isize;
+                let y = ((cursor_pos[1] as i32 - app.offset_top) / app.tile_size) as isize;
                 if x >= 0 && y >= 0 {
                     app.current_level_mut()
                         .move_to(sokoban::Position { x, y },
@@ -221,23 +221,23 @@ fn main() {
             let mut horizontal_margins;
             let mut vertical_margins;
             {
-                let lvl = &app.current_level().level;
-                let width = lvl.width();
-                let height = lvl.height();
-                horizontal_margins = w as i32 - width as i32 * app.tile_size as i32;
-                vertical_margins = h as i32 - height as i32 * app.tile_size as i32;
+                let lvl = &app.current_level();
+                let width = lvl.width() as i32;
+                let height = lvl.height() as i32;
+                horizontal_margins = w as i32 - width * tile_size;
+                vertical_margins = h as i32 - height * tile_size;
 
                 if horizontal_margins < 0 || vertical_margins < 0 ||
-                   horizontal_margins as usize > width && vertical_margins as usize > height {
-                    tile_size = min(w / width as u32, h / height as u32) as f64;
-                    horizontal_margins = w as i32 - width as i32 * app.tile_size as i32;
-                    vertical_margins = h as i32 - height as i32 * app.tile_size as i32;
+                   horizontal_margins > width && vertical_margins > height {
+                    tile_size = min(w as i32 / width, h as i32 / height);
+                    horizontal_margins = w as i32 - width * tile_size;
+                    vertical_margins = h as i32 - height * tile_size;
                 }
 
             }
             app.tile_size = tile_size;
-            app.offset_left = horizontal_margins as f64 / 2.0;
-            app.offset_top = vertical_margins as f64 / 2.0;
+            app.offset_left = horizontal_margins / 2;
+            app.offset_top = vertical_margins / 2;
         });
     }
 }
