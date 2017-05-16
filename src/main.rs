@@ -137,6 +137,9 @@ fn render_level(ctx: Context,
     };
     let x = tile_size * pos.x as f64 + offset_left;
     let y = tile_size * pos.y as f64 + offset_top;
+
+    // We want to rotate around the center of the tile rather than the top left corner, so we
+    // conjugate the rotation with a translation of half a tile along each axis.
     image(&foregrounds[&Foreground::Worker],
           ctx.transform
               .trans(x + tile_size / 2.0, y + tile_size / 2.0)
