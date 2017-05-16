@@ -3,6 +3,7 @@ use std::fs::File;
 use std::path::Path;
 
 use command::*;
+use direction::*;
 use level::*;
 use util::*;
 
@@ -83,6 +84,10 @@ impl Collection {
                 error!("Loading level collection {} is not implemented!", name);
             }
         }
+    }
+
+    pub fn current_direction(&self) -> Direction {
+        self.current_level.current_direction()
     }
 }
 

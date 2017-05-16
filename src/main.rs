@@ -75,53 +75,76 @@ fn key_to_direction(key: Key) -> Direction {
     }
 }
 
-/// Draw the single tile with index `index`.
-fn draw_entity(ctx: Context,
-               g2d: &mut G2d,
-               entity: &Texture<gfx_device_gl::Resources>,
-               index: usize,
-               app: &App) {
-    let image_scale = app.tile_size as f64 / 360.0;
-    let x = app.tile_size * (index % app.current_level().width()) as i32 + app.offset_left;
-    let y = app.tile_size * (index / app.current_level().width()) as i32 + app.offset_top;
-    image(entity,
-          ctx.transform
-              .trans(x as f64, y as f64)
-              .scale(image_scale, image_scale),
-          g2d);
-}
-
-
 /// Render the current level
-fn render_level(c: Context,
-                g: &mut G2d,
+fn render_level(ctx: Context,
+                g2d: &mut G2d,
                 app: &App,
                 backgrounds: &HashMap<Background, Texture<gfx_device_gl::Resources>>,
                 foregrounds: &HashMap<Foreground, Texture<gfx_device_gl::Resources>>) {
 
     // Set background
-    clear(EMPTY, g);
+    clear(EMPTY, g2d);
     // TODO background image?
 
-    // Draw the background
-    app.current_level()
-        .level
-        .background
-        .iter()
-        .enumerate()
-        .filter(|&(_, cell)| cell != &Background::Empty)
-        .map(|(i, cell)| draw_entity(c, g, &backgrounds[cell], i, app))
-        .last();
+    let width = app.current_level().width();
+    let tile_size = app.tile_size as f64;
+    let image_scale = tile_size / 360.0;
+    let offset_left = app.offset_left as f64;
+    let offset_top = app.offset_top as f64;
 
-    // and the foreground
-    app.current_level()
-        .level
-        .foreground
-        .iter()
-        .enumerate()
-        .filter(|&(_, cell)| cell != &Foreground::None)
-        .map(|(i, cell)| draw_entity(c, g, &foregrounds[cell], i, app))
-        .last();
+    // Draw the background
+    for (i, cell) in app.current_level()
+            .level
+            .background
+            .iter()
+            .enumerate() {
+        if cell == &Background::Empty {
+            continue;
+        }
+        let x = tile_size * (i % width) as f64 + offset_left;
+        let y = tile_size * (i / width) as f64 + offset_top;
+        image(&backgrounds[cell],
+              ctx.transform
+                  .trans(x, y)
+                  .scale(image_scale, image_scale),
+              g2d);
+    }
+
+    // Draw the crates
+    for (i, cell) in app.current_level()
+            .level
+            .foreground
+            .iter()
+            .enumerate() {
+        if cell == &Foreground::Crate {
+            let x = tile_size * (i % width) as f64 + offset_left;
+            let y = tile_size * (i / width) as f64 + offset_top;
+            image(&foregrounds[cell],
+                  ctx.transform
+                      .trans(x, y)
+                      .scale(image_scale, image_scale),
+                  g2d);
+        }
+    }
+
+    // Draw the worker
+    let pos = app.current_level().worker_position;
+    let worker_direction = match app.current_level().current_direction() {
+        Direction::Left => 0.0,
+        Direction::Right => 180.0,
+        Direction::Up => 90.0,
+        Direction::Down => 270.0,
+    };
+    let x = tile_size * pos.x as f64 + offset_left;
+    let y = tile_size * pos.y as f64 + offset_top;
+    image(&foregrounds[&Foreground::Worker],
+          ctx.transform
+              .trans(x + tile_size / 2.0, y + tile_size / 2.0)
+              .rot_deg(worker_direction)
+              .trans(-tile_size / 2.0, -tile_size / 2.0)
+              .scale(image_scale, image_scale),
+          g2d);
+
 }
 
 fn main() {

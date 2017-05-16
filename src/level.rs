@@ -172,7 +172,7 @@ impl CurrentLevel {
         self.level.width
     }
 
-    fn index(&self, pos: Position) -> usize {
+    pub fn index(&self, pos: Position) -> usize {
         pos.x as usize + pos.y as usize * self.width()
     }
 
@@ -449,6 +449,14 @@ impl CurrentLevel {
             .iter()
             .filter(|x| x.moves_crate)
             .count()
+    }
+
+    pub fn current_direction(&self) -> Direction {
+        if self.moves_recorded == 0 {
+            Direction::Left
+        } else {
+            self.moves[self.moves_recorded - 1].direction
+        }
     }
 }
 
