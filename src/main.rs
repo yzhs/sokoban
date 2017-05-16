@@ -48,11 +48,11 @@ impl App {
         }
     }
 
-    pub fn current_level(&self) -> &CurrentLevel {
+    pub fn current_level(&self) -> &Level {
         &self.collection.current_level
     }
 
-    pub fn current_level_mut(&mut self) -> &mut CurrentLevel {
+    pub fn current_level_mut(&mut self) -> &mut Level {
         &mut self.collection.current_level
     }
 }
@@ -93,11 +93,7 @@ fn render_level(ctx: Context,
     let offset_top = app.offset_top as f64;
 
     // Draw the background
-    for (i, cell) in app.current_level()
-            .level
-            .background
-            .iter()
-            .enumerate() {
+    for (i, cell) in app.current_level().background.iter().enumerate() {
         if cell == &Background::Empty {
             continue;
         }
@@ -111,20 +107,14 @@ fn render_level(ctx: Context,
     }
 
     // Draw the crates
-    for (i, cell) in app.current_level()
-            .level
-            .foreground
-            .iter()
-            .enumerate() {
-        if cell == &Foreground::Crate {
-            let x = tile_size * (i % width) as f64 + offset_left;
-            let y = tile_size * (i / width) as f64 + offset_top;
-            image(&foregrounds[cell],
-                  ctx.transform
-                      .trans(x, y)
-                      .scale(image_scale, image_scale),
-                  g2d);
-        }
+    for pos in app.current_level().crates.iter() {
+        let x = tile_size * pos.x as f64 + offset_left;
+        let y = tile_size * pos.y as f64 + offset_top;
+        image(&foregrounds[&Foreground::Crate],
+              ctx.transform
+                  .trans(x, y)
+                  .scale(image_scale, image_scale),
+              g2d);
     }
 
     // Draw the worker

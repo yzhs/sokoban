@@ -29,8 +29,7 @@ fn char_to_direction(c: char) -> Direction {
 
 #[test]
 fn test_simple_moves() {
-    let lvl = Level::parse(0, ORIGINAL_LEVEL_1).unwrap();
-    let mut lvl = CurrentLevel::new(lvl);
+    let mut lvl = Level::parse(0, ORIGINAL_LEVEL_1).unwrap();
     assert_eq!(lvl.height(), 11);
     assert_eq!(lvl.width(), 19);
 
@@ -41,38 +40,28 @@ fn test_simple_moves() {
                      lllllllluuulluuulDDDDDuulldddrRRRRRRRRRRR\
                      llllllluuulluuurDDllddddrrruuuLLulDDDuulldddrRRRRRRRRRRdrUluR";
     for (i, mv) in moves.chars().map(char_to_direction).enumerate() {
-        assert!(lvl.try_move(mv).is_ok(),
-                "Move #{} failed:\n{}\n",
-                i,
-                lvl.level);
+        assert!(lvl.try_move(mv).is_ok(), "Move #{} failed:\n{}\n", i, lvl);
     }
-    assert!(lvl.is_finished(), "\n{}\n", lvl.level);
+    assert!(lvl.is_finished(), "\n{}\n", lvl);
 }
 
 #[test]
 fn test_path_finding() {
     use self::Direction::*;
-    let lvl = Level::parse(0, ORIGINAL_LEVEL_1).unwrap();
-    let mut lvl = CurrentLevel::new(lvl);
+    let mut lvl = Level::parse(0, ORIGINAL_LEVEL_1).unwrap();
     for (i, mv) in "ullluuuLUllDlldddrRRRRRRRRRRRRurD\
                         llllllllllllllulldRRRRRRRRRRRRRRR"
                 .chars()
                 .map(char_to_direction)
                 .enumerate() {
-        assert!(lvl.try_move(mv).is_ok(),
-                "Move #{} failed:\n{}\n",
-                i,
-                lvl.level);
+        assert!(lvl.try_move(mv).is_ok(), "Move #{} failed:\n{}\n", i, lvl);
     }
     let pos = Position { x: 5, y: 4 };
     lvl.find_path(pos);
     assert_eq!(lvl.worker_position, pos);
 
     for (i, mv) in "DDuulldddr".chars().map(char_to_direction).enumerate() {
-        assert!(lvl.try_move(mv).is_ok(),
-                "Move #{} failed:\n{}\n",
-                i,
-                lvl.level);
+        assert!(lvl.try_move(mv).is_ok(), "Move #{} failed:\n{}\n", i, lvl);
     }
 
     let pos = lvl.worker_position;
@@ -87,10 +76,7 @@ fn test_path_finding() {
                 .chars()
                 .map(char_to_direction)
                 .enumerate() {
-        assert!(lvl.try_move(mv).is_ok(),
-                "Move #{} failed:\n{}\n",
-                i,
-                lvl.level);
+        assert!(lvl.try_move(mv).is_ok(), "Move #{} failed:\n{}\n", i, lvl);
     }
 
     assert!(lvl.is_finished());

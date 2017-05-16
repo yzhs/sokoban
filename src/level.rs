@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 use std::fmt;
-use std::collections::VecDeque;
+use std::collections::{VecDeque, HashSet};
 
 use cell::*;
 use direction::*;
@@ -17,11 +17,18 @@ pub struct Level {
     /// `width * height` cells’ backgrounds in row-major order
     pub background: Vec<Background>,
 
-    /// `width * height` cell array of worker and crates in row-major order
-    pub foreground: Vec<Foreground>,
+    /// Positions of all crates
+    pub crates: HashSet<Position>,
 
     empty_goals: usize,
     pub worker_position: Position,
+
+    /// The sequence of moves performed so far. Everything after the first moves_recorded moves is
+    /// used to redo moves, i.e. undoing a previous undo operation.
+    moves: Vec<Move>,
+
+    /// This describes how many moves have to be performed to arrive at the current state.
+    moves_recorded: usize,
 }
 
 
@@ -36,7 +43,7 @@ impl Level {
         let mut worker_position = Position { x: 0, y: 0 };
         let mut empty_goals = 0;
         let mut background = vec![Background::Empty; width * height];
-        let mut foreground = vec![Foreground::None; width * height];
+        let mut crates = Vec::with_capacity(20);
 
         let mut goals_minus_crates = 0i32;
 
@@ -48,14 +55,18 @@ impl Level {
                                 .as_ref());
                 let index = i * width + j;
                 background[index] = cell.background;
-                foreground[index] = cell.foreground;
 
-                // Make sure there are exactly the same number of crates and goals.
-                if cell.background == Background::Goal {
+                // Count goals still to be filled and make sure that there are exactly as many
+                // goals as there are crates.
+                if cell.background == Background::Goal && cell.foreground != Foreground::Crate {
+                    empty_goals += 1;
                     goals_minus_crates += 1;
+                } else if cell.background != Background::Goal &&
+                          cell.foreground == Foreground::Crate {
+                    goals_minus_crates -= 1;
                 }
                 if cell.foreground == Foreground::Crate {
-                    goals_minus_crates -= 1;
+                    crates.push(Position::new(j, i));
                 }
 
                 // Try to figure out whether a given cell is inside the walls.
@@ -68,13 +79,8 @@ impl Level {
                     background[index] = Background::Floor;
                 }
 
-                // Count goals still to be filled.
-                if background[index] == Background::Goal && foreground[index] != Foreground::Crate {
-                    empty_goals += 1;
-                }
-
                 // Find the initial worker position.
-                if foreground[index] == Foreground::Worker {
+                if cell.foreground == Foreground::Worker {
                     if found_worker {
                         return Err(SokobanError::TwoWorkers(num + 1));
                     }
@@ -118,10 +124,13 @@ impl Level {
                height,
 
                background,
-               foreground,
+               crates: crates.into_iter().collect(),
 
                empty_goals,
                worker_position,
+
+               moves: vec![],
+               moves_recorded: 0,
            })
     }
 
@@ -132,61 +141,13 @@ impl Level {
     pub fn width(&self) -> usize {
         self.width
     }
-}
-
-
-/// When playing the game, more than just the data stored in a `Level` is needed. For example, we
-/// need to record the player’s moves, so we can undo und redo them.
-#[derive(Debug, Clone)]
-pub struct CurrentLevel {
-    pub level: Level,
-
-    /// The sequence of moves performed so far. Everything after the first moves_recorded moves is
-    /// used to redo moves, i.e. undoing a previous undo operation.
-    moves: Vec<Move>,
-
-    /// This describes how many moves have to be performed to arrive at the current state.
-    moves_recorded: usize,
-
-    empty_goals: usize,
-    pub worker_position: Position,
-}
-
-
-impl CurrentLevel {
-    pub fn new(level: Level) -> CurrentLevel {
-        CurrentLevel {
-            moves: vec![],
-            moves_recorded: 0,
-            empty_goals: level.empty_goals,
-            worker_position: level.worker_position,
-            level,
-        }
-    }
-
-    pub fn height(&self) -> usize {
-        self.level.height
-    }
-
-    pub fn width(&self) -> usize {
-        self.level.width
-    }
 
     pub fn index(&self, pos: Position) -> usize {
         pos.x as usize + pos.y as usize * self.width()
     }
 
     pub fn background(&self, pos: Position) -> &Background {
-        &self.level.background[self.index(pos)]
-    }
-
-    pub fn foreground(&self, pos: Position) -> &Foreground {
-        &self.level.foreground[self.index(pos)]
-    }
-
-    fn foreground_mut(&mut self, pos: Position) -> &mut Foreground {
-        let index = self.index(pos);
-        &mut self.level.foreground[index]
+        &self.background[self.index(pos)]
     }
 
     /// Try to find a shortest path from the workers current position to `to` and execute it if one
@@ -342,13 +303,12 @@ impl CurrentLevel {
         }
 
         // Check the cell itself
-        self.foreground(pos) == &Foreground::Crate
+        self.crates.contains(&pos)
     }
 
     /// Is the cell with the given coordinates empty, i.e. could a crate be moved into it?
     fn is_empty(&self, pos: Position) -> bool {
         use self::Background::*;
-        use self::Foreground::*;
         let (x, y) = (pos.x as isize, pos.y as isize);
 
         // Check bounds
@@ -357,15 +317,15 @@ impl CurrentLevel {
         }
 
         // Check the cell itself
-        match (*self.background(pos), *self.foreground(pos)) {
-            (Floor, None) | (Goal, None) => true,
+        match *self.background(pos) {
+            Floor | Goal => !self.is_crate(pos),
             _ => false,
         }
     }
 
     /// Is the cell with the given coordinates empty, i.e. could a crate be moved into it?
     fn is_worker(&self, pos: Position) -> bool {
-        *self.foreground(pos) == Foreground::Worker
+        pos == self.worker_position
     }
 
 
@@ -383,17 +343,19 @@ impl CurrentLevel {
         // FIXME having these two return values does not seem like a great solution
 
         // Make sure empty_goals is updated as needed.
-        if self.foreground_mut(from) == &Foreground::Crate {
+        if self.is_crate(from) {
             if self.background(from) == &Background::Goal {
                 self.empty_goals += 1;
             }
             if self.background(new) == &Background::Goal {
                 self.empty_goals -= 1;
             }
+            self.crates.insert(new);
+            self.crates.remove(&from);
+        } else {
+            self.worker_position = new;
         }
 
-        *self.foreground_mut(new) = *self.foreground_mut(from);
-        *self.foreground_mut(from) = Foreground::None;
 
         (new, from.neighbour(direction.reverse()))
     }
@@ -469,9 +431,15 @@ impl fmt::Display for Level {
                 write!(f, "\n")?;
             }
             for j in 0..width {
-                let index = i * width + j;
-                let foreground = self.foreground[index];
-                let background = self.background[index];
+                let background = self.background[j + i * self.width];
+                let pos = Position::new(j, i);
+                let foreground = if self.worker_position == pos {
+                    Foreground::Worker
+                } else if self.is_crate(pos) {
+                    Foreground::Crate
+                } else {
+                    Foreground::None
+                };
                 let cell = Cell {
                     foreground,
                     background,
@@ -480,12 +448,6 @@ impl fmt::Display for Level {
             }
         }
         Ok(())
-    }
-}
-
-impl fmt::Display for CurrentLevel {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.level)
     }
 }
 
@@ -538,14 +500,13 @@ mod test {
     #[test]
     fn test_trivial_move_1() {
         use self::Direction::*;
-        let lvl = Level::parse(0,
-                               "####\n\
-                                #@ #\n\
-                                ####\n")
+        let mut lvl = Level::parse(0,
+                                   "####\n\
+                                    #@ #\n\
+                                    ####\n")
                 .unwrap();
         assert_eq!(lvl.worker_position.x, 1);
         assert_eq!(lvl.worker_position.y, 1);
-        let mut lvl = CurrentLevel::new(lvl);
 
         assert!(lvl.is_empty(Position::new(2, 1)));
         assert!(!lvl.is_empty(Position::new(0, 1)));
@@ -565,12 +526,11 @@ mod test {
     #[test]
     fn test_trivial_move_2() {
         use self::Direction::*;
-        let lvl = Level::parse(0,
-                               "#######\n\
-                                #.$@$.#\n\
-                                #######\n")
+        let mut lvl = Level::parse(0,
+                                   "#######\n\
+                                    #.$@$.#\n\
+                                    #######\n")
                 .unwrap();
-        let mut lvl = CurrentLevel::new(lvl);
         assert_eq!(lvl.worker_position.x, 3);
         assert_eq!(lvl.worker_position.y, 1);
         assert!(lvl.try_move(Right).is_ok());
