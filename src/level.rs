@@ -20,15 +20,18 @@ pub struct Level {
     /// Positions of all crates
     pub crates: HashSet<Position>,
 
+    /// The number of goals that have to be filled to solve the level
     empty_goals: usize,
+
+    /// Where the worker is at the moment
     pub worker_position: Position,
 
-    /// The sequence of moves performed so far. Everything after the first moves_recorded moves is
+    /// The sequence of moves performed so far. Everything after the first number_of_moves moves is
     /// used to redo moves, i.e. undoing a previous undo operation.
     moves: Vec<Move>,
 
     /// This describes how many moves have to be performed to arrive at the current state.
-    moves_recorded: usize,
+    number_of_moves: usize,
 }
 
 
@@ -130,7 +133,7 @@ impl Level {
                worker_position,
 
                moves: vec![],
-               moves_recorded: 0,
+               number_of_moves: 0,
            })
     }
 
@@ -156,7 +159,7 @@ impl Level {
         let width = self.width();
         let height = self.height();
 
-        if self.worker_position == to {
+        if self.worker_position == to || !self.is_empty(to) {
             return;
         }
 
@@ -278,8 +281,8 @@ impl Level {
             direction,
             moves_crate,
         };
-        let n = self.moves_recorded;
-        self.moves_recorded += 1;
+        let n = self.number_of_moves;
+        self.number_of_moves += 1;
 
         if n != self.moves.len() && self.moves[n] == current_move {
             // In this case, we are just redoing a move previously undone
@@ -362,27 +365,27 @@ impl Level {
 
     /// Undo the most recent move.
     pub fn undo(&mut self) {
-        if self.moves_recorded == 0 {
+        if self.number_of_moves == 0 {
             warn!("Nothing to undo!");
             return;
         } else {
-            self.moves_recorded -= 1;
+            self.number_of_moves -= 1;
         }
 
-        let direction = self.moves[self.moves_recorded].direction;
+        let direction = self.moves[self.number_of_moves].direction;
         let pos = self.worker_position;
         let (worker_pos, crate_pos) = self.move_object(pos, direction, true);
         self.worker_position = worker_pos;
 
-        if self.moves[self.moves_recorded].moves_crate {
+        if self.moves[self.number_of_moves].moves_crate {
             let _ = self.move_object(crate_pos, direction, true);
         }
     }
 
     /// If a move has been undone previously, redo it.
     pub fn redo(&mut self) {
-        if self.moves.len() > self.moves_recorded {
-            let dir = self.moves[self.moves_recorded].direction;
+        if self.moves.len() > self.number_of_moves {
+            let dir = self.moves[self.number_of_moves].direction;
             self.try_move(dir).unwrap();
         }
     }
@@ -397,27 +400,27 @@ impl Level {
     pub fn moves_to_string(&self) -> String {
         self.moves
             .iter()
-            .take(self.moves_recorded)
+            .take(self.number_of_moves)
             .map(|mv| mv.to_char())
             .collect()
     }
 
     pub fn number_of_moves(&self) -> usize {
-        self.moves_recorded
+        self.number_of_moves
     }
 
     pub fn number_of_pushes(&self) -> usize {
-        self.moves[0..self.moves_recorded]
+        self.moves[0..self.number_of_moves]
             .iter()
             .filter(|x| x.moves_crate)
             .count()
     }
 
-    pub fn current_direction(&self) -> Direction {
-        if self.moves_recorded == 0 {
+    pub fn worker_direction(&self) -> Direction {
+        if self.number_of_moves == 0 {
             Direction::Left
         } else {
-            self.moves[self.moves_recorded - 1].direction
+            self.moves[self.number_of_moves - 1].direction
         }
     }
 }

@@ -86,8 +86,9 @@ impl Collection {
         }
     }
 
-    pub fn current_direction(&self) -> Direction {
-        self.current_level.current_direction()
+    /// Find out which direction the worker is currently facing.
+    pub fn worker_direction(&self) -> Direction {
+        self.current_level.worker_direction()
     }
 }
 

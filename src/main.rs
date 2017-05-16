@@ -119,7 +119,7 @@ fn render_level(ctx: Context,
 
     // Draw the worker
     let pos = app.current_level().worker_position;
-    let worker_direction = match app.current_level().current_direction() {
+    let worker_direction = match app.current_level().worker_direction() {
         Direction::Left => 0.0,
         Direction::Right => 180.0,
         Direction::Up => 90.0,
