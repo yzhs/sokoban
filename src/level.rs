@@ -431,8 +431,13 @@ impl CurrentLevel {
         self.empty_goals == 0
     }
 
+    /// Create a string representation of the moves made to reach the current state.
     pub fn moves_to_string(&self) -> String {
-        self.moves.iter().map(|mv| mv.to_char()).collect()
+        self.moves
+            .iter()
+            .take(self.moves_recorded)
+            .map(|mv| mv.to_char())
+            .collect()
     }
 
     pub fn number_of_moves(&self) -> usize {
