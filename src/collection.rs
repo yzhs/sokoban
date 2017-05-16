@@ -69,10 +69,10 @@ impl Collection {
                 let _ = self.current_level.try_move(dir);
             }
             MoveAsFarAsPossible(dir, MayPushCrate(b)) => {
-                let _ = self.current_level.move_until(dir, b);
+                self.current_level.move_until(dir, b);
             }
             MoveToPosition(pos, MayPushCrate(b)) => {
-                let _ = self.current_level.move_to(pos, b);
+                self.current_level.move_to(pos, b);
             }
             Undo => self.current_level.undo(),
             Redo => self.current_level.redo(),

@@ -117,7 +117,7 @@ fn render_level(ctx: Context,
     }
 
     // Draw the crates
-    for pos in app.current_level().crates.iter() {
+    for pos in &app.current_level().crates {
         let x = tile_size * pos.x as f64 + offset_left;
         let y = tile_size * pos.y as f64 + offset_top;
         image(&foregrounds[&Foreground::Crate],
@@ -157,7 +157,7 @@ fn main() {
     let title = "Sokoban";
     let mut window_size = [640, 480];
     let mut window: PistonWindow =
-        WindowSettings::new(title, window_size.clone())
+        WindowSettings::new(title, window_size)
             .exit_on_esc(true)
             .build()
             .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
