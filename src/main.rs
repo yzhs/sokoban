@@ -55,6 +55,16 @@ impl App {
     pub fn current_level_mut(&mut self) -> &mut Level {
         &mut self.collection.current_level
     }
+
+    pub fn update_size(&mut self, size: &[u32; 2]) {
+        let width = size[0] as i32;
+        let height = size[1] as i32;
+        let columns = self.current_level().width() as i32;
+        let rows = self.current_level().height() as i32;
+        self.tile_size = min(width / columns, height / rows);
+        self.offset_left = (width - columns * self.tile_size) / 2;
+        self.offset_top = (height - rows * self.tile_size) / 2;
+    }
 }
 
 impl Default for App {
@@ -142,8 +152,9 @@ fn main() {
     info!("{}", app.current_level());
 
     let title = "Sokoban";
+    let mut window_size = [640, 480];
     let mut window: PistonWindow =
-        WindowSettings::new(title, [640, 480])
+        WindowSettings::new(title, window_size.clone())
             .exit_on_esc(true)
             .build()
             .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
@@ -240,7 +251,7 @@ fn main() {
             }
             use NextLevelError::*;
             match app.collection.next_level() {
-                Ok(()) => {}
+                Ok(()) => app.update_size(&window_size),
                 Err(EndOfCollection) => error!("Reached the end of the current collection."),
                 Err(LevelNotFinished) => error!("Current level is not finished!"),
             }
@@ -248,28 +259,9 @@ fn main() {
 
         // TODO find a nicer way to to this
         // FIXME frequently the size is wrong
-        e.resize(|w, h| {
-            let mut tile_size = app.tile_size;
-            let mut horizontal_margins;
-            let mut vertical_margins;
-            {
-                let lvl = &app.current_level();
-                let width = lvl.width() as i32;
-                let height = lvl.height() as i32;
-                horizontal_margins = w as i32 - width * tile_size;
-                vertical_margins = h as i32 - height * tile_size;
-
-                if horizontal_margins < 0 || vertical_margins < 0 ||
-                   horizontal_margins > width && vertical_margins > height {
-                    tile_size = min(w as i32 / width, h as i32 / height);
-                    horizontal_margins = w as i32 - width * tile_size;
-                    vertical_margins = h as i32 - height * tile_size;
-                }
-
-            }
-            app.tile_size = tile_size;
-            app.offset_left = horizontal_margins / 2;
-            app.offset_top = vertical_margins / 2;
-        });
+        if let Some(size) = e.resize_args() {
+            window_size = size;
+            app.update_size(&window_size);
+        }
     }
 }
