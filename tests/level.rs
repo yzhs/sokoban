@@ -30,8 +30,8 @@ fn char_to_direction(c: char) -> Direction {
 #[test]
 fn test_simple_moves() {
     let mut lvl = Level::parse(0, ORIGINAL_LEVEL_1).unwrap();
-    assert_eq!(lvl.height(), 11);
-    assert_eq!(lvl.width(), 19);
+    assert_eq!(lvl.rows(), 11);
+    assert_eq!(lvl.columns(), 19);
 
     let moves = "ullluuuLUllDlldddrRRRRRRRRRRRRurD\
                      llllllllllllllulldRRRRRRRRRRRRRRR\

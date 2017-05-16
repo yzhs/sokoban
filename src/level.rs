@@ -11,10 +11,10 @@ use util::*;
 #[derive(Debug, Clone)]
 pub struct Level {
     pub rank: usize,
-    width: usize,
-    height: usize,
+    columns: usize,
+    rows: usize,
 
-    /// `width * height` cells’ backgrounds in row-major order
+    /// `columns * rows` cells’ backgrounds in row-major order
     pub background: Vec<Background>,
 
     /// Positions of all crates
@@ -39,13 +39,13 @@ impl Level {
     /// Parse the ASCII representation of a level.
     pub fn parse(num: usize, string: &str) -> Result<Level, SokobanError> {
         let lines: Vec<_> = string.split('\n').filter(|x| !x.is_empty()).collect();
-        let height = lines.len();
-        let width = lines.iter().map(|x| x.len()).max().unwrap();
+        let rows = lines.len();
+        let columns = lines.iter().map(|x| x.len()).max().unwrap();
 
         let mut found_worker = false;
         let mut worker_position = Position { x: 0, y: 0 };
         let mut empty_goals = 0;
-        let mut background = vec![Background::Empty; width * height];
+        let mut background = vec![Background::Empty; columns * rows];
         let mut crates = Vec::with_capacity(20);
 
         let mut goals_minus_crates = 0i32;
@@ -56,7 +56,7 @@ impl Level {
                 let cell = Cell::try_from(chr)
                     .expect(format!("Invalid character '{}' in line {}, column {}.", chr, i, j)
                                 .as_ref());
-                let index = i * width + j;
+                let index = i * columns + j;
                 background[index] = cell.background;
 
                 // Count goals still to be filled and make sure that there are exactly as many
@@ -77,8 +77,8 @@ impl Level {
                     inside = true;
                 }
 
-                if inside && cell.background == Background::Empty && index >= width &&
-                   background[index - width] != Background::Empty {
+                if inside && cell.background == Background::Empty && index >= columns &&
+                   background[index - columns] != Background::Empty {
                     background[index] = Background::Floor;
                 }
 
@@ -103,17 +103,17 @@ impl Level {
         let mut changed = true;
         while changed {
             changed = false;
-            for i in 0..height {
-                for j in 0..width {
-                    let index = i * width + j;
+            for i in 0..rows {
+                for j in 0..columns {
+                    let index = i * columns + j;
                     if background[index] != Background::Floor {
                         continue;
                     }
 
                     // A non-wall cell next to an outside cell has to be on the outside itself.
-                    if index > width && background[index - width] == Background::Empty ||
-                       i < height - 1 && background[index + width] == Background::Empty ||
-                       j < width - 1 && background[index + 1] == Background::Empty {
+                    if index > columns && background[index - columns] == Background::Empty ||
+                       i < rows - 1 && background[index + columns] == Background::Empty ||
+                       j < columns - 1 && background[index + 1] == Background::Empty {
                         background[index] = Background::Empty;
                         changed = true;
                     }
@@ -123,8 +123,8 @@ impl Level {
 
         Ok(Level {
                rank: num + 1, // The first level is level 1
-               width,
-               height,
+               columns,
+               rows,
 
                background,
                crates: crates.into_iter().collect(),
@@ -137,16 +137,16 @@ impl Level {
            })
     }
 
-    pub fn height(&self) -> usize {
-        self.height
+    pub fn rows(&self) -> usize {
+        self.rows
     }
 
-    pub fn width(&self) -> usize {
-        self.width
+    pub fn columns(&self) -> usize {
+        self.columns
     }
 
     pub fn index(&self, pos: Position) -> usize {
-        pos.x as usize + pos.y as usize * self.width()
+        pos.x as usize + pos.y as usize * self.columns()
     }
 
     pub fn background(&self, pos: Position) -> &Background {
@@ -156,14 +156,14 @@ impl Level {
     /// Try to find a shortest path from the workers current position to `to` and execute it if one
     /// exists.
     pub fn find_path(&mut self, to: Position) {
-        let width = self.width();
-        let height = self.height();
+        let columns = self.columns();
+        let rows = self.rows();
 
         if self.worker_position == to || !self.is_empty(to) {
             return;
         }
 
-        let mut distances = vec![::std::usize::MAX; width * height];
+        let mut distances = vec![::std::usize::MAX; columns * rows];
         distances[self.index(to)] = 0;
 
         let mut found_path = false;
@@ -300,8 +300,8 @@ impl Level {
     /// Is there a crate at the given position?
     fn is_crate(&self, pos: Position) -> bool {
         // Check bounds
-        if pos.x < 0 || pos.y < 0 || pos.x as usize >= self.width() ||
-           pos.y as usize >= self.height() {
+        if pos.x < 0 || pos.y < 0 || pos.x as usize >= self.columns() ||
+           pos.y as usize >= self.rows() {
             return false;
         }
 
@@ -315,7 +315,7 @@ impl Level {
         let (x, y) = (pos.x as isize, pos.y as isize);
 
         // Check bounds
-        if pos.x < 0 || pos.y < 0 || x as usize >= self.width() || y as usize >= self.height() {
+        if pos.x < 0 || pos.y < 0 || x as usize >= self.columns() || y as usize >= self.rows() {
             return false;
         }
 
@@ -428,13 +428,13 @@ impl Level {
 
 impl fmt::Display for Level {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let width = self.width();
-        for i in 0..self.height() {
+        let columns = self.columns();
+        for i in 0..self.rows() {
             if i != 0 {
                 write!(f, "\n")?;
             }
-            for j in 0..width {
-                let background = self.background[j + i * self.width];
+            for j in 0..columns {
+                let background = self.background[j + i * self.columns];
                 let pos = Position::new(j, i);
                 let foreground = if self.worker_position == pos {
                     Foreground::Worker

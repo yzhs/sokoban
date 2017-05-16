@@ -59,8 +59,8 @@ impl App {
     pub fn update_size(&mut self, size: &[u32; 2]) {
         let width = size[0] as i32;
         let height = size[1] as i32;
-        let columns = self.current_level().width() as i32;
-        let rows = self.current_level().height() as i32;
+        let columns = self.current_level().columns() as i32;
+        let rows = self.current_level().rows() as i32;
         self.tile_size = min(width / columns, height / rows);
         self.offset_left = (width - columns * self.tile_size) / 2;
         self.offset_top = (height - rows * self.tile_size) / 2;
@@ -96,7 +96,7 @@ fn render_level(ctx: Context,
     clear(EMPTY, g2d);
     // TODO background image?
 
-    let width = app.current_level().width();
+    let columns = app.current_level().columns();
     let tile_size = app.tile_size as f64;
     let image_scale = tile_size / 360.0;
     let offset_left = app.offset_left as f64;
@@ -107,8 +107,8 @@ fn render_level(ctx: Context,
         if cell == &Background::Empty {
             continue;
         }
-        let x = tile_size * (i % width) as f64 + offset_left;
-        let y = tile_size * (i / width) as f64 + offset_top;
+        let x = tile_size * (i % columns) as f64 + offset_left;
+        let y = tile_size * (i / columns) as f64 + offset_top;
         image(&backgrounds[cell],
               ctx.transform
                   .trans(x, y)
