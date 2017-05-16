@@ -211,7 +211,12 @@ fn main() {
                       lvl.number_of_pushes());
                 info!("Solution: {}", lvl.moves_to_string());
             }
-            app.collection.next_level();
+            use NextLevelError::*;
+            match app.collection.next_level() {
+                Ok(()) => {}
+                Err(EndOfCollection) => error!("Reached the end of the current collection."),
+                Err(LevelNotFinished) => error!("Current level is not finished!"),
+            }
         }
 
         // TODO find a nicer way to to this

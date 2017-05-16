@@ -45,16 +45,21 @@ impl Collection {
     }
 
     /// If `current_level` is finished, switch to the next level.
-    pub fn next_level(&mut self) {
+    pub fn next_level(&mut self) -> Result<(), NextLevelError> {
         let n = self.current_level.level.rank;
         let finished = self.current_level.is_finished();
         if finished && n < self.levels.len() {
-            info!("{}", self.current_level.moves_to_string());
             self.current_level = CurrentLevel::new(self.levels[n].clone());
+            Ok(())
         } else if finished {
-            error!("Reached the end of the current collection.");
+            Err(NextLevelError::EndOfCollection)
         } else {
-            error!("Current level is not finished!");
+            Err(NextLevelError::LevelNotFinished)
         }
     }
+}
+
+pub enum NextLevelError {
+    LevelNotFinished,
+    EndOfCollection,
 }
