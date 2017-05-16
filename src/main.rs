@@ -1,5 +1,3 @@
-#![feature(try_from)]
-
 // GUI
 extern crate piston;
 extern crate piston_window;
@@ -13,15 +11,16 @@ extern crate gfx_device_gl;
 extern crate log;
 extern crate colog;
 
+extern crate sokoban;
+
 use std::cmp::min;
 use std::collections::HashMap;
 
 use piston_window::*;
 
-pub mod backend;
 pub mod texture;
 
-use backend::*;
+use sokoban::*;
 use texture::*;
 
 
@@ -189,7 +188,7 @@ fn main() {
                 let y = ((cursor_pos[1] - app.offset_top) / app.tile_size).floor() as isize;
                 if x >= 0 && y >= 0 {
                     app.current_level_mut()
-                        .move_to(backend::Position { x, y },
+                        .move_to(sokoban::Position { x, y },
                                  mouse_button == MouseButton::Right);
                 }
             }

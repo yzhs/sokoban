@@ -2,38 +2,23 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::collections::VecDeque;
 
-use backend::cell::*;
-use backend::direction::*;
-use backend::move_::*;
-use backend::position::*;
-use backend::util::*;
+use cell::*;
+use direction::*;
+use move_::*;
+use position::*;
+use util::*;
 
 #[derive(Debug, Clone)]
 pub struct Level {
-    pub level_number: usize,
-    pub width: usize,
-    pub height: usize,
+    pub rank: usize,
+    width: usize,
+    height: usize,
 
-    /// width * height cells backgrounds in row-major order
+    /// `width * height` cells’ backgrounds in row-major order
     pub background: Vec<Background>,
 
-    /// width * height cell array of worker and crates in row-major order
+    /// `width * height` cell array of worker and crates in row-major order
     pub foreground: Vec<Foreground>,
-
-    empty_goals: usize,
-    pub worker_position: Position,
-}
-
-#[derive(Debug, Clone)]
-pub struct CurrentLevel {
-    pub level: Level,
-
-    /// The sequence of moves performed so far. Everything after the first moves_recorded moves is
-    /// used to redo moves, i.e. undoing a previous undo operation.
-    moves: Vec<Move>,
-
-    /// This describes how many moves have to be performed to arrive at the current state.
-    moves_recorded: usize,
 
     empty_goals: usize,
     pub worker_position: Position,
@@ -43,7 +28,7 @@ pub struct CurrentLevel {
 impl Level {
     /// Parse the ASCII representation of a level.
     pub fn parse(num: usize, string: &str) -> Result<Level, SokobanError> {
-        let lines: Vec<_> = string.split('\n').collect();
+        let lines: Vec<_> = string.split('\n').filter(|x| !x.is_empty()).collect();
         let height = lines.len();
         let width = lines.iter().map(|x| x.len()).max().unwrap();
 
@@ -128,7 +113,7 @@ impl Level {
         }
 
         Ok(Level {
-               level_number: num + 1, // The first level is level 1
+               rank: num + 1, // The first level is level 1
                width,
                height,
 
@@ -148,6 +133,25 @@ impl Level {
         self.width
     }
 }
+
+
+/// When playing the game, more than just the data stored in a `Level` is needed. For example, we
+/// need to record the player’s moves, so we can undo und redo them.
+#[derive(Debug, Clone)]
+pub struct CurrentLevel {
+    pub level: Level,
+
+    /// The sequence of moves performed so far. Everything after the first moves_recorded moves is
+    /// used to redo moves, i.e. undoing a previous undo operation.
+    moves: Vec<Move>,
+
+    /// This describes how many moves have to be performed to arrive at the current state.
+    moves_recorded: usize,
+
+    empty_goals: usize,
+    pub worker_position: Position,
+}
+
 
 impl CurrentLevel {
     pub fn new(level: Level) -> CurrentLevel {
@@ -180,14 +184,14 @@ impl CurrentLevel {
         &self.level.foreground[self.index(pos)]
     }
 
-    pub fn foreground_mut(&mut self, pos: Position) -> &mut Foreground {
+    fn foreground_mut(&mut self, pos: Position) -> &mut Foreground {
         let index = self.index(pos);
         &mut self.level.foreground[index]
     }
 
     /// Try to find a shortest path from the workers current position to `to` and execute it if one
     /// exists.
-    fn find_path(&mut self, to: Position) {
+    pub fn find_path(&mut self, to: Position) {
         let width = self.width();
         let height = self.height();
 
@@ -202,12 +206,7 @@ impl CurrentLevel {
         let mut queue = VecDeque::with_capacity(500);
         queue.push_back(to);
 
-        loop {
-            let pos = match queue.pop_front() {
-                None => break,
-                Some(pos) => pos,
-            };
-
+        while let Some(pos) = queue.pop_front() {
             // Have wo found a path?
             if pos == self.worker_position {
                 found_path = true;
@@ -220,7 +219,15 @@ impl CurrentLevel {
 
                 if distances[self.index(neighbour)] > new_dist {
                     distances[self.index(neighbour)] = new_dist;
-                    queue.push_back(neighbour);
+                    if neighbour == self.worker_position {
+                        // If we get to the source, by the construction of the algorithm, we have
+                        // found a shortest path, so we may as well stop the search.
+                        queue.truncate(0);
+                        found_path = true;
+                        break;
+                    } else {
+                        queue.push_back(neighbour);
+                    }
                 }
             }
         }
@@ -422,6 +429,10 @@ impl CurrentLevel {
     /// crate is on a goal.
     pub fn is_finished(&self) -> bool {
         self.empty_goals == 0
+    }
+
+    pub fn moves_to_string(&self) -> String {
+        self.moves.iter().map(|mv| mv.to_char()).collect()
     }
 }
 

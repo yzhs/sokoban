@@ -2,10 +2,10 @@ use std::io::Read;
 use std::fs::File;
 use std::path::Path;
 
+use level::*;
+use util::*;
 
-use backend::level::*;
-use backend::util::*;
-
+/// A collection of levels.
 #[derive(Debug, Clone)]
 pub struct Collection {
     pub name: String,
@@ -44,16 +44,14 @@ impl Collection {
            })
     }
 
-    pub fn level(&self, n: usize) -> Level {
-        self.levels[n].clone()
-    }
-
     /// If `current_level` is finished, switch to the next level.
     pub fn next_level(&mut self) {
-        let n = self.current_level.level.level_number;
-        if self.current_level.is_finished() && n < self.levels.len() {
+        let n = self.current_level.level.rank;
+        let finished = self.current_level.is_finished();
+        if finished && n < self.levels.len() {
+            info!("{}", self.current_level.moves_to_string());
             self.current_level = CurrentLevel::new(self.levels[n].clone());
-        } else if self.current_level.is_finished() {
+        } else if finished {
             error!("Reached the end of the current collection.");
         } else {
             error!("Current level is not finished!");

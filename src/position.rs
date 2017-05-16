@@ -1,7 +1,8 @@
 use std::ops::Sub;
 
-use backend::direction::Direction;
+use direction::Direction;
 
+/// A position in a Sokoban level given as (x,y) coordinates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Position {
     pub x: isize,
@@ -33,6 +34,5 @@ impl Sub for Position {
     type Output = (isize, isize);
     fn sub(self, other: Position) -> (isize, isize) {
         (self.x - other.x, self.y - other.y)
-
     }
 }
