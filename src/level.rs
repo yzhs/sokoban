@@ -77,8 +77,8 @@ impl Level {
                     inside = true;
                 }
 
-                if inside && cell.background == Background::Empty &&
-                   (index < width || background[index - width] != Background::Empty) {
+                if inside && cell.background == Background::Empty && index >= width &&
+                   background[index - width] != Background::Empty {
                     background[index] = Background::Floor;
                 }
 
