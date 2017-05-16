@@ -2,6 +2,7 @@ use std::io::Read;
 use std::fs::File;
 use std::path::Path;
 
+use command::*;
 use level::*;
 use util::*;
 
@@ -55,6 +56,32 @@ impl Collection {
             Err(NextLevelError::EndOfCollection)
         } else {
             Err(NextLevelError::LevelNotFinished)
+        }
+    }
+
+    /// Execute whatever command we get from the frontend.
+    pub fn execute(&mut self, command: Command) {
+        use Command::*;
+        match command {
+            Nothing => {}
+            Move(dir) => {
+                let _ = self.current_level.try_move(dir);
+            }
+            MoveAsFarAsPossible(dir, MayPushCrate(b)) => {
+                let _ = self.current_level.move_until(dir, b);
+            }
+            MoveToPosition(pos, MayPushCrate(b)) => {
+                let _ = self.current_level.move_to(pos, b);
+            }
+            Undo => self.current_level.undo(),
+            Redo => self.current_level.redo(),
+            NextLevel => {
+                let _ = self.next_level();
+            }
+            PreviousLevel => unimplemented!(),
+            LoadCollection(name) => {
+                error!("Loading level collection {} is not implemented!", name);
+            }
         }
     }
 }

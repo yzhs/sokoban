@@ -6,6 +6,7 @@ extern crate colog;
 
 mod cell;
 mod collection;
+mod command;
 mod direction;
 mod level;
 mod move_;
@@ -14,6 +15,7 @@ mod util;
 
 pub use cell::*;
 pub use collection::*;
+pub use command::*;
 pub use direction::*;
 pub use level::*;
 pub use move_::*;

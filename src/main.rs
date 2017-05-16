@@ -158,42 +158,56 @@ fn main() {
         }
 
         // Handle key press events
-        match e.press_args() {
-            None => {}
+        use Command::*;
+        let command = match e.press_args() {
+            None => Nothing,
             Some(Button::Keyboard(key)) => {
-                let mut lvl = app.current_level_mut();
                 match key {
                     Key::Left | Key::Right | Key::Up | Key::Down => {
                         let dir = key_to_direction(key);
                         if control_pressed != shift_pressed {
-                            lvl.move_until(dir, shift_pressed)
+                            MoveAsFarAsPossible(dir, MayPushCrate(shift_pressed))
                         } else {
-                            let _ = lvl.try_move(dir);
+                            Move(dir)
                         }
                     }
-                    Key::Z if !control_pressed => {}
-                    Key::U if control_pressed => {}
-                    Key::U | Key::Z if shift_pressed => lvl.redo(),
-                    Key::U | Key::Z => lvl.undo(),
+                    Key::Z if !control_pressed => Nothing,
+                    Key::U if control_pressed => Nothing,
+                    Key::U | Key::Z if shift_pressed => Redo,
+                    Key::U | Key::Z => Undo,
 
-                    Key::LCtrl | Key::RCtrl => control_pressed = true,
-                    Key::LShift | Key::RShift => shift_pressed = true,
+                    Key::LCtrl | Key::RCtrl => {
+                        control_pressed = true;
+                        Nothing
+                    }
+                    Key::LShift | Key::RShift => {
+                        shift_pressed = true;
+                        Nothing
+                    }
 
-                    Key::Escape => {} // Closing app, nothing to do here
-                    _ => error!("Unkown key: {:?}", key),
+                    Key::Escape => Nothing,// Closing app, nothing to do here
+                    _ => {
+                        error!("Unkown key: {:?}", key);
+                        Nothing
+                    }
                 }
             }
             Some(Button::Mouse(mouse_button)) => {
                 let x = ((cursor_pos[0] as i32 - app.offset_left) / app.tile_size) as isize;
                 let y = ((cursor_pos[1] as i32 - app.offset_top) / app.tile_size) as isize;
                 if x >= 0 && y >= 0 {
-                    app.current_level_mut()
-                        .move_to(sokoban::Position { x, y },
-                                 mouse_button == MouseButton::Right);
+                    MoveToPosition(sokoban::Position { x, y },
+                                   MayPushCrate(mouse_button == MouseButton::Right))
+                } else {
+                    Nothing
                 }
             }
-            Some(x) => error!("Unkown event: {:?}", x),
+            Some(x) => {
+                error!("Unkown event: {:?}", x);
+                Nothing
+            }
         };
+        app.collection.execute(command);
 
         if let Some(Button::Keyboard(key)) = e.release_args() {
             match key {
