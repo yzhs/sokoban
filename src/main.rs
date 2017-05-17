@@ -324,7 +324,7 @@ fn main() {
                     set_position(&mut scene, worker_id, pos, app.tile_size as f64);
                     set_rotation(&mut scene, worker_id, direction_to_angle(dir))
                 }
-                Response::MoveCrateFromTo(i, pos) => {
+                Response::MoveCrateTo(i, pos) => {
                     set_position(&mut scene, crate_ids[i], pos, app.tile_size as f64);
                 }
             }

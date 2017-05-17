@@ -295,7 +295,7 @@ impl Level {
                   may_push_crate {
             // Push crate into empty next cell
             self.move_object(next, direction, false);
-            result.push(Response::MoveCrateFromTo(self.crates[&next_but_one], next_but_one));
+            result.push(Response::MoveCrateTo(self.crates[&next_but_one], next_but_one));
             true
         } else {
             return Err(());
@@ -412,7 +412,7 @@ impl Level {
 
         if self.moves[self.number_of_moves].moves_crate {
             let (new, _) = self.move_object(crate_pos, direction, true);
-            result.push(Response::MoveCrateFromTo(self.crates[&new], new));
+            result.push(Response::MoveCrateTo(self.crates[&new], new));
         }
 
         Ok(result)
