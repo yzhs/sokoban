@@ -1,8 +1,9 @@
 use std::convert::TryFrom;
 use std::fmt;
-use std::collections::{VecDeque, HashSet};
+use std::collections::{VecDeque, HashMap};
 
 use cell::*;
+use command::Response;
 use direction::*;
 use move_::*;
 use position::*;
@@ -18,7 +19,7 @@ pub struct Level {
     pub background: Vec<Background>,
 
     /// Positions of all crates
-    pub crates: HashSet<Position>,
+    pub crates: HashMap<Position, usize>,
 
     /// The number of goals that have to be filled to solve the level
     empty_goals: usize,
@@ -127,7 +128,11 @@ impl Level {
                rows,
 
                background,
-               crates: crates.into_iter().collect(),
+               crates: crates
+                   .into_iter()
+                   .enumerate()
+                   .map(|(i, x)| (x, i))
+                   .collect(),
 
                empty_goals,
                worker_position,
@@ -155,12 +160,13 @@ impl Level {
 
     /// Try to find a shortest path from the workers current position to `to` and execute it if one
     /// exists.
-    pub fn find_path(&mut self, to: Position) {
+    pub fn find_path(&mut self, to: Position) -> Result<Vec<Response>, ()> {
+        let mut result = vec![];
         let columns = self.columns();
         let rows = self.rows();
 
         if self.worker_position == to || !self.is_empty(to) {
-            return;
+            return Ok(result);
         }
 
         let mut distances = vec![::std::usize::MAX; columns * rows];
@@ -203,7 +209,7 @@ impl Level {
                     if distances[self.index(neighbour)] <
                        distances[self.index(self.worker_position)] {
                         let dir = direction(self.worker_position, neighbour);
-                        let _ = self.try_move(dir.unwrap());
+                        result.extend(self.try_move(dir.unwrap())?)
                     }
                 }
                 if self.worker_position == to {
@@ -211,6 +217,8 @@ impl Level {
                 }
             }
         }
+
+        Ok(result)
     }
 
     /// A vector of all neighbours of the cell with the given position that contain neither a wall
@@ -225,47 +233,70 @@ impl Level {
 
     /// Move the worker towards `to`. If may_push_crate is set, `to` must be in the same row or
     /// column as the worker. In that case, the worker moves to `to`
-    pub fn move_to(&mut self, to: Position, may_push_crate: bool) {
+    pub fn move_to(&mut self, to: Position, may_push_crate: bool) -> Result<Vec<Response>, ()> {
         match direction(self.worker_position, to) {
             Ok(dir) => {
                 let (dx, dy) = to - self.worker_position;
                 if !may_push_crate && dx.abs() + dy.abs() > 1 {
-                    self.find_path(to);
+                    self.find_path(to)
                 } else {
+                    let mut result = vec![];
                     // Note that this takes care of both movements of just one step and all cases
                     // in which crates may be pushed.
-                    while self.move_helper(dir, may_push_crate).is_ok() &&
-                          self.worker_position != to {}
+                    while let Ok(resp) = self.move_helper(dir, may_push_crate) {
+                        if self.worker_position == to {
+                            break;
+                        }
+                        result.extend(resp);
+                    }
+                    Ok(result)
                 }
             }
-            Err(None) => {}// Nothing to do
+            Err(None) => Ok(vec![]),
             Err(_) if !may_push_crate => self.find_path(to),
-            Err(_) => error!("Can only move along a row or column when pushing crates"),
+            Err(_) => {
+                error!("Can only move along a row or column when pushing crates");
+                Err(())
+            }
         }
     }
 
     /// Try to move in the given direction. Return an error if that is not possile.
-    pub fn try_move(&mut self, direction: Direction) -> Result<(), ()> {
+    pub fn try_move(&mut self, direction: Direction) -> Result<Vec<Response>, ()> {
         self.move_helper(direction, true)
     }
 
     /// Move as far as possible in the given direction (without pushing crates if `may_push_crate`
     /// is `false`).
-    pub fn move_until(&mut self, direction: Direction, may_push_crate: bool) {
-        while self.move_helper(direction, may_push_crate).is_ok() {}
+    pub fn move_until(&mut self,
+                      direction: Direction,
+                      may_push_crate: bool)
+                      -> Result<Vec<Response>, ()> {
+        let mut result = vec![];
+        while let Ok(resp) = self.move_helper(direction, may_push_crate) {
+            result.extend(resp);
+        }
+        // TODO handle errors
+        Ok(result)
     }
 
-    fn move_helper(&mut self, direction: Direction, may_push_crate: bool) -> Result<(), ()> {
+    fn move_helper(&mut self,
+                   direction: Direction,
+                   may_push_crate: bool)
+                   -> Result<Vec<Response>, ()> {
+        let mut result = vec![];
         let next = self.worker_position.neighbour(direction);
         let next_but_one = next.neighbour(direction);
 
         let moves_crate = if self.is_empty(next) {
             // Move to empty cell
+            result.push(Response::MoveWorkerTo(next, direction));
             false
         } else if self.is_crate(next) && self.is_empty(next_but_one) &&
                   may_push_crate {
             // Push crate into empty next cell
-            let _ = self.move_object(next, direction, false);
+            self.move_object(next, direction, false);
+            result.push(Response::MoveCrateFromTo(self.crates[&next_but_one], next_but_one));
             true
         } else {
             return Err(());
@@ -294,7 +325,7 @@ impl Level {
             self.moves.push(current_move);
         }
 
-        Ok(())
+        Ok(result)
     }
 
     /// Is there a crate at the given position?
@@ -306,7 +337,7 @@ impl Level {
         }
 
         // Check the cell itself
-        self.crates.contains(&pos)
+        self.crates.get(&pos).is_some()
     }
 
     /// Is the cell with the given coordinates empty, i.e. could a crate be moved into it?
@@ -353,8 +384,8 @@ impl Level {
             if self.background(new) == &Background::Goal {
                 self.empty_goals -= 1;
             }
-            self.crates.insert(new);
-            self.crates.remove(&from);
+            let id = self.crates.remove(&from).unwrap();
+            self.crates.insert(new, id);
         } else {
             self.worker_position = new;
         }
@@ -364,29 +395,36 @@ impl Level {
     }
 
     /// Undo the most recent move.
-    pub fn undo(&mut self) {
+    pub fn undo(&mut self) -> Result<Vec<Response>, ()> {
         if self.number_of_moves == 0 {
             warn!("Nothing to undo!");
-            return;
+            return Err(());
         } else {
             self.number_of_moves -= 1;
         }
+        let mut result = vec![];
 
         let direction = self.moves[self.number_of_moves].direction;
         let pos = self.worker_position;
         let (worker_pos, crate_pos) = self.move_object(pos, direction, true);
         self.worker_position = worker_pos;
+        result.push(Response::MoveWorkerTo(worker_pos, direction));
 
         if self.moves[self.number_of_moves].moves_crate {
-            let _ = self.move_object(crate_pos, direction, true);
+            let (new, _) = self.move_object(crate_pos, direction, true);
+            result.push(Response::MoveCrateFromTo(self.crates[&new], new));
         }
+
+        Ok(result)
     }
 
     /// If a move has been undone previously, redo it.
-    pub fn redo(&mut self) {
+    pub fn redo(&mut self) -> Result<Vec<Response>, ()> {
         if self.moves.len() > self.number_of_moves {
             let dir = self.moves[self.number_of_moves].direction;
-            self.try_move(dir).unwrap();
+            self.try_move(dir)
+        } else {
+            Err(())
         }
     }
 

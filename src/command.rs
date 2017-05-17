@@ -33,3 +33,16 @@ pub enum Command {
     /// Switch to the level collection with the given name.
     LoadCollection(String),
 }
+
+/// This encodes whatever the GUI needs to update according to the command just executed.
+#[derive(Debug)]
+pub enum Response {
+    /// A new level has been loaded. The number is the rank in the current level set.
+    NewLevel(usize),
+
+    /// The worker was moved to the given position and facing the given direction
+    MoveWorkerTo(Position, Direction),
+
+    /// The crate with the given index was pushed from to this new position.
+    MoveCrateFromTo(usize, Position),
+}

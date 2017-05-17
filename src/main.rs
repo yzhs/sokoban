@@ -6,6 +6,7 @@ extern crate gfx_graphics;
 extern crate gfx_core;
 extern crate gfx_device_gl;
 extern crate sprite;
+extern crate uuid;
 
 // Logging
 #[macro_use]
@@ -20,6 +21,7 @@ use std::rc::Rc;
 
 use piston_window::*;
 use sprite::{Scene, Sprite};
+use uuid::Uuid;
 
 pub mod texture;
 
@@ -87,6 +89,17 @@ fn key_to_direction(key: Key) -> Direction {
     }
 }
 
+/// All tiles face left by default, so the worker has to turned by 90 degrees (clockwise) to face
+/// up instead of left, etc.
+fn direction_to_angle(dir: Direction) -> f64 {
+    match dir {
+        Direction::Left => 0.0,
+        Direction::Right => 180.0,
+        Direction::Up => 90.0,
+        Direction::Down => 270.0,
+    }
+}
+
 /// Render the current level
 fn render_level(ctx: Context,
                 g2d: &mut G2d,
@@ -98,7 +111,7 @@ fn render_level(ctx: Context,
     let offset_top = app.offset_top as f64;
 
     // Draw the crates
-    for pos in &app.current_level().crates {
+    for (pos, i) in &app.current_level().crates {
         let x = tile_size * pos.x as f64 + offset_left;
         let y = tile_size * pos.y as f64 + offset_top;
         image(&foregrounds[&Foreground::Crate],
@@ -110,12 +123,8 @@ fn render_level(ctx: Context,
 
     // Draw the worker
     let pos = app.current_level().worker_position;
-    let worker_direction = match app.current_level().worker_direction() {
-        Direction::Left => 0.0,
-        Direction::Right => 180.0,
-        Direction::Up => 90.0,
-        Direction::Down => 270.0,
-    };
+    let worker_direction = direction_to_angle(app.current_level().worker_direction());
+
     let x = tile_size * pos.x as f64 + offset_left;
     let y = tile_size * pos.y as f64 + offset_top;
 
@@ -132,27 +141,30 @@ fn render_level(ctx: Context,
 }
 
 /// Create a `Scene` containing the level’s background.
-fn background_to_scene(app: &App,
-                       backgrounds: &HashMap<Background, Texture<gfx_device_gl::Resources>>)
-                       -> Scene<Texture<gfx_device_gl::Resources>> {
+fn background_to_scene<R, F>(factory: &mut F, app: &App) -> (Scene<Texture<R>>, Vec<Uuid>, Uuid)
+    where R: gfx_core::Resources,
+          F: gfx_core::Factory<R>
+{
     let lvl = app.current_level();
     let tile_size = app.tile_size as f64;
     let image_scale = tile_size / 360.0;
     let columns = lvl.columns();
 
-    let empty = Rc::new(backgrounds[&Background::Empty].clone());
-    let wall = Rc::new(backgrounds[&Background::Wall].clone());
-    let floor = Rc::new(backgrounds[&Background::Floor].clone());
-    let goal = Rc::new(backgrounds[&Background::Goal].clone());
+    let empty_tex = Rc::new(load_texture(factory, "empty"));
+    let wall_tex = Rc::new(load_texture(factory, "wall"));
+    let floor_tex = Rc::new(load_texture(factory, "floor"));
+    let goal_tex = Rc::new(load_texture(factory, "goal"));
+    let worker_tex = Rc::new(load_texture(factory, "worker"));
+    let crate_tex = Rc::new(load_texture(factory, "crate"));
 
     let mut scene = Scene::new();
 
     for (i, cell) in app.current_level().background.iter().enumerate() {
         let tex = match *cell {
-            Background::Empty => empty.clone(),
-            Background::Floor => floor.clone(),
-            Background::Goal => goal.clone(),
-            Background::Wall => wall.clone(),
+            Background::Empty => empty_tex.clone(),
+            Background::Floor => floor_tex.clone(),
+            Background::Goal => goal_tex.clone(),
+            Background::Wall => wall_tex.clone(),
         };
         let mut sprite = Sprite::from_texture(tex);
         let x = tile_size * ((i % columns) as f64 + 0.5);
@@ -162,8 +174,50 @@ fn background_to_scene(app: &App,
         scene.add_child(sprite);
     }
 
+    // Create sprites for all crates in their initial position.
+    let mut tmp: Vec<_> = app.current_level().crates.iter().collect();
+    tmp.sort_by_key(|x| x.1);
+    let mut crate_ids = vec![];
+    for (&sokoban::Position { x, y }, i) in tmp {
+        let mut sprite = Sprite::from_texture(crate_tex.clone());
+        let x = tile_size * (x as f64 + 0.5);
+        let y = tile_size * (y as f64 + 0.5);
+        sprite.set_position(x, y);
+        sprite.set_scale(image_scale, image_scale);
+        crate_ids.push(scene.add_child(sprite));
+    }
+
+    // Create the worker sprite.
+    let mut sprite = Sprite::from_texture(worker_tex.clone());
+    let sokoban::Position { x, y } = app.current_level().worker_position;
+    let x = tile_size * (x as f64 + 0.5);
+    let y = tile_size * (y as f64 + 0.5);
+    sprite.set_scale(image_scale, image_scale);
+    sprite.set_position(x, y);
+    sprite.set_rotation(direction_to_angle(app.current_level().worker_direction()));
+    let worker_id = scene.add_child(sprite);
+
+    (scene, crate_ids, worker_id)
+}
+
+/// Move the sprite with the given `id` to position `pos`.
+fn set_position<I: ImageSize>(scene: &mut Scene<I>,
+                              id: Uuid,
+                              pos: sokoban::Position,
+                              tile_size: f64) {
+    let sokoban::Position { x, y } = pos;
+    let (x, y) = (tile_size as f64 * (x as f64 + 0.5), tile_size as f64 * (y as f64 + 0.5));
 
     scene
+        .child_mut(id)
+        .map(|sprite| sprite.set_position(x, y));
+}
+
+/// Rotate the sprite by the given angle in degrees.
+fn set_rotation<I: ImageSize>(scene: &mut Scene<I>, id: Uuid, angle: f64) {
+    scene
+        .child_mut(id)
+        .map(|sprite| sprite.set_rotation(angle));
 }
 
 fn main() {
@@ -185,10 +239,7 @@ fn main() {
 
     let mut cursor_pos = [0.0, 0.0];
 
-    let backgrounds = load_backgrounds(&mut window.factory);
-    let foregrounds = load_foregrounds(&mut window.factory);
-
-    let mut scene = background_to_scene(&app, &backgrounds);
+    let (mut scene, mut crate_ids, mut worker_id) = background_to_scene(&mut window.factory, &app);
 
     let mut control_pressed = false;
     let mut shift_pressed = false;
@@ -197,11 +248,17 @@ fn main() {
         window.draw_2d(&e, |c, g| {
             // Set background
             // TODO background image?
+            let sokoban::Position { x, y } = app.current_level().worker_position;
+            let (x, y) = (app.tile_size as f64 * (x as f64 + 0.5),
+                          app.tile_size as f64 * (y as f64 + 0.5));
+            scene
+                .child_mut(worker_id)
+                .map(|worker| worker.set_position(x, y));
             clear(EMPTY, g);
             scene.draw(c.transform
                            .trans(app.offset_left as f64, app.offset_top as f64),
                        g);
-            render_level(c, g, &app, &foregrounds);
+            // TODO update crate and worker position
         });
 
         // Keep track of where the cursor is pointing
@@ -259,7 +316,19 @@ fn main() {
                 Nothing
             }
         };
-        app.collection.execute(command);
+
+        for response in app.collection.execute(command) {
+            match response {
+                Response::NewLevel(rank) => info!("Switched to level #{}", rank),
+                Response::MoveWorkerTo(pos, dir) => {
+                    set_position(&mut scene, worker_id, pos, app.tile_size as f64);
+                    set_rotation(&mut scene, worker_id, direction_to_angle(dir))
+                }
+                Response::MoveCrateFromTo(i, pos) => {
+                    set_position(&mut scene, crate_ids[i], pos, app.tile_size as f64);
+                }
+            }
+        }
 
         if let Some(Button::Keyboard(key)) = e.release_args() {
             match key {
@@ -279,10 +348,18 @@ fn main() {
             }
             use NextLevelError::*;
             match app.collection.next_level() {
-                Ok(()) => {
-                    app.update_size(&window_size);
-                    scene = background_to_scene(&app, &backgrounds);
+                Ok(ref resp) if resp.len() == 1 => {
+                    if let Response::NewLevel(_) = resp[0] {
+                        app.update_size(&window_size);
+                        let tmp = background_to_scene(&mut window.factory, &app);
+                        scene = tmp.0;
+                        crate_ids = tmp.1;
+                        worker_id = tmp.2;
+                    } else {
+                        error!("Invalid response: {:?}", resp);
+                    }
                 }
+                Ok(resp) => error!("Invalid response: {:?}", resp),
                 Err(EndOfCollection) => error!("Reached the end of the current collection."),
                 Err(LevelNotFinished) => error!("Current level is not finished!"),
             }
@@ -293,7 +370,10 @@ fn main() {
         if let Some(size) = e.resize_args() {
             window_size = size;
             app.update_size(&window_size);
-            scene = background_to_scene(&app, &backgrounds);
+            let tmp = background_to_scene(&mut window.factory, &app);
+            scene = tmp.0;
+            crate_ids = tmp.1;
+            worker_id = tmp.2;
         }
     }
 }

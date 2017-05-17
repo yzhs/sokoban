@@ -47,12 +47,12 @@ impl Collection {
     }
 
     /// If `current_level` is finished, switch to the next level.
-    pub fn next_level(&mut self) -> Result<(), NextLevelError> {
+    pub fn next_level(&mut self) -> Result<Vec<Response>, NextLevelError> {
         let n = self.current_level.rank;
         let finished = self.current_level.is_finished();
         if finished && n < self.levels.len() {
             self.current_level = self.levels[n].clone();
-            Ok(())
+            Ok(vec![Response::NewLevel(n + 1)])
         } else if finished {
             Err(NextLevelError::EndOfCollection)
         } else {
@@ -61,27 +61,32 @@ impl Collection {
     }
 
     /// Execute whatever command we get from the frontend.
-    pub fn execute(&mut self, command: Command) {
+    pub fn execute(&mut self, command: Command) -> Vec<Response> {
         use Command::*;
         match command {
-            Nothing => {}
+            Command::Nothing => vec![],
             Move(dir) => {
-                let _ = self.current_level.try_move(dir);
+                self.current_level
+                    .try_move(dir)
+                    .unwrap_or_else(|_| vec![])
             }
             MoveAsFarAsPossible(dir, MayPushCrate(b)) => {
-                self.current_level.move_until(dir, b);
+                self.current_level
+                    .move_until(dir, b)
+                    .unwrap_or_else(|_| vec![])
             }
             MoveToPosition(pos, MayPushCrate(b)) => {
-                self.current_level.move_to(pos, b);
+                self.current_level
+                    .move_to(pos, b)
+                    .unwrap_or_else(|_| vec![])
             }
-            Undo => self.current_level.undo(),
-            Redo => self.current_level.redo(),
-            NextLevel => {
-                let _ = self.next_level();
-            }
+            Undo => self.current_level.undo().unwrap_or_else(|_| vec![]),
+            Redo => self.current_level.redo().unwrap_or_else(|_| vec![]),
+            NextLevel => self.next_level().unwrap_or_else(|_| vec![]),
             PreviousLevel => unimplemented!(),
             LoadCollection(name) => {
                 error!("Loading level collection {} is not implemented!", name);
+                unimplemented!()
             }
         }
     }
