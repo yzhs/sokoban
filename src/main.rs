@@ -16,7 +16,6 @@ extern crate colog;
 extern crate sokoban;
 
 use std::cmp::min;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 use piston_window::*;
@@ -98,46 +97,6 @@ fn direction_to_angle(dir: Direction) -> f64 {
         Direction::Up => 90.0,
         Direction::Down => 270.0,
     }
-}
-
-/// Render the current level
-fn render_level(ctx: Context,
-                g2d: &mut G2d,
-                app: &App,
-                foregrounds: &HashMap<Foreground, Texture<gfx_device_gl::Resources>>) {
-    let tile_size = app.tile_size as f64;
-    let image_scale = tile_size / 360.0;
-    let offset_left = app.offset_left as f64;
-    let offset_top = app.offset_top as f64;
-
-    // Draw the crates
-    for (pos, i) in &app.current_level().crates {
-        let x = tile_size * pos.x as f64 + offset_left;
-        let y = tile_size * pos.y as f64 + offset_top;
-        image(&foregrounds[&Foreground::Crate],
-              ctx.transform
-                  .trans(x, y)
-                  .scale(image_scale, image_scale),
-              g2d);
-    }
-
-    // Draw the worker
-    let pos = app.current_level().worker_position;
-    let worker_direction = direction_to_angle(app.current_level().worker_direction());
-
-    let x = tile_size * pos.x as f64 + offset_left;
-    let y = tile_size * pos.y as f64 + offset_top;
-
-    // We want to rotate around the center of the tile rather than the top left corner, so we
-    // conjugate the rotation with a translation of half a tile along each axis.
-    image(&foregrounds[&Foreground::Worker],
-          ctx.transform
-              .trans(x + tile_size / 2.0, y + tile_size / 2.0)
-              .rot_deg(worker_direction)
-              .trans(-tile_size / 2.0, -tile_size / 2.0)
-              .scale(image_scale, image_scale),
-          g2d);
-
 }
 
 /// Create a `Scene` containing the level’s background.
@@ -248,12 +207,6 @@ fn main() {
         window.draw_2d(&e, |c, g| {
             // Set background
             // TODO background image?
-            let sokoban::Position { x, y } = app.current_level().worker_position;
-            let (x, y) = (app.tile_size as f64 * (x as f64 + 0.5),
-                          app.tile_size as f64 * (y as f64 + 0.5));
-            scene
-                .child_mut(worker_id)
-                .map(|worker| worker.set_position(x, y));
             clear(EMPTY, g);
             scene.draw(c.transform
                            .trans(app.offset_left as f64, app.offset_top as f64),

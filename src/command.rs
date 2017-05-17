@@ -44,5 +44,5 @@ pub enum Response {
     MoveWorkerTo(Position, Direction),
 
     /// The crate with the given index was pushed from to this new position.
-    MoveCrateFromTo(usize, Position),
+    MoveCrateTo(usize, Position),
 }
