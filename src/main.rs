@@ -137,7 +137,7 @@ fn background_to_scene<R, F>(factory: &mut F, app: &App) -> (Scene<Texture<R>>, 
     let mut tmp: Vec<_> = app.current_level().crates.iter().collect();
     tmp.sort_by_key(|x| x.1);
     let mut crate_ids = vec![];
-    for (&sokoban::Position { x, y }, i) in tmp {
+    for (&sokoban::Position { x, y }, _) in tmp {
         let mut sprite = Sprite::from_texture(crate_tex.clone());
         let x = tile_size * (x as f64 + 0.5);
         let y = tile_size * (y as f64 + 0.5);

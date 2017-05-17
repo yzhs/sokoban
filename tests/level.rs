@@ -57,7 +57,7 @@ fn test_path_finding() {
         assert!(lvl.try_move(mv).is_ok(), "Move #{} failed:\n{}\n", i, lvl);
     }
     let pos = Position { x: 5, y: 4 };
-    lvl.find_path(pos);
+    let _ = lvl.find_path(pos);
     assert_eq!(lvl.worker_position, pos);
 
     for (i, mv) in "DDuulldddr".chars().map(char_to_direction).enumerate() {
@@ -65,10 +65,10 @@ fn test_path_finding() {
     }
 
     let pos = lvl.worker_position;
-    lvl.move_until(Right, false);
+    let _ = lvl.move_until(Right, false);
     assert_eq!(pos, lvl.worker_position);
 
-    lvl.move_until(Right, true);
+    let _ = lvl.move_until(Right, true);
     for (i, mv) in "drUluR\
                         lldlllllluuulLulDDDuulldddrRRRRRRRRRRRurD\
                           lllllllluuulluuulDDDDDuulldddrRRRRRRRRRRR\
