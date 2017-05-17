@@ -290,7 +290,6 @@ impl Level {
 
         let moves_crate = if self.is_empty(next) {
             // Move to empty cell
-            result.push(Response::MoveWorkerTo(next, direction));
             false
         } else if self.is_crate(next) && self.is_empty(next_but_one) &&
                   may_push_crate {
@@ -306,6 +305,7 @@ impl Level {
         let pos = self.worker_position;
         let (worker_pos, _) = self.move_object(pos, direction, false);
         self.worker_position = worker_pos;
+        result.push(Response::MoveWorkerTo(worker_pos, direction));
 
         // Bookkeeping for undo and printing a solution
         let current_move = Move {
