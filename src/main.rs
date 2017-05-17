@@ -5,6 +5,7 @@ extern crate graphics;
 extern crate gfx_graphics;
 extern crate gfx_core;
 extern crate gfx_device_gl;
+extern crate sprite;
 
 // Logging
 #[macro_use]
@@ -15,14 +16,15 @@ extern crate sokoban;
 
 use std::cmp::min;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use piston_window::*;
+use sprite::{Scene, Sprite};
 
 pub mod texture;
 
 use sokoban::*;
 use texture::*;
-
 
 const EMPTY: [f32; 4] = [0.0, 0.0, 0.0, 1.0]; // black
 
@@ -89,32 +91,11 @@ fn key_to_direction(key: Key) -> Direction {
 fn render_level(ctx: Context,
                 g2d: &mut G2d,
                 app: &App,
-                backgrounds: &HashMap<Background, Texture<gfx_device_gl::Resources>>,
                 foregrounds: &HashMap<Foreground, Texture<gfx_device_gl::Resources>>) {
-
-    // Set background
-    clear(EMPTY, g2d);
-    // TODO background image?
-
-    let columns = app.current_level().columns();
     let tile_size = app.tile_size as f64;
     let image_scale = tile_size / 360.0;
     let offset_left = app.offset_left as f64;
     let offset_top = app.offset_top as f64;
-
-    // Draw the background
-    for (i, cell) in app.current_level().background.iter().enumerate() {
-        if cell == &Background::Empty {
-            continue;
-        }
-        let x = tile_size * (i % columns) as f64 + offset_left;
-        let y = tile_size * (i / columns) as f64 + offset_top;
-        image(&backgrounds[cell],
-              ctx.transform
-                  .trans(x, y)
-                  .scale(image_scale, image_scale),
-              g2d);
-    }
 
     // Draw the crates
     for pos in &app.current_level().crates {
@@ -150,6 +131,41 @@ fn render_level(ctx: Context,
 
 }
 
+/// Create a `Scene` containing the level’s background.
+fn background_to_scene(app: &App,
+                       backgrounds: &HashMap<Background, Texture<gfx_device_gl::Resources>>)
+                       -> Scene<Texture<gfx_device_gl::Resources>> {
+    let lvl = app.current_level();
+    let tile_size = app.tile_size as f64;
+    let image_scale = tile_size / 360.0;
+    let columns = lvl.columns();
+
+    let empty = Rc::new(backgrounds[&Background::Empty].clone());
+    let wall = Rc::new(backgrounds[&Background::Wall].clone());
+    let floor = Rc::new(backgrounds[&Background::Floor].clone());
+    let goal = Rc::new(backgrounds[&Background::Goal].clone());
+
+    let mut scene = Scene::new();
+
+    for (i, cell) in app.current_level().background.iter().enumerate() {
+        let tex = match *cell {
+            Background::Empty => empty.clone(),
+            Background::Floor => floor.clone(),
+            Background::Goal => goal.clone(),
+            Background::Wall => wall.clone(),
+        };
+        let mut sprite = Sprite::from_texture(tex);
+        let x = tile_size * ((i % columns) as f64 + 0.5);
+        let y = tile_size * ((i / columns) as f64 + 0.5);
+        sprite.set_position(x, y);
+        sprite.set_scale(image_scale, image_scale);
+        scene.add_child(sprite);
+    }
+
+
+    scene
+}
+
 fn main() {
     let mut app: App = Default::default();
     info!("{}", app.current_level());
@@ -172,12 +188,21 @@ fn main() {
     let backgrounds = load_backgrounds(&mut window.factory);
     let foregrounds = load_foregrounds(&mut window.factory);
 
+    let mut scene = background_to_scene(&app, &backgrounds);
+
     let mut control_pressed = false;
     let mut shift_pressed = false;
 
     while let Some(e) = window.next() {
-        window.draw_2d(&e,
-                       |c, g| render_level(c, g, &app, &backgrounds, &foregrounds));
+        window.draw_2d(&e, |c, g| {
+            // Set background
+            // TODO background image?
+            clear(EMPTY, g);
+            scene.draw(c.transform
+                           .trans(app.offset_left as f64, app.offset_top as f64),
+                       g);
+            render_level(c, g, &app, &foregrounds);
+        });
 
         // Keep track of where the cursor is pointing
         if let Some(new_pos) = e.mouse_cursor_args() {
@@ -254,7 +279,10 @@ fn main() {
             }
             use NextLevelError::*;
             match app.collection.next_level() {
-                Ok(()) => app.update_size(&window_size),
+                Ok(()) => {
+                    app.update_size(&window_size);
+                    scene = background_to_scene(&app, &backgrounds);
+                }
                 Err(EndOfCollection) => error!("Reached the end of the current collection."),
                 Err(LevelNotFinished) => error!("Current level is not finished!"),
             }
@@ -265,6 +293,7 @@ fn main() {
         if let Some(size) = e.resize_args() {
             window_size = size;
             app.update_size(&window_size);
+            scene = background_to_scene(&app, &backgrounds);
         }
     }
 }
