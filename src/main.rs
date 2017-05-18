@@ -31,6 +31,9 @@ const EMPTY: [f32; 4] = [0.0, 0.0, 0.0, 1.0]; // black
 
 pub struct App {
     collection: Collection,
+    cursor_pos: [f64; 2],
+    shift_pressed: bool,
+    control_pressed: bool,
     tile_size: i32,
     offset_left: i32,
     offset_top: i32,
@@ -46,7 +49,10 @@ impl App {
         App {
             collection,
             tile_size: 50,
+            shift_pressed: false,
+            control_pressed: false,
             offset_left: 0,
+            cursor_pos: [0.0, 0.0],
             offset_top: 0,
         }
     }
@@ -67,6 +73,58 @@ impl App {
         self.tile_size = min(width / columns, height / rows);
         self.offset_left = (width - columns * self.tile_size) / 2;
         self.offset_top = (height - rows * self.tile_size) / 2;
+    }
+
+    /// Handle press event.
+    fn press_to_command(&mut self, args: Button) -> Command {
+        use Command::*;
+        match args {
+            Button::Keyboard(key) => {
+                match key {
+                    Key::Left | Key::Right | Key::Up | Key::Down => {
+                        let dir = key_to_direction(key);
+                        if self.control_pressed != self.shift_pressed {
+                            MoveAsFarAsPossible(dir, MayPushCrate(self.shift_pressed))
+                        } else {
+                            Move(dir)
+                        }
+                    }
+                    Key::Z if !self.control_pressed => Nothing,
+                    Key::U if self.control_pressed => Nothing,
+                    Key::U | Key::Z if self.shift_pressed => Redo,
+                    Key::U | Key::Z => Undo,
+
+                    Key::LCtrl | Key::RCtrl => {
+                        self.control_pressed = true;
+                        Nothing
+                    }
+                    Key::LShift | Key::RShift => {
+                        self.shift_pressed = true;
+                        Nothing
+                    }
+
+                    Key::Escape => Nothing,// Closing app, nothing to do here
+                    _ => {
+                        error!("Unkown key: {:?}", key);
+                        Nothing
+                    }
+                }
+            }
+            Button::Mouse(mouse_button) => {
+                let x = ((self.cursor_pos[0] as i32 - self.offset_left) / self.tile_size) as isize;
+                let y = ((self.cursor_pos[1] as i32 - self.offset_top) / self.tile_size) as isize;
+                if x >= 0 && y >= 0 {
+                    MoveToPosition(sokoban::Position { x, y },
+                                   MayPushCrate(mouse_button == MouseButton::Right))
+                } else {
+                    Nothing
+                }
+            }
+            x => {
+                error!("Unkown event: {:?}", x);
+                Nothing
+            }
+        }
     }
 }
 
@@ -196,12 +254,8 @@ fn main() {
     // Initialize colog after window to suppress some log output.
     colog::init();
 
-    let mut cursor_pos = [0.0, 0.0];
 
     let (mut scene, mut crate_ids, mut worker_id) = background_to_scene(&mut window.factory, &app);
-
-    let mut control_pressed = false;
-    let mut shift_pressed = false;
 
     while let Some(e) = window.next() {
         window.draw_2d(&e, |c, g| {
@@ -216,60 +270,23 @@ fn main() {
 
         // Keep track of where the cursor is pointing
         if let Some(new_pos) = e.mouse_cursor_args() {
-            cursor_pos = new_pos;
+            app.cursor_pos = new_pos;
         }
 
-        // Handle key press events
-        use Command::*;
-        let command = match e.press_args() {
-            None => Nothing,
-            Some(Button::Keyboard(key)) => {
-                match key {
-                    Key::Left | Key::Right | Key::Up | Key::Down => {
-                        let dir = key_to_direction(key);
-                        if control_pressed != shift_pressed {
-                            MoveAsFarAsPossible(dir, MayPushCrate(shift_pressed))
-                        } else {
-                            Move(dir)
-                        }
-                    }
-                    Key::Z if !control_pressed => Nothing,
-                    Key::U if control_pressed => Nothing,
-                    Key::U | Key::Z if shift_pressed => Redo,
-                    Key::U | Key::Z => Undo,
+        // Handle key press
+        let mut command = Command::Nothing;
+        e.press(|args| command = app.press_to_command(args));
 
-                    Key::LCtrl | Key::RCtrl => {
-                        control_pressed = true;
-                        Nothing
-                    }
-                    Key::LShift | Key::RShift => {
-                        shift_pressed = true;
-                        Nothing
-                    }
+        // and release events
+        if let Some(Button::Keyboard(key)) = e.release_args() {
+            match key {
+                Key::LCtrl | Key::RCtrl => app.control_pressed = false,
+                Key::LShift | Key::RShift => app.shift_pressed = false,
+                _ => {}
+            }
+        }
 
-                    Key::Escape => Nothing,// Closing app, nothing to do here
-                    _ => {
-                        error!("Unkown key: {:?}", key);
-                        Nothing
-                    }
-                }
-            }
-            Some(Button::Mouse(mouse_button)) => {
-                let x = ((cursor_pos[0] as i32 - app.offset_left) / app.tile_size) as isize;
-                let y = ((cursor_pos[1] as i32 - app.offset_top) / app.tile_size) as isize;
-                if x >= 0 && y >= 0 {
-                    MoveToPosition(sokoban::Position { x, y },
-                                   MayPushCrate(mouse_button == MouseButton::Right))
-                } else {
-                    Nothing
-                }
-            }
-            Some(x) => {
-                error!("Unkown event: {:?}", x);
-                Nothing
-            }
-        };
-
+        // Handle the response from the backend.
         for response in app.collection.execute(command) {
             match response {
                 Response::NewLevel(rank) => info!("Switched to level #{}", rank),
@@ -283,14 +300,8 @@ fn main() {
             }
         }
 
-        if let Some(Button::Keyboard(key)) = e.release_args() {
-            match key {
-                Key::LCtrl | Key::RCtrl => control_pressed = false,
-                Key::LShift | Key::RShift => shift_pressed = false,
-                _ => {}
-            }
-        }
-
+        // If the level has been solved, display a message and go to the next level.
+        // TODO display message
         if app.current_level().is_finished() {
             {
                 let lvl = app.current_level();
