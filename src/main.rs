@@ -1,10 +1,7 @@
 // GUI
-extern crate piston;
 extern crate piston_window;
-extern crate graphics;
 extern crate gfx_graphics;
 extern crate gfx_core;
-extern crate gfx_device_gl;
 extern crate sprite;
 extern crate uuid;
 
@@ -25,7 +22,6 @@ use uuid::Uuid;
 pub mod texture;
 
 use sokoban::*;
-use texture::*;
 
 const EMPTY: [f32; 4] = [0.0, 0.0, 0.0, 1.0]; // black
 
@@ -65,6 +61,7 @@ impl App {
         &mut self.collection.current_level
     }
 
+    /// Update the tile size and offsets such that the level fills most of the window.
     pub fn update_size(&mut self, size: &[u32; 2]) {
         let width = size[0] as i32;
         let height = size[1] as i32;
@@ -83,10 +80,10 @@ impl App {
                 match key {
                     Key::Left | Key::Right | Key::Up | Key::Down => {
                         let dir = key_to_direction(key);
-                        if self.control_pressed != self.shift_pressed {
-                            MoveAsFarAsPossible(dir, MayPushCrate(self.shift_pressed))
-                        } else {
+                        if self.control_pressed == self.shift_pressed {
                             Move(dir)
+                        } else {
+                            MoveAsFarAsPossible(dir, MayPushCrate(self.shift_pressed))
                         }
                     }
                     Key::Z if !self.control_pressed => Nothing,
@@ -162,20 +159,22 @@ fn background_to_scene<R, F>(factory: &mut F, app: &App) -> (Scene<Texture<R>>, 
     where R: gfx_core::Resources,
           F: gfx_core::Factory<R>
 {
+    // Load the textures
+    let empty_tex = Rc::new(texture::load(factory, "empty"));
+    let wall_tex = Rc::new(texture::load(factory, "wall"));
+    let floor_tex = Rc::new(texture::load(factory, "floor"));
+    let goal_tex = Rc::new(texture::load(factory, "goal"));
+    let worker_tex = Rc::new(texture::load(factory, "worker"));
+    let crate_tex = Rc::new(texture::load(factory, "crate"));
+
     let lvl = app.current_level();
     let tile_size = app.tile_size as f64;
     let image_scale = tile_size / 360.0;
     let columns = lvl.columns();
 
-    let empty_tex = Rc::new(load_texture(factory, "empty"));
-    let wall_tex = Rc::new(load_texture(factory, "wall"));
-    let floor_tex = Rc::new(load_texture(factory, "floor"));
-    let goal_tex = Rc::new(load_texture(factory, "goal"));
-    let worker_tex = Rc::new(load_texture(factory, "worker"));
-    let crate_tex = Rc::new(load_texture(factory, "crate"));
-
     let mut scene = Scene::new();
 
+    // Create sprites for the level’s background.
     for (i, cell) in app.current_level().background.iter().enumerate() {
         let tex = match *cell {
             Background::Empty => empty_tex.clone(),
@@ -303,6 +302,7 @@ fn main() {
         // If the level has been solved, display a message and go to the next level.
         // TODO display message
         if app.current_level().is_finished() {
+            use NextLevelError::*;
             {
                 let lvl = app.current_level();
                 info!("Level solved using {} moves, {} of which moved a crate.",
@@ -310,7 +310,6 @@ fn main() {
                       lvl.number_of_pushes());
                 info!("Solution: {}", lvl.moves_to_string());
             }
-            use NextLevelError::*;
             match app.collection.next_level() {
                 Ok(ref resp) if resp.len() == 1 => {
                     if let Response::NewLevel(_) = resp[0] {

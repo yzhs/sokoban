@@ -50,7 +50,7 @@ impl Level {
         let mut background = vec![Background::Empty; columns * rows];
         let mut crates = Vec::with_capacity(20);
 
-        let mut goals_minus_crates = 0i32;
+        let mut goals_minus_crates = 0_i32;
 
         for (i, line) in lines.iter().enumerate() {
             let mut inside = false;

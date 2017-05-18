@@ -1,7 +1,3 @@
-extern crate piston;
-extern crate piston_window;
-extern crate graphics;
-extern crate gfx_graphics;
 extern crate gfx_core;
 
 use std::path::PathBuf;
@@ -12,7 +8,7 @@ use gfx_graphics::{Texture, TextureSettings};
 use sokoban::*;
 
 
-pub fn load_texture<R, F>(factory: &mut F, name: &str) -> Texture<R>
+pub fn load<R, F>(factory: &mut F, name: &str) -> Texture<R>
     where R: gfx_core::Resources,
           F: gfx_core::Factory<R>
 {

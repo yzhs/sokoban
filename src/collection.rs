@@ -12,7 +12,7 @@ use util::*;
 pub struct Collection {
     pub name: String,
     pub current_level: Level,
-    pub levels: Vec<Level>,
+    levels: Vec<Level>,
 }
 
 impl Collection {
