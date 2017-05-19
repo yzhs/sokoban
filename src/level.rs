@@ -248,14 +248,9 @@ impl Level {
     /// undo is false, and in the opposite direction otherwise. Return the new position of that
     /// object, as well as the position of the object behind the original position. This is needed
     /// to move crates backwards when undoing a push.
-    fn move_object(&mut self,
-                   from: Position,
-                   direction: Direction,
-                   undo: bool)
-                   -> (Position, Position) {
+    fn move_object(&mut self, from: Position, direction: Direction, undo: bool) -> Position {
         let direction = if undo { direction.reverse() } else { direction };
         let new = from.neighbour(direction);
-        // FIXME having these two return values does not seem like a great solution
 
         // Make sure empty_goals is updated as needed.
         if self.is_crate(from) {
@@ -271,8 +266,7 @@ impl Level {
             self.worker_position = new;
         }
 
-
-        (new, from.neighbour(direction.reverse()))
+        new
     }
 
     /// Move one step in the given direction if that cell is empty or `may_push_crate` is true and
@@ -300,7 +294,7 @@ impl Level {
 
         // Move worker to new position
         let pos = self.worker_position;
-        let (worker_pos, _) = self.move_object(pos, direction, false);
+        let worker_pos = self.move_object(pos, direction, false);
         self.worker_position = worker_pos;
         result.push(Response::MoveWorkerTo(worker_pos, direction));
 
@@ -453,12 +447,12 @@ impl Level {
 
         let direction = self.moves[self.number_of_moves].direction;
         let pos = self.worker_position;
-        let (worker_pos, crate_pos) = self.move_object(pos, direction, true);
-        self.worker_position = worker_pos;
+        let worker_pos = self.move_object(pos, direction, true);
+        let crate_pos = pos.neighbour(direction);
         result.push(Response::MoveWorkerTo(worker_pos, direction));
 
         if self.moves[self.number_of_moves].moves_crate {
-            let (new, _) = self.move_object(crate_pos, direction, true);
+            let new = self.move_object(crate_pos, direction, true);
             result.push(Response::MoveCrateTo(self.crates[&new], new));
         }
 
