@@ -10,6 +10,7 @@ pub enum Direction {
 }
 
 impl Direction {
+    /// Return the opposite direction. This is used when undoing a move.
     pub fn reverse(self) -> Self {
         use self::Direction::*;
         match self {

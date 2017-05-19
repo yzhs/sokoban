@@ -32,13 +32,28 @@ use sokoban::*;
 const EMPTY: [f32; 4] = [0.0, 0.0, 0.0, 1.0]; // black
 
 pub struct Game {
+    /// Path to the assets directory
     assets: PathBuf,
+
+    /// The current level set
     collection: Collection,
+
+    /// Current cursor position
     cursor_pos: [f64; 2],
+
+    /// Is the shift key currently pressed?
     shift_pressed: bool,
+
+    /// Is the control key currently pressed?
     control_pressed: bool,
+
+    /// Size of each cell
     tile_size: i32,
+
+    /// Horizontal margin
     offset_left: i32,
+
+    /// Vertical margin
     offset_top: i32,
 }
 
