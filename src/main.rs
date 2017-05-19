@@ -1,6 +1,8 @@
 // GUI
 extern crate piston_window;
+extern crate graphics;
 extern crate gfx_core;
+extern crate gfx_device_gl;
 extern crate gfx_graphics;
 extern crate sprite;
 extern crate uuid;
@@ -17,6 +19,8 @@ use std::cmp::min;
 use std::path::PathBuf;
 use std::rc::Rc;
 
+use graphics::rectangle;
+use graphics::character::CharacterCache;
 use piston_window::*;
 use sprite::{Scene, Sprite};
 use uuid::Uuid;
@@ -243,6 +247,56 @@ fn set_rotation<I: ImageSize>(scene: &mut Scene<I>, id: Uuid, angle: f64) {
         .map(|sprite| sprite.set_rotation(angle));
 }
 
+fn draw_end_of_level_screen<C, G>(c: &Context,
+                                  g: &mut G,
+                                  glyphs: &mut C,
+                                  window_size: [u32; 2],
+                                  app: &App)
+    where C: CharacterCache,
+          G: Graphics<Texture = <C as CharacterCache>::Texture>
+{
+    let rectangle = Rectangle::new([0.0, 0.0, 0.0, 0.7]);
+    let dims = rectangle::centered([0.0, 0.0, window_size[0] as f64, window_size[1] as f64]);
+    rectangle.draw(dims, &c.draw_state, c.transform, g);
+
+    let lvl = app.current_level();
+    let rank = lvl.rank;
+    let moves = lvl.number_of_moves();
+    let pushes = lvl.number_of_pushes();
+
+    let heading = text::Text::new_color(color::WHITE, 32 as types::FontSize);
+    heading.draw("Congratulations!",
+                 glyphs,
+                 &c.draw_state,
+                 c.transform
+                     .trans(-150.0, -32.0)
+                     .trans(window_size[0] as f64 / 2.0, window_size[1] as f64 / 2.0),
+                 g);
+
+    let txt = text::Text::new_color(color::WHITE, 16 as types::FontSize);
+    let msg = format!("You have solved level {rank} with {moves} \
+                                  moves, {pushes} of which moved a crate.",
+                      rank = rank,
+                      moves = moves,
+                      pushes = pushes);
+
+    txt.draw(&msg,
+             glyphs,
+             &c.draw_state,
+             c.transform
+                 .trans(-270.0, 0.0)
+                 .trans(window_size[0] as f64 / 2.0, window_size[1] as f64 / 2.0),
+             g);
+
+    txt.draw("Press any key to continue",
+             glyphs,
+             &c.draw_state,
+             c.transform
+                 .trans(-120.0, 120.0)
+                 .trans(window_size[0] as f64 / 2.0, window_size[1] as f64 / 2.0),
+             g);
+}
+
 fn main() {
     let mut app: App = Default::default();
     info!("{}", app.current_level());
@@ -261,6 +315,8 @@ fn main() {
     // Initialize colog after window to suppress some log output.
     colog::init();
 
+    let font = &app.assets.clone().join("FiraSans-Regular.ttf");
+    let mut glyphs = Glyphs::new(font, window.factory.clone()).unwrap();
 
     let (mut scene, mut crate_ids, mut worker_id) = generate_level_scene(&mut window.factory, &app);
 
@@ -269,9 +325,16 @@ fn main() {
             // Set background
             // TODO background image?
             clear(EMPTY, g);
+
+            // Draw the level.
             scene.draw(c.transform
                            .trans(app.offset_left as f64, app.offset_top as f64),
                        g);
+
+            // Overlay message about solving the level.
+            if level_solved {
+                draw_end_of_level_screen(&c, g, &mut glyphs, window_size, &app);
+            }
             // TODO update crate and worker position
         });
 
