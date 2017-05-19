@@ -323,7 +323,6 @@ fn main() {
     while let Some(e) = window.next() {
         window.draw_2d(&e, |c, g| {
             // Set background
-            // TODO background image?
             clear(EMPTY, g);
 
             // Draw the level.
@@ -335,7 +334,6 @@ fn main() {
             if level_solved {
                 draw_end_of_level_screen(&c, g, &mut glyphs, window_size, &app);
             }
-            // TODO update crate and worker position
         });
 
         // Keep track of where the cursor is pointing
@@ -395,8 +393,7 @@ fn main() {
             }
         }
 
-        // TODO find a nicer way to to this
-        // FIXME frequently the size is wrong
+        // If the window size has been changed, update the tile size and recenter the level.
         if let Some(size) = e.resize_args() {
             window_size = size;
             app.update_size(&window_size);
