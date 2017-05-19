@@ -31,7 +31,7 @@ use sokoban::*;
 
 const EMPTY: [f32; 4] = [0.0, 0.0, 0.0, 1.0]; // black
 
-pub struct App {
+pub struct Game {
     assets: PathBuf,
     collection: Collection,
     cursor_pos: [f64; 2],
@@ -42,7 +42,7 @@ pub struct App {
     offset_top: i32,
 }
 
-impl App {
+impl Game {
     pub fn new(collection_name: &str) -> Self {
         let assets = find_folder::Search::ParentsThenKids(3, 3)
             .for_folder("assets")
@@ -52,7 +52,7 @@ impl App {
             panic!("Failed to load level set: {:?}", collection.unwrap_err());
         }
         let collection = collection.unwrap();
-        App {
+        Game {
             assets,
             collection,
             tile_size: 50,
@@ -111,7 +111,7 @@ impl App {
                         Nothing
                     }
 
-                    Key::Escape => Nothing,// Closing app, nothing to do here
+                    Key::Escape => Nothing,// Closing game, nothing to do here
                     _ => {
                         error!("Unkown key: {:?}", key);
                         Nothing
@@ -136,7 +136,7 @@ impl App {
     }
 }
 
-impl Default for App {
+impl Default for Game {
     fn default() -> Self {
         Self::new("original")
     }
@@ -166,27 +166,27 @@ fn direction_to_angle(dir: Direction) -> f64 {
 }
 
 /// Create a `Scene` containing the level’s background.
-fn generate_level_scene<R, F>(factory: &mut F, app: &App) -> (Scene<Texture<R>>, Vec<Uuid>, Uuid)
+fn generate_level_scene<R, F>(factory: &mut F, game: &Game) -> (Scene<Texture<R>>, Vec<Uuid>, Uuid)
     where R: gfx_core::Resources,
           F: gfx_core::Factory<R>
 {
     // Load the textures
-    let empty_tex = Rc::new(texture::load(factory, "empty", &app.assets));
-    let wall_tex = Rc::new(texture::load(factory, "wall", &app.assets));
-    let floor_tex = Rc::new(texture::load(factory, "floor", &app.assets));
-    let goal_tex = Rc::new(texture::load(factory, "goal", &app.assets));
-    let worker_tex = Rc::new(texture::load(factory, "worker", &app.assets));
-    let crate_tex = Rc::new(texture::load(factory, "crate", &app.assets));
+    let empty_tex = Rc::new(texture::load(factory, "empty", &game.assets));
+    let wall_tex = Rc::new(texture::load(factory, "wall", &game.assets));
+    let floor_tex = Rc::new(texture::load(factory, "floor", &game.assets));
+    let goal_tex = Rc::new(texture::load(factory, "goal", &game.assets));
+    let worker_tex = Rc::new(texture::load(factory, "worker", &game.assets));
+    let crate_tex = Rc::new(texture::load(factory, "crate", &game.assets));
 
-    let lvl = app.current_level();
-    let tile_size = app.tile_size as f64;
+    let lvl = game.current_level();
+    let tile_size = game.tile_size as f64;
     let image_scale = tile_size / 360.0;
     let columns = lvl.columns();
 
     let mut scene = Scene::new();
 
     // Create sprites for the level’s background.
-    for (i, cell) in app.current_level().background.iter().enumerate() {
+    for (i, cell) in game.current_level().background.iter().enumerate() {
         let tex = match *cell {
             Background::Empty => empty_tex.clone(),
             Background::Floor => floor_tex.clone(),
@@ -202,7 +202,7 @@ fn generate_level_scene<R, F>(factory: &mut F, app: &App) -> (Scene<Texture<R>>,
     }
 
     // Create sprites for all crates in their initial position.
-    let mut tmp: Vec<_> = app.current_level().crates.iter().collect();
+    let mut tmp: Vec<_> = game.current_level().crates.iter().collect();
     tmp.sort_by_key(|x| x.1);
     let mut crate_ids = vec![];
     for (&sokoban::Position { x, y }, _) in tmp {
@@ -216,12 +216,12 @@ fn generate_level_scene<R, F>(factory: &mut F, app: &App) -> (Scene<Texture<R>>,
 
     // Create the worker sprite.
     let mut sprite = Sprite::from_texture(worker_tex.clone());
-    let sokoban::Position { x, y } = app.current_level().worker_position;
+    let sokoban::Position { x, y } = game.current_level().worker_position;
     let x = tile_size * (x as f64 + 0.5);
     let y = tile_size * (y as f64 + 0.5);
     sprite.set_scale(image_scale, image_scale);
     sprite.set_position(x, y);
-    sprite.set_rotation(direction_to_angle(app.current_level().worker_direction()));
+    sprite.set_rotation(direction_to_angle(game.current_level().worker_direction()));
     let worker_id = scene.add_child(sprite);
 
     (scene, crate_ids, worker_id)
@@ -251,7 +251,7 @@ fn draw_end_of_level_screen<C, G>(c: &Context,
                                   g: &mut G,
                                   glyphs: &mut C,
                                   window_size: [u32; 2],
-                                  app: &App)
+                                  game: &Game)
     where C: CharacterCache,
           G: Graphics<Texture = <C as CharacterCache>::Texture>
 {
@@ -259,7 +259,7 @@ fn draw_end_of_level_screen<C, G>(c: &Context,
     let dims = rectangle::centered([0.0, 0.0, window_size[0] as f64, window_size[1] as f64]);
     rectangle.draw(dims, &c.draw_state, c.transform, g);
 
-    let lvl = app.current_level();
+    let lvl = game.current_level();
     let rank = lvl.rank;
     let moves = lvl.number_of_moves();
     let pushes = lvl.number_of_pushes();
@@ -298,8 +298,8 @@ fn draw_end_of_level_screen<C, G>(c: &Context,
 }
 
 fn main() {
-    let mut app: App = Default::default();
-    info!("{}", app.current_level());
+    let mut game: Game = Default::default();
+    info!("{}", game.current_level());
 
     let title = "Sokoban";
     let mut window_size = [640, 480];
@@ -315,10 +315,11 @@ fn main() {
     // Initialize colog after window to suppress some log output.
     colog::init();
 
-    let font = &app.assets.clone().join("FiraSans-Regular.ttf");
+    let font = &game.assets.clone().join("FiraSans-Regular.ttf");
     let mut glyphs = Glyphs::new(font, window.factory.clone()).unwrap();
 
-    let (mut scene, mut crate_ids, mut worker_id) = generate_level_scene(&mut window.factory, &app);
+    let (mut scene, mut crate_ids, mut worker_id) = generate_level_scene(&mut window.factory,
+                                                                         &game);
 
     while let Some(e) = window.next() {
         window.draw_2d(&e, |c, g| {
@@ -327,18 +328,18 @@ fn main() {
 
             // Draw the level.
             scene.draw(c.transform
-                           .trans(app.offset_left as f64, app.offset_top as f64),
+                           .trans(game.offset_left as f64, game.offset_top as f64),
                        g);
 
             // Overlay message about solving the level.
             if level_solved {
-                draw_end_of_level_screen(&c, g, &mut glyphs, window_size, &app);
+                draw_end_of_level_screen(&c, g, &mut glyphs, window_size, &game);
             }
         });
 
         // Keep track of where the cursor is pointing
         if let Some(new_pos) = e.mouse_cursor_args() {
-            app.cursor_pos = new_pos;
+            game.cursor_pos = new_pos;
         }
 
         // Handle key press
@@ -349,24 +350,24 @@ fn main() {
                 None => Command::Nothing,
             }
         } else {
-            e.press(|args| command = app.press_to_command(args));
+            e.press(|args| command = game.press_to_command(args));
         }
 
         // and release events
         if let Some(Button::Keyboard(key)) = e.release_args() {
             match key {
-                Key::LCtrl | Key::RCtrl => app.control_pressed = false,
-                Key::LShift | Key::RShift => app.shift_pressed = false,
+                Key::LCtrl | Key::RCtrl => game.control_pressed = false,
+                Key::LShift | Key::RShift => game.shift_pressed = false,
                 _ => {}
             }
         }
 
         // Handle the response from the backend.
-        for response in app.collection.execute(command) {
+        for response in game.collection.execute(command) {
             match response {
                 Response::LevelFinished => {
                     if !level_solved {
-                        let lvl = app.current_level();
+                        let lvl = game.current_level();
                         info!("Level solved using {} moves, {} of which moved a crate.",
                               lvl.number_of_moves(),
                               lvl.number_of_pushes());
@@ -376,19 +377,19 @@ fn main() {
                 }
                 Response::NewLevel(rank) => {
                     info!("Switched to level #{}", rank);
-                    app.update_size(&window_size);
-                    let tmp = generate_level_scene(&mut window.factory, &app);
+                    game.update_size(&window_size);
+                    let tmp = generate_level_scene(&mut window.factory, &game);
                     scene = tmp.0;
                     crate_ids = tmp.1;
                     worker_id = tmp.2;
                     level_solved = false;
                 }
                 Response::MoveWorkerTo(pos, dir) => {
-                    set_position(&mut scene, worker_id, pos, app.tile_size as f64);
-                    set_rotation(&mut scene, worker_id, direction_to_angle(dir))
+                    set_position(&mut scene, worker_id, pos, game.tile_size as f64);
+                    set_rotation(&mut scene, worker_id, direction_to_angle(dir));
                 }
                 Response::MoveCrateTo(i, pos) => {
-                    set_position(&mut scene, crate_ids[i], pos, app.tile_size as f64);
+                    set_position(&mut scene, crate_ids[i], pos, game.tile_size as f64);
                 }
             }
         }
@@ -396,8 +397,8 @@ fn main() {
         // If the window size has been changed, update the tile size and recenter the level.
         if let Some(size) = e.resize_args() {
             window_size = size;
-            app.update_size(&window_size);
-            let tmp = generate_level_scene(&mut window.factory, &app);
+            game.update_size(&window_size);
+            let tmp = generate_level_scene(&mut window.factory, &game);
             scene = tmp.0;
             crate_ids = tmp.1;
             worker_id = tmp.2;
