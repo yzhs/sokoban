@@ -1,9 +1,10 @@
 // GUI
 extern crate piston_window;
-extern crate gfx_graphics;
 extern crate gfx_core;
+extern crate gfx_graphics;
 extern crate sprite;
 extern crate uuid;
+extern crate find_folder;
 
 // Logging
 #[macro_use]
@@ -13,6 +14,7 @@ extern crate colog;
 extern crate sokoban;
 
 use std::cmp::min;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use piston_window::*;
@@ -26,6 +28,7 @@ use sokoban::*;
 const EMPTY: [f32; 4] = [0.0, 0.0, 0.0, 1.0]; // black
 
 pub struct App {
+    assets: PathBuf,
     collection: Collection,
     cursor_pos: [f64; 2],
     shift_pressed: bool,
@@ -36,13 +39,17 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(collection_name: &str) -> App {
-        let collection = Collection::load(collection_name);
+    pub fn new(collection_name: &str) -> Self {
+        let assets = find_folder::Search::ParentsThenKids(3, 3)
+            .for_folder("assets")
+            .unwrap();
+        let collection = Collection::load(&assets, collection_name);
         if collection.is_err() {
             panic!("Failed to load level set: {:?}", collection.unwrap_err());
         }
         let collection = collection.unwrap();
         App {
+            assets,
             collection,
             tile_size: 50,
             shift_pressed: false,
@@ -155,17 +162,17 @@ fn direction_to_angle(dir: Direction) -> f64 {
 }
 
 /// Create a `Scene` containing the level’s background.
-fn background_to_scene<R, F>(factory: &mut F, app: &App) -> (Scene<Texture<R>>, Vec<Uuid>, Uuid)
+fn generate_level_scene<R, F>(factory: &mut F, app: &App) -> (Scene<Texture<R>>, Vec<Uuid>, Uuid)
     where R: gfx_core::Resources,
           F: gfx_core::Factory<R>
 {
     // Load the textures
-    let empty_tex = Rc::new(texture::load(factory, "empty"));
-    let wall_tex = Rc::new(texture::load(factory, "wall"));
-    let floor_tex = Rc::new(texture::load(factory, "floor"));
-    let goal_tex = Rc::new(texture::load(factory, "goal"));
-    let worker_tex = Rc::new(texture::load(factory, "worker"));
-    let crate_tex = Rc::new(texture::load(factory, "crate"));
+    let empty_tex = Rc::new(texture::load(factory, "empty", &app.assets));
+    let wall_tex = Rc::new(texture::load(factory, "wall", &app.assets));
+    let floor_tex = Rc::new(texture::load(factory, "floor", &app.assets));
+    let goal_tex = Rc::new(texture::load(factory, "goal", &app.assets));
+    let worker_tex = Rc::new(texture::load(factory, "worker", &app.assets));
+    let crate_tex = Rc::new(texture::load(factory, "crate", &app.assets));
 
     let lvl = app.current_level();
     let tile_size = app.tile_size as f64;
@@ -242,6 +249,7 @@ fn main() {
 
     let title = "Sokoban";
     let mut window_size = [640, 480];
+    let mut level_solved = false;
     let mut window: PistonWindow =
         WindowSettings::new(title, window_size)
             .exit_on_esc(true)
@@ -254,7 +262,7 @@ fn main() {
     colog::init();
 
 
-    let (mut scene, mut crate_ids, mut worker_id) = background_to_scene(&mut window.factory, &app);
+    let (mut scene, mut crate_ids, mut worker_id) = generate_level_scene(&mut window.factory, &app);
 
     while let Some(e) = window.next() {
         window.draw_2d(&e, |c, g| {
@@ -274,7 +282,14 @@ fn main() {
 
         // Handle key press
         let mut command = Command::Nothing;
-        e.press(|args| command = app.press_to_command(args));
+        if level_solved {
+            command = match e.press_args() {
+                Some(_) => Command::NextLevel,
+                None => Command::Nothing,
+            }
+        } else {
+            e.press(|args| command = app.press_to_command(args));
+        }
 
         // and release events
         if let Some(Button::Keyboard(key)) = e.release_args() {
@@ -288,7 +303,25 @@ fn main() {
         // Handle the response from the backend.
         for response in app.collection.execute(command) {
             match response {
-                Response::NewLevel(rank) => info!("Switched to level #{}", rank),
+                Response::LevelFinished => {
+                    if !level_solved {
+                        let lvl = app.current_level();
+                        info!("Level solved using {} moves, {} of which moved a crate.",
+                              lvl.number_of_moves(),
+                              lvl.number_of_pushes());
+                        info!("Solution: {}", lvl.moves_to_string());
+                        level_solved = true;
+                    }
+                }
+                Response::NewLevel(rank) => {
+                    info!("Switched to level #{}", rank);
+                    app.update_size(&window_size);
+                    let tmp = generate_level_scene(&mut window.factory, &app);
+                    scene = tmp.0;
+                    crate_ids = tmp.1;
+                    worker_id = tmp.2;
+                    level_solved = false;
+                }
                 Response::MoveWorkerTo(pos, dir) => {
                     set_position(&mut scene, worker_id, pos, app.tile_size as f64);
                     set_rotation(&mut scene, worker_id, direction_to_angle(dir))
@@ -299,41 +332,12 @@ fn main() {
             }
         }
 
-        // If the level has been solved, display a message and go to the next level.
-        // TODO display message
-        if app.current_level().is_finished() {
-            use NextLevelError::*;
-            {
-                let lvl = app.current_level();
-                info!("Level solved using {} moves, {} of which moved a crate.",
-                      lvl.number_of_moves(),
-                      lvl.number_of_pushes());
-                info!("Solution: {}", lvl.moves_to_string());
-            }
-            match app.collection.next_level() {
-                Ok(ref resp) if resp.len() == 1 => {
-                    if let Response::NewLevel(_) = resp[0] {
-                        app.update_size(&window_size);
-                        let tmp = background_to_scene(&mut window.factory, &app);
-                        scene = tmp.0;
-                        crate_ids = tmp.1;
-                        worker_id = tmp.2;
-                    } else {
-                        error!("Invalid response: {:?}", resp);
-                    }
-                }
-                Ok(resp) => error!("Invalid response: {:?}", resp),
-                Err(EndOfCollection) => error!("Reached the end of the current collection."),
-                Err(LevelNotFinished) => error!("Current level is not finished!"),
-            }
-        }
-
         // TODO find a nicer way to to this
         // FIXME frequently the size is wrong
         if let Some(size) = e.resize_args() {
             window_size = size;
             app.update_size(&window_size);
-            let tmp = background_to_scene(&mut window.factory, &app);
+            let tmp = generate_level_scene(&mut window.factory, &app);
             scene = tmp.0;
             crate_ids = tmp.1;
             worker_id = tmp.2;

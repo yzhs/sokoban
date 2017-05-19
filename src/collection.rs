@@ -17,9 +17,8 @@ pub struct Collection {
 
 impl Collection {
     /// Load a file containing a bunch of levels separated by an empty line.
-    pub fn load(name: &str) -> Result<Collection, SokobanError> {
-        let assets_path: &Path = ASSETS_PATH.as_ref();
-        let mut level_path = assets_path.to_path_buf();
+    pub fn load<P: AsRef<Path>>(assets_path: P, name: &str) -> Result<Collection, SokobanError> {
+        let mut level_path = assets_path.as_ref().to_path_buf();
         level_path.push("levels");
         level_path.push(name);
         level_path.set_extension("lvl");
@@ -63,7 +62,7 @@ impl Collection {
     /// Execute whatever command we get from the frontend.
     pub fn execute(&mut self, command: Command) -> Vec<Response> {
         use Command::*;
-        match command {
+        let mut result = match command {
             Command::Nothing => vec![],
             Move(dir) => {
                 self.current_level
@@ -88,7 +87,11 @@ impl Collection {
                 error!("Loading level collection {} is not implemented!", name);
                 unimplemented!()
             }
+        };
+        if self.current_level.is_finished() {
+            result.push(Response::LevelFinished);
         }
+        result
     }
 
     /// Find out which direction the worker is currently facing.

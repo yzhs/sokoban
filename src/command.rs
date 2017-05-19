@@ -37,6 +37,9 @@ pub enum Command {
 /// This encodes whatever the GUI needs to update according to the command just executed.
 #[derive(Debug)]
 pub enum Response {
+    /// The current level has just been solved.
+    LevelFinished,
+
     /// A new level has been loaded. The number is the rank in the current level set.
     NewLevel(usize),
 

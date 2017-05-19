@@ -10,6 +10,7 @@ test = false
 
 [dependencies]
 colog = "0.1.1"
+find_folder = "0.3.0"
 gfx_core = "0.7.0"
 gfx_device_gl = "0.14.0"
 log = "0.3.7"

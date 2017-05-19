@@ -2,8 +2,6 @@ use std::io;
 use std::error::Error;
 use std::fmt;
 
-pub const ASSETS_PATH: &'static str = "/home/yzhs/prj/sokoban/assets";
-
 #[derive(Debug)]
 pub enum SokobanError {
     IoError(io::Error),

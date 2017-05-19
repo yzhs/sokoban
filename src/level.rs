@@ -339,10 +339,10 @@ impl Level {
                     // Note that this takes care of both movements of just one step and all cases
                     // in which crates may be pushed.
                     while let Ok(resp) = self.move_helper(dir, may_push_crate) {
-                        if self.worker_position == to {
+                        result.extend(resp);
+                        if self.worker_position == to || may_push_crate && self.is_finished() {
                             break;
                         }
-                        result.extend(resp);
                     }
                     Ok(result)
                 }
@@ -433,6 +433,9 @@ impl Level {
         let mut result = vec![];
         while let Ok(resp) = self.move_helper(direction, may_push_crate) {
             result.extend(resp);
+            if may_push_crate && self.is_finished() {
+                break;
+            }
         }
         // TODO handle errors
         Ok(result)
