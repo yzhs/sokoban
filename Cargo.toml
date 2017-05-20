@@ -3,6 +3,8 @@ authors = ["Colin Benner <colin@yzhs.de>"]
 name = "sokoban"
 version = "0.1.0"
 
+[lib]
+
 [[bin]]
 doc = false
 name = "sokoban"
@@ -20,5 +22,3 @@ piston2d-graphics = "0.21.1"
 piston2d-sprite = "0.36.0"
 piston_window = "0.65.0"
 uuid = "0.1.18"
-
-[lib]
