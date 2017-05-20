@@ -5,6 +5,7 @@ use std::path::{PathBuf, Path};
 use piston_window::*;
 use gfx_graphics::{Texture, TextureSettings};
 
+/// Load an image from the assets directory and turn it into a `Texture`.
 pub fn load<P, R, F>(factory: &mut F, name: &str, assets: P) -> Texture<R>
     where P: AsRef<Path>,
           R: gfx_core::Resources,

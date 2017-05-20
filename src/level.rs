@@ -9,6 +9,7 @@ use move_::*;
 use position::*;
 use util::*;
 
+
 #[derive(Debug, Clone)]
 pub struct Level {
     pub rank: usize,
@@ -241,6 +242,7 @@ impl Level {
             .collect()
     }
 }
+
 
 /// Movement, i.e. everything that *does* change the `self`.
 impl Level {
@@ -498,6 +500,7 @@ impl fmt::Display for Level {
         Ok(())
     }
 }
+
 
 #[cfg(test)]
 mod test {

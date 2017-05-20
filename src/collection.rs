@@ -45,6 +45,10 @@ impl Collection {
            })
     }
 
+    pub fn number_of_levels(&self) -> usize {
+        self.levels.len()
+    }
+
     /// If `current_level` is finished, switch to the next level.
     pub fn next_level(&mut self) -> Result<Vec<Response>, NextLevelError> {
         let n = self.current_level.rank;

@@ -1,7 +1,9 @@
 use direction::*;
 use position::*;
 
+
 pub struct MayPushCrate(pub bool);
+
 
 /// Anything the user can ask the back end to do.
 pub enum Command {
@@ -33,6 +35,7 @@ pub enum Command {
     /// Switch to the level collection with the given name.
     LoadCollection(String),
 }
+
 
 /// This encodes whatever the GUI needs to update according to the command just executed.
 #[derive(Debug)]
