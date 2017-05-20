@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use std::io::Read;
 use std::fs::File;
 use std::path::Path;
@@ -5,14 +6,16 @@ use std::path::Path;
 use command::*;
 use direction::*;
 use level::*;
+use save::*;
 use util::*;
 
 /// A collection of levels.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Collection {
     pub name: String,
     pub current_level: Level,
     levels: Vec<Level>,
+    pub saved: CollectionState,
 }
 
 impl Collection {
@@ -38,11 +41,17 @@ impl Collection {
             .enumerate()
             .map(|(i, l)| Level::parse(i, l))
             .collect::<Result<Vec<_>, _>>()?;
-        Ok(Collection {
-               name: name.to_string(),
-               current_level: levels[0].clone(),
-               levels,
-           })
+
+        let state = CollectionState::load(name);
+        let levels_finished = state.levels_finished();
+        info!("Loading level {}", levels_finished + 1);
+        let result = Collection {
+            name: name.to_string(),
+            current_level: levels[levels_finished].clone(),
+            levels,
+            saved: state,
+        };
+        Ok(result)
     }
 
     pub fn number_of_levels(&self) -> usize {
@@ -53,11 +62,17 @@ impl Collection {
     pub fn next_level(&mut self) -> Result<Vec<Response>, NextLevelError> {
         let n = self.current_level.rank;
         let finished = self.current_level.is_finished();
-        if finished && n < self.levels.len() {
-            self.current_level = self.levels[n].clone();
-            Ok(vec![Response::NewLevel(n + 1)])
-        } else if finished {
-            Err(NextLevelError::EndOfCollection)
+        if finished {
+            // Save information on old level
+            self.save();
+
+            if n < self.levels.len() {
+                self.current_level = self.levels[n].clone();
+                Ok(vec![Response::NewLevel(n + 1)])
+            } else {
+                self.saved.collection_solved = true;
+                Err(NextLevelError::EndOfCollection)
+            }
         } else {
             Err(NextLevelError::LevelNotFinished)
         }
@@ -101,6 +116,20 @@ impl Collection {
     /// Find out which direction the worker is currently facing.
     pub fn worker_direction(&self) -> Direction {
         self.current_level.worker_direction()
+    }
+
+    pub fn save(&mut self) {
+        let rank = self.current_level.rank;
+        let level_state = match Solution::try_from(&self.current_level) {
+            Ok(soln) => LevelState::new(soln),
+            _ => LevelState::Started(self.current_level.clone()),
+        };
+        self.saved.update(rank - 1, level_state);
+
+        let file = create_file_in_dir("/home/yzhs/.local/share/sokoban", &self.name, "json");
+        if let Err(e) = ::serde_json::to_writer(file, &self.saved) {
+            error!("Failed to write savegame: {}", e);
+        }
     }
 }
 

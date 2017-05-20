@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 
 /// Static part of a cell.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Background {
     Empty,
     Wall,
@@ -11,7 +11,7 @@ pub enum Background {
 }
 
 /// Dynamic part of a cell.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Foreground {
     None,
     Worker,

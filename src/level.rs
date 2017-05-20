@@ -10,7 +10,7 @@ use position::*;
 use util::*;
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Level {
     pub rank: usize,
     columns: usize,

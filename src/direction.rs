@@ -1,7 +1,7 @@
 use position::Position;
 
 /// Any of the directions needed for Sokoban.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum Direction {
     Left,
     Right,

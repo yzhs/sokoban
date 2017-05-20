@@ -3,7 +3,7 @@ use std::ops::Sub;
 use direction::Direction;
 
 /// A position in a Sokoban level given as (x,y) coordinates.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Position {
     pub x: isize,
     pub y: isize,

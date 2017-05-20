@@ -402,13 +402,9 @@ fn main() {
             match response {
                 Response::LevelFinished => {
                     if !level_solved {
-                        let lvl = game.current_level();
-                        info!("Level solved using {} moves, {} of which moved a crate.",
-                              lvl.number_of_moves(),
-                              lvl.number_of_pushes());
-                        info!("Solution: {}", lvl.moves_to_string());
                         level_solved = true;
-                        end_of_collection = lvl.rank == game.collection.number_of_levels();
+                        end_of_collection = game.current_level().rank ==
+                                            game.collection.number_of_levels();
                     }
                 }
                 Response::NewLevel(_rank) => {

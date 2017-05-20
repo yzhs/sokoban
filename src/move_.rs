@@ -3,7 +3,7 @@ use std::fmt;
 use direction::Direction;
 
 /// This structure contains everything needed to do or undo a Sokoban move.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Move {
     /// Was a crate moved?
     pub moves_crate: bool,

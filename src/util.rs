@@ -1,6 +1,8 @@
-use std::io;
 use std::error::Error;
 use std::fmt;
+use std::fs::{File, create_dir_all};
+use std::io;
+use std::path::Path;
 
 #[derive(Debug)]
 pub enum SokobanError {
@@ -37,9 +39,21 @@ impl Error for SokobanError {
     }
 }
 
-// Automatically wrap io errors
+/// Automatically wrap io errors
 impl From<io::Error> for SokobanError {
     fn from(err: io::Error) -> SokobanError {
         SokobanError::IoError(err)
     }
+}
+
+/// Open a file, creating it if necessary, in a given directory. If the directory does not exist,
+/// create it first.
+pub fn create_file_in_dir<P: AsRef<Path>>(dir: P, name: &str, extension: &str) -> File {
+    // TODO error handling
+    let mut path = dir.as_ref().to_path_buf();
+    path.push(name);
+    path.set_extension(extension);
+
+    create_dir_all(dir).unwrap();
+    File::create(path).unwrap()
 }
