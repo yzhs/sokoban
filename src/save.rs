@@ -2,10 +2,10 @@
 
 use std::convert::TryFrom;
 use std::fs::File;
-use std::path::PathBuf;
 use std::cmp::Ordering;
 
 use level::*;
+use util::BASE_DIR;
 
 /// One particular solution of a level.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -16,31 +16,21 @@ pub struct Solution {
 }
 
 impl Solution {
-    pub fn min_moves(&self, other: Solution) -> Self {
+    /// Return a copy of either `self` or `other` with the smallest number of *worker* movements.
+    pub fn min_moves(&self, other: &Solution) -> Self {
         match self.number_of_moves.cmp(&other.number_of_moves) {
             Ordering::Less => self.clone(),
-            Ordering::Equal => {
-                if self.number_of_pushes <= other.number_of_pushes {
-                    self.clone()
-                } else {
-                    other
-                }
-            }
-            Ordering::Greater => other,
+            Ordering::Equal if self.number_of_pushes <= other.number_of_pushes => self.clone(),
+            _ => other.clone(),
         }
     }
 
-    pub fn min_pushes(&self, other: Solution) -> Self {
+    /// Return a copy of either `self` or `other` with the smallest number of *crate* movements.
+    pub fn min_pushes(&self, other: &Solution) -> Self {
         match self.number_of_pushes.cmp(&other.number_of_pushes) {
             Ordering::Less => self.clone(),
-            Ordering::Equal => {
-                if self.number_of_moves <= other.number_of_moves {
-                    self.clone()
-                } else {
-                    other
-                }
-            }
-            Ordering::Greater => other,
+            Ordering::Equal if self.number_of_moves <= other.number_of_moves => self.clone(),
+            _ => other.clone(),
         }
     }
 }
@@ -77,22 +67,7 @@ impl LevelState {
         }
     }
 
-    pub fn min(&self, other: Solution) -> Self {
-        use self::LevelState::*;
-        match *self {
-            Started(_) => LevelState::new(other),
-            Finished {
-                ref least_moves,
-                ref least_pushes,
-            } => {
-                Finished {
-                    least_moves: least_moves.min_moves(other.clone()),
-                    least_pushes: least_pushes.min_pushes(other),
-                }
-            }
-        }
-    }
-
+    /// Does this contain a complete solution?
     pub fn is_finished(&self) -> bool {
         if let LevelState::Started(_) = *self {
             false
@@ -121,6 +96,7 @@ pub struct CollectionState {
 }
 
 impl CollectionState {
+    /// Create a new `CollectionState` with no solved levels.
     pub fn new(name: &str) -> Self {
         CollectionState {
             name: name.to_string(),
@@ -129,25 +105,24 @@ impl CollectionState {
         }
     }
 
+    /// Try to load the `CollectionState` for the level set with the given name. If that fails,
+    /// return a new empty `CollectionState`.
     pub fn load(name: &str) -> Self {
-        let mut path = PathBuf::new();
-        path.push("/home/yzhs/.local/share/sokoban");
-        path.push(name);
-        path.set_extension("json");
-        match File::open(path) {
-            Ok(file) => {
-                ::serde_json::from_reader(file).unwrap_or_else(|_| CollectionState::new(name))
-            }
-            _ => CollectionState::new(name),
-        }
+        let mut path = "sokoban/".to_string();
+        path.push_str(name);
+        path.push_str(".json");
+
+        BASE_DIR
+            .find_data_file(path)
+            .and_then(|file| File::open(file).ok())
+            .and_then(|file| ::serde_json::from_reader(file).ok())
+            .unwrap_or_else(|| CollectionState::new(name))
     }
 
-    pub fn len(&self) -> usize {
-        self.levels.len()
-    }
-
+    /// If a better or more complete solution for the current level is available, replace the old
+    /// one with it.
     pub fn update(&mut self, index: usize, level_state: LevelState) {
-        if index >= self.len() {
+        if index >= self.levels.len() {
             self.levels.push(level_state);
         } else {
             use self::LevelState::*;
@@ -159,8 +134,8 @@ impl CollectionState {
                     least_pushes: ref lp_old,
                 } => {
                     if let Finished {
-                               least_moves: lm,
-                               least_pushes: lp,
+                               least_moves: ref lm,
+                               least_pushes: ref lp,
                            } = level_state {
                         self.levels[index] = Finished {
                             least_moves: lm_old.min_moves(lm),
@@ -172,6 +147,7 @@ impl CollectionState {
         }
     }
 
+    /// How many levels have been finished.
     pub fn levels_finished(&self) -> usize {
         let n = self.levels.len();
         if n == 0 || !self.levels[0].is_finished() {

@@ -1,8 +1,14 @@
+extern crate xdg;
+
 use std::error::Error;
 use std::fmt;
 use std::fs::{File, create_dir_all};
 use std::io;
 use std::path::Path;
+
+lazy_static!{
+    pub static ref BASE_DIR: xdg::BaseDirectories = xdg::BaseDirectories::new().unwrap();
+}
 
 #[derive(Debug)]
 pub enum SokobanError {

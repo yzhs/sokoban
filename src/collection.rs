@@ -1,7 +1,9 @@
 use std::convert::TryFrom;
-use std::io::Read;
+use std::io::{self, Read};
+use std::fmt;
+use std::error;
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use command::*;
 use direction::*;
@@ -59,12 +61,14 @@ impl Collection {
     }
 
     /// If `current_level` is finished, switch to the next level.
-    pub fn next_level(&mut self) -> Result<Vec<Response>, NextLevelError> {
+    fn next_level(&mut self) -> Result<Vec<Response>, NextLevelError> {
         let n = self.current_level.rank;
         let finished = self.current_level.is_finished();
         if finished {
             // Save information on old level
-            self.save();
+            if let Err(e) = self.save() {
+                error!("Failed to create data file: {}", e);
+            }
 
             if n < self.levels.len() {
                 self.current_level = self.levels[n].clone();
@@ -118,7 +122,7 @@ impl Collection {
         self.current_level.worker_direction()
     }
 
-    pub fn save(&mut self) {
+    fn save(&mut self) -> Result<(), SaveError> {
         let rank = self.current_level.rank;
         let level_state = match Solution::try_from(&self.current_level) {
             Ok(soln) => LevelState::new(soln),
@@ -126,14 +130,66 @@ impl Collection {
         };
         self.saved.update(rank - 1, level_state);
 
-        let file = create_file_in_dir("/home/yzhs/.local/share/sokoban", &self.name, "json");
-        if let Err(e) = ::serde_json::to_writer(file, &self.saved) {
-            error!("Failed to write savegame: {}", e);
+        let mut path = PathBuf::new();
+        path.push("sokoban");
+        path.push(&self.name);
+        path.set_extension("json");
+        match BASE_DIR
+                  .place_data_file(path.as_path())
+                  .and_then(File::create) {
+            Err(e) => Err(SaveError::from(e)),
+            Ok(file) => ::serde_json::to_writer(file, &self.saved).map_err(SaveError::from),
         }
     }
 }
 
+#[derive(Debug)]
 pub enum NextLevelError {
     LevelNotFinished,
     EndOfCollection,
+}
+
+#[derive(Debug)]
+pub enum SaveError {
+    FailedToCreateFile(io::Error),
+    FailedToWriteFile(::serde_json::Error),
+}
+
+impl error::Error for SaveError {
+    fn description(&self) -> &str {
+        use SaveError::*;
+        match *self {
+            FailedToCreateFile(_) => "Failed to create file",
+            FailedToWriteFile(_) => "Failed to serialize to file",
+        }
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        use SaveError::*;
+        match *self {
+            FailedToCreateFile(ref e) => e.cause(),
+            FailedToWriteFile(ref e) => e.cause(),
+        }
+    }
+}
+
+impl From<io::Error> for SaveError {
+    fn from(e: io::Error) -> Self {
+        SaveError::FailedToCreateFile(e)
+    }
+}
+impl From<::serde_json::Error> for SaveError {
+    fn from(e: ::serde_json::Error) -> Self {
+        SaveError::FailedToWriteFile(e)
+    }
+}
+
+impl fmt::Display for SaveError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use SaveError::*;
+        match *self {
+            FailedToCreateFile(ref e) => write!(fmt, "Failed to create file: {}", e),
+            FailedToWriteFile(ref e) => write!(fmt, "Failed to write file: {}", e),
+        }
+    }
 }
