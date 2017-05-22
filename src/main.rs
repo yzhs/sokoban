@@ -6,7 +6,6 @@ extern crate gfx_device_gl;
 extern crate gfx_graphics;
 extern crate sprite;
 extern crate uuid;
-extern crate find_folder;
 
 // Logging
 #[macro_use]
@@ -16,7 +15,6 @@ extern crate colog;
 extern crate sokoban;
 
 use std::cmp::min;
-use std::path::PathBuf;
 use std::rc::Rc;
 
 use graphics::rectangle;
@@ -33,12 +31,8 @@ use sokoban::*;
 const EMPTY: [f32; 4] = [0.0, 0.0, 0.0, 1.0]; // black
 const IMAGE_SIZE: f64 = 360.0;
 
-pub struct Game<R: Resources> {
-    /// Path to the assets directory
-    assets: PathBuf,
-
-    /// The current level set
-    collection: Collection,
+pub struct Gui<R: Resources> {
+    game: Game,
 
     window_size: [u32; 2],
     scene: Scene<Texture<R>>,
@@ -64,20 +58,16 @@ pub struct Game<R: Resources> {
     offset_top: i32,
 }
 
-impl<R: Resources> Game<R> {
+impl<R: Resources> Gui<R> {
     pub fn new(collection_name: &str) -> Self {
-        let assets = find_folder::Search::ParentsThenKids(3, 3)
-            .for_folder("assets")
-            .unwrap();
-        let collection = Collection::load(&assets, collection_name);
-        if collection.is_err() {
-            panic!("Failed to load level set: {:?}", collection.unwrap_err());
+        let game = Game::new(collection_name);
+        if game.is_err() {
+            panic!("Failed to load level set: {:?}", game.unwrap_err());
         }
-        let collection = collection.unwrap();
+        let game = game.unwrap();
 
-        Game {
-            assets,
-            collection,
+        Gui {
+            game,
 
             window_size: [640, 480],
             scene: Scene::new(),
@@ -95,11 +85,11 @@ impl<R: Resources> Game<R> {
     }
 
     pub fn current_level(&self) -> &Level {
-        &self.collection.current_level
+        &self.game.collection.current_level
     }
 
     pub fn current_level_mut(&mut self) -> &mut Level {
-        &mut self.collection.current_level
+        &mut self.game.collection.current_level
     }
 
     /// Update the tile size and offsets such that the level fills most of the window.
@@ -178,12 +168,12 @@ impl<R: Resources> Game<R> {
         where F: Factory<R>
     {
         // Load the textures
-        let empty_tex = Rc::new(texture::load(factory, "empty", &self.assets));
-        let wall_tex = Rc::new(texture::load(factory, "wall", &self.assets));
-        let floor_tex = Rc::new(texture::load(factory, "floor", &self.assets));
-        let goal_tex = Rc::new(texture::load(factory, "goal", &self.assets));
-        let worker_tex = Rc::new(texture::load(factory, "worker", &self.assets));
-        let crate_tex = Rc::new(texture::load(factory, "crate", &self.assets));
+        let empty_tex = Rc::new(texture::load(factory, "empty"));
+        let wall_tex = Rc::new(texture::load(factory, "wall"));
+        let floor_tex = Rc::new(texture::load(factory, "floor"));
+        let goal_tex = Rc::new(texture::load(factory, "goal"));
+        let worker_tex = Rc::new(texture::load(factory, "worker"));
+        let crate_tex = Rc::new(texture::load(factory, "crate"));
 
         let mut scene = Scene::new();
 
@@ -348,13 +338,13 @@ fn main() {
     // Initialize colog after window to suppress some log output.
     colog::init();
 
-    let mut game = Game::new("microban");
+    let mut gui = Gui::new("microban");
 
     let mut level_solved = false;
     let mut end_of_collection = false;
-    game.update_size(&mut window.factory);
+    gui.update_size(&mut window.factory);
 
-    let font = &game.assets.clone().join("FiraSans-Regular.ttf");
+    let font = &ASSETS.clone().join("FiraSans-Regular.ttf");
     let mut glyphs = Glyphs::new(font, window.factory.clone()).unwrap();
 
     while let Some(e) = window.next() {
@@ -363,69 +353,70 @@ fn main() {
             clear(EMPTY, g);
 
             // Draw the level
-            let left = game.offset_left as f64;
-            let top = game.offset_top as f64;
-            let scale = game.tile_size as f64 / IMAGE_SIZE;
-            game.scene
+            let left = gui.offset_left as f64;
+            let top = gui.offset_top as f64;
+            let scale = gui.tile_size as f64 / IMAGE_SIZE;
+            gui.scene
                 .draw(c.transform.trans(left, top).scale(scale, scale), g);
+
 
             // Overlay message about solving the level.
             if level_solved {
-                game.draw_end_of_level_screen(&c, g, &mut glyphs, end_of_collection);
+                gui.draw_end_of_level_screen(&c, g, &mut glyphs, end_of_collection);
             }
         });
 
         // Keep track of where the cursor is pointing
         if let Some(new_pos) = e.mouse_cursor_args() {
-            game.cursor_pos = new_pos;
+            gui.cursor_pos = new_pos;
         }
 
         // Handle key press
         let command = match e.press_args() {
             Some(Button::Keyboard(_key)) if level_solved => Command::NextLevel,
-            Some(args) if !level_solved => game.press_to_command(args),
+            Some(args) if !level_solved => gui.press_to_command(args),
             _ => Command::Nothing,
         };
 
         // and release events
         if let Some(Button::Keyboard(key)) = e.release_args() {
             match key {
-                Key::LCtrl | Key::RCtrl => game.control_pressed = false,
-                Key::LShift | Key::RShift => game.shift_pressed = false,
+                Key::LCtrl | Key::RCtrl => gui.control_pressed = false,
+                Key::LShift | Key::RShift => gui.shift_pressed = false,
                 _ => {}
             }
         }
 
         // Handle the response from the backend.
-        for response in game.collection.execute(command) {
+        for response in gui.game.collection.execute(command) {
             match response {
                 Response::LevelFinished => {
                     if !level_solved {
                         level_solved = true;
-                        end_of_collection = game.current_level().rank ==
-                                            game.collection.number_of_levels();
+                        end_of_collection = gui.current_level().rank ==
+                                            gui.game.collection.number_of_levels();
                     }
                 }
                 Response::NewLevel(_rank) => {
                     level_solved = false;
-                    game.update_size(&mut window.factory);
+                    gui.update_size(&mut window.factory);
                 }
                 Response::MoveWorkerTo(pos, dir) => {
-                    let id = game.worker_id;
-                    game.move_sprite_to(id, pos);
-                    game.rotate_sprite_to(id, dir);
+                    let id = gui.worker_id;
+                    gui.move_sprite_to(id, pos);
+                    gui.rotate_sprite_to(id, dir);
                 }
                 Response::MoveCrateTo(i, pos) => {
-                    let id = game.crate_ids[i];
-                    game.move_sprite_to(id, pos);
+                    let id = gui.crate_ids[i];
+                    gui.move_sprite_to(id, pos);
                 }
             }
         }
 
         // If the window size has been changed, update the tile size and recenter the level.
         if let Some(size) = e.resize_args() {
-            game.window_size = size;
-            game.update_size(&mut window.factory);
+            gui.window_size = size;
+            gui.update_size(&mut window.factory);
         }
     }
 }

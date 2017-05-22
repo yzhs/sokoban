@@ -3,7 +3,7 @@ use std::io::{self, Read};
 use std::fmt;
 use std::error;
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use command::*;
 use direction::*;
@@ -22,8 +22,8 @@ pub struct Collection {
 
 impl Collection {
     /// Load a file containing a bunch of levels separated by an empty line.
-    pub fn load<P: AsRef<Path>>(assets_path: P, name: &str) -> Result<Collection, SokobanError> {
-        let mut level_path = assets_path.as_ref().to_path_buf();
+    pub fn load(name: &str) -> Result<Collection, SokobanError> {
+        let mut level_path = ASSETS.clone();
         level_path.push("levels");
         level_path.push(name);
         level_path.set_extension("lvl");
@@ -129,7 +129,8 @@ impl Collection {
         self.current_level.worker_direction()
     }
 
-    fn save(&mut self) -> Result<(), SaveError> {
+    // TODO self should not be mut
+    pub fn save(&mut self) -> Result<(), SaveError> {
         let rank = self.current_level.rank;
         let level_state = match Solution::try_from(&self.current_level) {
             Ok(soln) => LevelState::new(soln),

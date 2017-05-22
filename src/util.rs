@@ -1,13 +1,17 @@
-extern crate xdg;
-
 use std::error::Error;
 use std::fmt;
 use std::fs::{File, create_dir_all};
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 lazy_static!{
-    pub static ref BASE_DIR: xdg::BaseDirectories = xdg::BaseDirectories::new().unwrap();
+    pub static ref BASE_DIR: ::xdg::BaseDirectories = ::xdg::BaseDirectories::new().unwrap();
+
+    /// Path to the assets directory
+    pub static ref ASSETS: PathBuf = ::find_folder::Search::ParentsThenKids(3, 3)
+            .for_folder("assets")
+            .unwrap();
+
 }
 
 #[derive(Debug)]

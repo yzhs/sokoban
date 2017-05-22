@@ -9,13 +9,17 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
+extern crate find_folder;
 #[macro_use]
 extern crate lazy_static;
+extern crate xdg;
+
 
 mod cell;
 mod collection;
 mod command;
 mod direction;
+mod game;
 mod level;
 mod move_;
 mod position;
@@ -25,6 +29,7 @@ mod util;
 pub use cell::*;
 pub use collection::*;
 pub use command::*;
+pub use game::*;
 pub use direction::*;
 pub use level::*;
 pub use move_::*;
