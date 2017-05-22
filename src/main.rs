@@ -285,9 +285,8 @@ impl<R: Resources> Gui<R> {
 
     /// Move the sprite with the given `id` to position `pos`.
     fn move_sprite_to(&mut self, id: Uuid, pos: sokoban::Position) {
-        let image_size = 360.0;
         let sokoban::Position { x, y } = pos;
-        let (x, y) = (image_size * (x as f64 + 0.5), image_size * (y as f64 + 0.5));
+        let (x, y) = (IMAGE_SIZE * (x as f64 + 0.5), IMAGE_SIZE * (y as f64 + 0.5));
 
         self.scene
             .child_mut(id)
