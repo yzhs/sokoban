@@ -149,7 +149,7 @@ impl<R: Resources> Game<R> {
                     }
 
                     // Open the main menu
-                    Key::Escape => {}
+                    Key::Escape => return ResetLevel,
                     _ => {
                         error!("Unkown key: {:?}", key);
                     }
@@ -341,7 +341,6 @@ fn main() {
     let title = "Sokoban";
     let mut window: PistonWindow =
         WindowSettings::new(title, [640, 480])
-            .exit_on_esc(true)
             .build()
             .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
     window.set_lazy(true);

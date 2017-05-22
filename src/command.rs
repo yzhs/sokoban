@@ -26,6 +26,9 @@ pub enum Command {
     /// Redo a move previously undone.
     Redo,
 
+    /// Reset the current level
+    ResetLevel,
+
     /// Go to the next level in the current collection if the current level has been solved.
     NextLevel,
 

@@ -60,6 +60,12 @@ impl Collection {
         self.levels.len()
     }
 
+    fn reset_level(&mut self) -> Response {
+        let n = self.current_level.rank;
+        self.current_level = self.levels[n - 1].clone();
+        Response::NewLevel(n)
+    }
+
     /// If `current_level` is finished, switch to the next level.
     fn next_level(&mut self) -> Result<Vec<Response>, NextLevelError> {
         let n = self.current_level.rank;
@@ -104,6 +110,7 @@ impl Collection {
             }
             Undo => self.current_level.undo().unwrap_or_else(|_| vec![]),
             Redo => self.current_level.redo().unwrap_or_else(|_| vec![]),
+            ResetLevel => vec![self.reset_level()],
             NextLevel => self.next_level().unwrap_or_else(|_| vec![]),
             PreviousLevel => unimplemented!(),
             LoadCollection(name) => {
