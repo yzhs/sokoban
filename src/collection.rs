@@ -93,25 +93,19 @@ impl Collection {
         use Command::*;
         let mut result = match command {
             Command::Nothing => vec![],
-            Move(dir) => {
-                self.current_level
-                    .try_move(dir)
-                    .unwrap_or_else(|_| vec![])
-            }
+            Move(dir) => self.current_level.try_move(dir).unwrap_or_default(),
             MoveAsFarAsPossible(dir, MayPushCrate(b)) => {
                 self.current_level
                     .move_until(dir, b)
-                    .unwrap_or_else(|_| vec![])
+                    .unwrap_or_default()
             }
             MoveToPosition(pos, MayPushCrate(b)) => {
-                self.current_level
-                    .move_to(pos, b)
-                    .unwrap_or_else(|_| vec![])
+                self.current_level.move_to(pos, b).unwrap_or_default()
             }
-            Undo => self.current_level.undo().unwrap_or_else(|_| vec![]),
-            Redo => self.current_level.redo().unwrap_or_else(|_| vec![]),
+            Undo => self.current_level.undo().unwrap_or_default(),
+            Redo => self.current_level.redo().unwrap_or_default(),
             ResetLevel => vec![self.reset_level()],
-            NextLevel => self.next_level().unwrap_or_else(|_| vec![]),
+            NextLevel => self.next_level().unwrap_or_default(),
             PreviousLevel => unimplemented!(),
             LoadCollection(name) => {
                 error!("Loading level collection {} is not implemented!", name);
