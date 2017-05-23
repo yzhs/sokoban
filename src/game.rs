@@ -20,8 +20,11 @@ impl Game {
         Ok(())
     }
 
-    pub fn save(&mut self) {
-        self.collection.save();
+    }
+
+    /// Save current state.
+    pub fn save(&mut self) -> Result<(), SaveError> {
+        self.collection.save()
     }
 
     pub fn load(&mut self, name: &str) {}

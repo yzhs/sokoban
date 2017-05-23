@@ -110,6 +110,10 @@ impl Collection {
             LoadCollection(name) => {
                 error!("Loading level collection {} is not implemented!", name);
                 unimplemented!()
+            Save => {
+                self.save().unwrap();
+                vec![]
+            }
             }
         };
         if self.current_level.is_finished() {

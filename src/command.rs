@@ -35,6 +35,9 @@ pub enum Command {
     /// Go back a level.
     PreviousLevel,
 
+    /// Save the current level’s solution if the level is solved, otherwise save the current state.
+    Save,
+
     /// Switch to the level collection with the given name.
     LoadCollection(String),
 }
