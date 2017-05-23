@@ -116,7 +116,8 @@ impl Level {
                     // A non-wall cell next to an outside cell has to be on the outside itself.
                     if index > columns && background[index - columns] == Background::Empty ||
                        i < rows - 1 && background[index + columns] == Background::Empty ||
-                       j < columns - 1 && background[index + 1] == Background::Empty {
+                       j < columns - 1 && background[index + 1] == Background::Empty ||
+                       i == rows - 1 {
                         background[index] = Background::Empty;
                         changed = true;
                     }
