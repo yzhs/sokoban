@@ -163,6 +163,23 @@ impl<R: Resources> Gui<R> {
         Nothing
     }
 
+    /// Move the sprite with the given `id` to position `pos`.
+    fn move_sprite_to(&mut self, id: Uuid, pos: sokoban::Position) {
+        let sokoban::Position { x, y } = pos;
+        let (x, y) = (IMAGE_SIZE * (x as f64 + 0.5), IMAGE_SIZE * (y as f64 + 0.5));
+
+        self.scene
+            .child_mut(id)
+            .map(|sprite| sprite.set_position(x, y));
+    }
+
+    /// Rotate the sprite by the given angle in degrees.
+    fn rotate_sprite_to(&mut self, id: Uuid, dir: Direction) {
+        self.scene
+            .child_mut(id)
+            .map(|sprite| sprite.set_rotation(direction_to_angle(dir)));
+    }
+
     /// Create a `Scene` containing the level’s background.
     fn generate_level_scene<F>(&mut self, factory: &mut F)
         where F: Factory<R>
@@ -281,23 +298,6 @@ impl<R: Resources> Gui<R> {
                      .trans(self.window_size[0] as f64 / 2.0,
                             self.window_size[1] as f64 / 2.0),
                  g);
-    }
-
-    /// Move the sprite with the given `id` to position `pos`.
-    fn move_sprite_to(&mut self, id: Uuid, pos: sokoban::Position) {
-        let sokoban::Position { x, y } = pos;
-        let (x, y) = (IMAGE_SIZE * (x as f64 + 0.5), IMAGE_SIZE * (y as f64 + 0.5));
-
-        self.scene
-            .child_mut(id)
-            .map(|sprite| sprite.set_position(x, y));
-    }
-
-    /// Rotate the sprite by the given angle in degrees.
-    fn rotate_sprite_to(&mut self, id: Uuid, dir: Direction) {
-        self.scene
-            .child_mut(id)
-            .map(|sprite| sprite.set_rotation(direction_to_angle(dir)));
     }
 }
 
