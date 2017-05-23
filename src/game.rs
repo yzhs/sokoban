@@ -36,5 +36,8 @@ impl Game {
         self.collection.save()
     }
 
-    pub fn load(&mut self, name: &str) {}
+    /// Load the saved state for the collection with the given name.
+    pub fn load(&mut self, name: &str) -> Result<(), SokobanError> {
+        self.set_collection(name)
+    }
 }
