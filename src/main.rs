@@ -387,7 +387,7 @@ fn main() {
         }
 
         // Handle the response from the backend.
-        for response in gui.game.collection.execute(command) {
+        for response in gui.game.execute(command) {
             match response {
                 Response::LevelFinished => {
                     if !level_solved {

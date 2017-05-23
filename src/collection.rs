@@ -107,13 +107,10 @@ impl Collection {
             ResetLevel => vec![self.reset_level()],
             NextLevel => self.next_level().unwrap_or_default(),
             PreviousLevel => unimplemented!(),
-            LoadCollection(name) => {
-                error!("Loading level collection {} is not implemented!", name);
-                unimplemented!()
+            LoadCollection(_) => unreachable!(),
             Save => {
                 self.save().unwrap();
                 vec![]
-            }
             }
         };
         if self.current_level.is_finished() {

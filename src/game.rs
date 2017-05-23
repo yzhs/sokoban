@@ -1,4 +1,5 @@
 use collection::*;
+use command::*;
 use util::SokobanError;
 
 #[derive(Debug)]
@@ -20,6 +21,14 @@ impl Game {
         Ok(())
     }
 
+    pub fn execute(&mut self, cmd: Command) -> Vec<Response> {
+        if let Command::LoadCollection(name) = cmd {
+            error!("Loading level collection {}.", name);
+            self.set_collection(&name).unwrap();
+            vec![Response::NewLevel(self.collection.current_level.rank)]
+        } else {
+            self.collection.execute(cmd)
+        }
     }
 
     /// Save current state.
