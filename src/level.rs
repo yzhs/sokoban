@@ -157,6 +157,10 @@ impl Level {
         pos.x as usize + pos.y as usize * self.columns()
     }
 
+    pub fn position(&self, i: usize) -> Position {
+        Position::new(i % self.columns, i / self.columns)
+    }
+
     pub fn background(&self, pos: Position) -> &Background {
         &self.background[self.index(pos)]
     }

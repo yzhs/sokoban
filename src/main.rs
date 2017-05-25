@@ -165,8 +165,7 @@ impl<R: Resources> Gui<R> {
 
     /// Move the sprite with the given `id` to position `pos`.
     fn move_sprite_to(&mut self, id: Uuid, pos: sokoban::Position) {
-        let sokoban::Position { x, y } = pos;
-        let (x, y) = (IMAGE_SIZE * (x as f64 + 0.5), IMAGE_SIZE * (y as f64 + 0.5));
+        let (x, y) = scale_position(pos, IMAGE_SIZE);
 
         self.scene
             .child_mut(id)
@@ -179,6 +178,7 @@ impl<R: Resources> Gui<R> {
             .child_mut(id)
             .map(|sprite| sprite.set_rotation(direction_to_angle(dir)));
     }
+
 
     /// Create a `Scene` containing the level’s background.
     fn generate_level_scene<F>(&mut self, factory: &mut F)
@@ -193,46 +193,43 @@ impl<R: Resources> Gui<R> {
         let crate_tex = Rc::new(texture::load(factory, "crate"));
 
         let mut scene = Scene::new();
-
-        let columns = self.current_level().columns();
-
-        // Create sprites for the level’s background.
-        for (i, cell) in self.current_level().background.iter().enumerate() {
-            let tex = match *cell {
-                Background::Empty => empty_tex.clone(),
-                Background::Floor => floor_tex.clone(),
-                Background::Goal => goal_tex.clone(),
-                Background::Wall => wall_tex.clone(),
-            };
-            let mut sprite = Sprite::from_texture(tex);
-            let x = IMAGE_SIZE * ((i % columns) as f64 + 0.5);
-            let y = IMAGE_SIZE * ((i / columns) as f64 + 0.5);
-            sprite.set_position(x, y);
-            scene.add_child(sprite);
-        }
-
-        // Create sprites for all crates in their initial position.
+        let worker_id;
         let mut crate_ids = vec![];
+
         {
-            let mut tmp: Vec<_> = self.current_level().crates.iter().collect();
+            let lvl = self.current_level();
+
+            // Create sprites for the level’s background.
+            for (i, cell) in lvl.background.iter().enumerate() {
+                let tex = match *cell {
+                    Background::Empty => empty_tex.clone(),
+                    Background::Floor => floor_tex.clone(),
+                    Background::Goal => goal_tex.clone(),
+                    Background::Wall => wall_tex.clone(),
+                };
+                let mut sprite = Sprite::from_texture(tex);
+                let (x, y) = scale_position(lvl.position(i), IMAGE_SIZE);
+                sprite.set_position(x, y);
+                scene.add_child(sprite);
+            }
+
+            // Create sprites for all crates in their initial position.
+            let mut tmp: Vec<_> = lvl.crates.iter().collect();
             tmp.sort_by_key(|x| x.1);
-            for (&sokoban::Position { x, y }, _) in tmp {
+            for (&pos, _) in tmp {
                 let mut sprite = Sprite::from_texture(crate_tex.clone());
-                let x = IMAGE_SIZE * (x as f64 + 0.5);
-                let y = IMAGE_SIZE * (y as f64 + 0.5);
+                let (x, y) = scale_position(pos, IMAGE_SIZE);
                 sprite.set_position(x, y);
                 crate_ids.push(scene.add_child(sprite));
             }
-        }
 
-        // Create the worker sprite.
-        let mut sprite = Sprite::from_texture(worker_tex.clone());
-        let sokoban::Position { x, y } = self.current_level().worker_position;
-        let x = IMAGE_SIZE * (x as f64 + 0.5);
-        let y = IMAGE_SIZE * (y as f64 + 0.5);
-        sprite.set_position(x, y);
-        sprite.set_rotation(direction_to_angle(self.current_level().worker_direction()));
-        let worker_id = scene.add_child(sprite);
+            // Create the worker sprite.
+            let mut sprite = Sprite::from_texture(worker_tex.clone());
+            let (x, y) = scale_position(lvl.worker_position, IMAGE_SIZE);
+            sprite.set_position(x, y);
+            sprite.set_rotation(direction_to_angle(lvl.worker_direction()));
+            worker_id = scene.add_child(sprite);
+        }
 
         self.scene = scene;
         self.crate_ids = crate_ids;
@@ -299,6 +296,11 @@ impl<R: Resources> Gui<R> {
                             self.window_size[1] as f64 / 2.0),
                  g);
     }
+}
+
+/// Multiply a position by a factor as a way of mapping tile coordinates to pixel coordinates.
+fn scale_position(pos: sokoban::Position, factor: f64) -> (f64, f64) {
+    ((pos.x as f64 + 0.5) * factor, (pos.y as f64 + 0.5) * factor)
 }
 
 /// Map arrow keys to the corresponding directions, panic on other keys.
