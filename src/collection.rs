@@ -46,10 +46,15 @@ impl Collection {
 
         let state = CollectionState::load(name);
         let levels_finished = state.levels_finished();
+        let current_level = if levels.len() == levels_finished {
+            levels[levels_finished - 1].clone()
+        } else {
+            levels[levels_finished].clone()
+        };
 
         let result = Collection {
             name: name.to_string(),
-            current_level: levels[levels_finished].clone(),
+            current_level,
             levels,
             saved: state,
         };
