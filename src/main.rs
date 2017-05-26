@@ -38,6 +38,7 @@ pub struct Gui<R: Resources> {
     scene: Scene<Texture<R>>,
     crate_ids: Vec<Uuid>,
     worker_id: Uuid,
+    textures: Textures<R>,
 
     /// Is the shift key currently pressed?
     shift_pressed: bool,
@@ -59,7 +60,7 @@ pub struct Gui<R: Resources> {
 }
 
 impl<R: Resources> Gui<R> {
-    pub fn new(collection_name: &str) -> Self {
+    pub fn new(collection_name: &str, textures: Textures<R>) -> Self {
         let game = Game::new(collection_name);
         if game.is_err() {
             panic!("Failed to load level set: {:?}", game.unwrap_err());
@@ -73,6 +74,7 @@ impl<R: Resources> Gui<R> {
             scene: Scene::new(),
             crate_ids: vec![],
             worker_id: Uuid::new_v4(),
+            textures,
 
             shift_pressed: false,
             control_pressed: false,
@@ -93,9 +95,7 @@ impl<R: Resources> Gui<R> {
     }
 
     /// Update the tile size and offsets such that the level fills most of the window.
-    pub fn update_size<F>(&mut self, factory: &mut F)
-        where F: Factory<R>
-    {
+    pub fn update_size(&mut self) {
         let width = self.window_size[0] as i32;
         let height = self.window_size[1] as i32;
         let columns = self.current_level().columns() as i32;
@@ -105,7 +105,7 @@ impl<R: Resources> Gui<R> {
         self.offset_left = (width - columns * self.tile_size) / 2;
         self.offset_top = (height - rows * self.tile_size) / 2;
 
-        self.generate_level_scene(factory);
+        self.generate_level_scene();
     }
 
     /// Handle press event.
@@ -184,20 +184,10 @@ impl<R: Resources> Gui<R> {
 
 
     /// Create a `Scene` containing the level’s background.
-    fn generate_level_scene<F>(&mut self, factory: &mut F)
-        where F: Factory<R>
-    {
-        // Load the textures
-        let empty_tex = Rc::new(texture::load(factory, "empty"));
-        let wall_tex = Rc::new(texture::load(factory, "wall"));
-        let floor_tex = Rc::new(texture::load(factory, "floor"));
-        let goal_tex = Rc::new(texture::load(factory, "goal"));
-        let worker_tex = Rc::new(texture::load(factory, "worker"));
-        let crate_tex = Rc::new(texture::load(factory, "crate"));
-
+    fn generate_level_scene(&mut self) {
         let mut scene = Scene::new();
-        let worker_id;
         let mut crate_ids = vec![];
+        let worker_id;
 
         {
             let lvl = self.current_level();
@@ -205,10 +195,10 @@ impl<R: Resources> Gui<R> {
             // Create sprites for the level’s background.
             for (i, cell) in lvl.background.iter().enumerate() {
                 let tex = match *cell {
-                    Background::Empty => empty_tex.clone(),
-                    Background::Floor => floor_tex.clone(),
-                    Background::Goal => goal_tex.clone(),
-                    Background::Wall => wall_tex.clone(),
+                    Background::Empty => self.textures.empty.clone(),
+                    Background::Floor => self.textures.floor.clone(),
+                    Background::Goal => self.textures.goal.clone(),
+                    Background::Wall => self.textures.wall.clone(),
                 };
                 let mut sprite = Sprite::from_texture(tex);
                 let (x, y) = scale_position(lvl.position(i), IMAGE_SIZE);
@@ -220,14 +210,14 @@ impl<R: Resources> Gui<R> {
             let mut tmp: Vec<_> = lvl.crates.iter().collect();
             tmp.sort_by_key(|x| x.1);
             for (&pos, _) in tmp {
-                let mut sprite = Sprite::from_texture(crate_tex.clone());
+                let mut sprite = Sprite::from_texture(self.textures.crate_.clone());
                 let (x, y) = scale_position(pos, IMAGE_SIZE);
                 sprite.set_position(x, y);
                 crate_ids.push(scene.add_child(sprite));
             }
 
             // Create the worker sprite.
-            let mut sprite = Sprite::from_texture(worker_tex.clone());
+            let mut sprite = Sprite::from_texture(self.textures.worker.clone());
             let (x, y) = scale_position(lvl.worker_position, IMAGE_SIZE);
             sprite.set_position(x, y);
             sprite.set_rotation(direction_to_angle(lvl.worker_direction()));
@@ -329,7 +319,37 @@ fn direction_to_angle(dir: Direction) -> f64 {
     }
 }
 
+pub struct Textures<R: Resources> {
+    empty: Rc<Texture<R>>,
+    wall: Rc<Texture<R>>,
+    floor: Rc<Texture<R>>,
+    goal: Rc<Texture<R>>,
+    worker: Rc<Texture<R>>,
+    crate_: Rc<Texture<R>>,
+}
 
+impl<R: Resources> Textures<R> {
+    /// Load all textures.
+    fn new<F>(factory: &mut F) -> Self
+        where F: Factory<R>
+    {
+        let empty = Rc::new(texture::load(factory, "empty"));
+        let wall = Rc::new(texture::load(factory, "wall"));
+        let floor = Rc::new(texture::load(factory, "floor"));
+        let goal = Rc::new(texture::load(factory, "goal"));
+        let worker = Rc::new(texture::load(factory, "worker"));
+        let crate_ = Rc::new(texture::load(factory, "crate"));
+
+        Textures {
+            empty,
+            wall,
+            floor,
+            goal,
+            worker,
+            crate_,
+        }
+    }
+}
 
 fn main() {
     let title = "Sokoban";
@@ -342,12 +362,12 @@ fn main() {
     // Initialize colog after window to suppress some log output.
     colog::init();
 
-    let mut gui = Gui::new("microban");
+    let mut gui = Gui::new("microban", Textures::new(&mut window.factory));
     info!("Loading level #{}", gui.game.collection.current_level.rank);
 
     let mut level_solved = false;
     let mut end_of_collection = false;
-    gui.update_size(&mut window.factory);
+    gui.update_size();
 
     let font = &ASSETS.clone().join("FiraSans-Regular.ttf");
     let mut glyphs = Glyphs::new(font, window.factory.clone()).unwrap();
@@ -405,7 +425,7 @@ fn main() {
                 Response::NewLevel(rank) => {
                     info!("Loading level #{}", rank);
                     level_solved = false;
-                    gui.update_size(&mut window.factory);
+                    gui.update_size();
                 }
                 Response::MoveWorkerTo(pos, dir) => {
                     let id = gui.worker_id;
@@ -422,7 +442,7 @@ fn main() {
         // If the window size has been changed, update the tile size and recenter the level.
         if let Some(size) = e.resize_args() {
             gui.window_size = size;
-            gui.update_size(&mut window.factory);
+            gui.update_size();
         }
     }
 }
