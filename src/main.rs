@@ -355,6 +355,7 @@ fn main() {
     let title = "Sokoban";
     let mut window: PistonWindow =
         WindowSettings::new(title, [640, 480])
+            .vsync(true)
             .build()
             .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
     window.set_lazy(true);
