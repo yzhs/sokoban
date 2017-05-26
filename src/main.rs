@@ -12,7 +12,7 @@ extern crate uuid;
 extern crate log;
 extern crate colog;
 
-extern crate sokoban;
+extern crate sokoban_backend as backend;
 
 use std::cmp::min;
 use std::rc::Rc;
@@ -26,7 +26,7 @@ use uuid::Uuid;
 
 pub mod texture;
 
-use sokoban::*;
+use backend::*;
 
 const EMPTY: [f32; 4] = [0.0, 0.0, 0.0, 1.0]; // black
 const IMAGE_SIZE: f64 = 360.0;
@@ -150,7 +150,7 @@ impl<R: Resources> Gui<R> {
                 let x = ((self.cursor_pos[0] as i32 - self.offset_left) / self.tile_size) as isize;
                 let y = ((self.cursor_pos[1] as i32 - self.offset_top) / self.tile_size) as isize;
                 if x >= 0 && y >= 0 {
-                    return MoveToPosition(sokoban::Position { x, y },
+                    return MoveToPosition(backend::Position { x, y },
                                           MayPushCrate(mouse_button == MouseButton::Right));
                 }
             }
@@ -164,7 +164,7 @@ impl<R: Resources> Gui<R> {
     }
 
     /// Move the sprite with the given `id` to position `pos`.
-    fn move_sprite_to(&mut self, id: Uuid, pos: sokoban::Position) {
+    fn move_sprite_to(&mut self, id: Uuid, pos: backend::Position) {
         let (x, y) = scale_position(pos, IMAGE_SIZE);
 
         self.scene
@@ -299,7 +299,7 @@ impl<R: Resources> Gui<R> {
 }
 
 /// Multiply a position by a factor as a way of mapping tile coordinates to pixel coordinates.
-fn scale_position(pos: sokoban::Position, factor: f64) -> (f64, f64) {
+fn scale_position(pos: backend::Position, factor: f64) -> (f64, f64) {
     ((pos.x as f64 + 0.5) * factor, (pos.y as f64 + 0.5) * factor)
 }
 

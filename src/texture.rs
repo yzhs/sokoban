@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use piston_window::*;
 use gfx_graphics::{Texture, TextureSettings};
 
-use sokoban::ASSETS;
+use backend::ASSETS;
 
 /// Load an image from the assets directory and turn it into a `Texture`.
 pub fn load<R, F>(factory: &mut F, name: &str) -> Texture<R>
