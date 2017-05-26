@@ -1,8 +1,7 @@
 use std::error::Error;
 use std::fmt;
-use std::fs::{File, create_dir_all};
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 lazy_static!{
     pub static ref BASE_DIR: ::xdg::BaseDirectories = ::xdg::BaseDirectories::new().unwrap();
@@ -54,16 +53,4 @@ impl From<io::Error> for SokobanError {
     fn from(err: io::Error) -> SokobanError {
         SokobanError::IoError(err)
     }
-}
-
-/// Open a file, creating it if necessary, in a given directory. If the directory does not exist,
-/// create it first.
-pub fn create_file_in_dir<P: AsRef<Path>>(dir: P, name: &str, extension: &str) -> File {
-    // TODO error handling
-    let mut path = dir.as_ref().to_path_buf();
-    path.push(name);
-    path.set_extension(extension);
-
-    create_dir_all(dir).unwrap();
-    File::create(path).unwrap()
 }
