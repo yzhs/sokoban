@@ -362,7 +362,8 @@ fn main() {
     // Initialize colog after window to suppress some log output.
     colog::init();
 
-    let mut gui = Gui::new("microban", Textures::new(&mut window.factory));
+    let collection = std::env::var("SOKOBAN_COLLECTION").unwrap_or("original".to_string());
+    let mut gui = Gui::new(&collection, Textures::new(&mut window.factory));
     info!("Loading level #{}", gui.game.collection.current_level.rank);
 
     let mut level_solved = false;
