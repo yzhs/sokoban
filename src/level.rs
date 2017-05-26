@@ -456,12 +456,12 @@ impl Level {
         let pos = self.worker_position;
         let worker_pos = self.move_object(pos, direction, true);
         let crate_pos = pos.neighbour(direction);
-        result.push(Response::MoveWorkerTo(worker_pos, self.worker_direction()));
 
         if self.moves[self.number_of_moves].moves_crate {
             let new = self.move_object(crate_pos, direction, true);
             result.push(Response::MoveCrateTo(self.crates[&new], new));
         }
+        result.push(Response::MoveWorkerTo(worker_pos, self.worker_direction()));
 
         Ok(result)
     }
