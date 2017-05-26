@@ -46,7 +46,7 @@ impl Collection {
 
         let state = CollectionState::load(name);
         let levels_finished = state.levels_finished();
-        info!("Loading level {}", levels_finished + 1);
+
         let result = Collection {
             name: name.to_string(),
             current_level: levels[levels_finished].clone(),
@@ -83,8 +83,21 @@ impl Collection {
                 self.saved.collection_solved = true;
                 Err(NextLevelError::EndOfCollection)
             }
+        } else if self.saved.levels.len() >= n && n < self.levels.len() {
+            self.current_level = self.levels[n].clone();
+            Ok(vec![Response::NewLevel(n + 1)])
         } else {
             Err(NextLevelError::LevelNotFinished)
+        }
+    }
+
+    fn previous_level(&mut self) -> Result<Vec<Response>, ()> {
+        let n = self.current_level.rank;
+        if n < 2 {
+            Err(())
+        } else {
+            self.current_level = self.levels[n - 2].clone();
+            Ok(vec![Response::NewLevel(n - 1)])
         }
     }
 
@@ -106,7 +119,7 @@ impl Collection {
             Redo => self.current_level.redo().unwrap_or_default(),
             ResetLevel => vec![self.reset_level()],
             NextLevel => self.next_level().unwrap_or_default(),
-            PreviousLevel => unimplemented!(),
+            PreviousLevel => self.previous_level().unwrap_or_default(),
             LoadCollection(_) => unreachable!(),
             Save => {
                 self.save().unwrap();

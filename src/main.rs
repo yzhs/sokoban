@@ -138,6 +138,9 @@ impl<R: Resources> Gui<R> {
                         self.shift_pressed = true;
                     }
 
+                    Key::P | Key::Less => return PreviousLevel,
+                    Key::N | Key::Greater => return NextLevel,
+
                     // Open the main menu
                     Key::Escape => return ResetLevel,
                     _ => {
@@ -340,6 +343,7 @@ fn main() {
     colog::init();
 
     let mut gui = Gui::new("microban");
+    info!("Loading level #{}", gui.game.collection.current_level.rank);
 
     let mut level_solved = false;
     let mut end_of_collection = false;
@@ -398,7 +402,8 @@ fn main() {
                                             gui.game.collection.number_of_levels();
                     }
                 }
-                Response::NewLevel(_rank) => {
+                Response::NewLevel(rank) => {
+                    info!("Loading level #{}", rank);
                     level_solved = false;
                     gui.update_size(&mut window.factory);
                 }
