@@ -15,6 +15,7 @@ extern crate colog;
 extern crate sokoban_backend as backend;
 
 use std::cmp::min;
+use std::collections::VecDeque;
 use std::rc::Rc;
 
 use graphics::rectangle;
@@ -367,6 +368,7 @@ fn main() {
     let mut gui = Gui::new(&collection, Textures::new(&mut window.factory));
     info!("Loading level #{}", gui.game.collection.current_level.rank);
 
+    let mut queue = VecDeque::new();
     let mut level_solved = false;
     let mut end_of_collection = false;
     gui.update_size();
@@ -374,48 +376,68 @@ fn main() {
     let font = &ASSETS.clone().join("FiraSans-Regular.ttf");
     let mut glyphs = Glyphs::new(font, window.factory.clone()).unwrap();
 
-    while let Some(e) = window.next() {
-        window.draw_2d(&e, |c, g| {
-            // Black background
-            clear(EMPTY, g);
+    loop {
+        // Handle input and rendering
+        if let Some(e) = window.next() {
+            let mut is_draw = false;
+            window.draw_2d(&e, |c, g| {
+                // Black background
+                clear(EMPTY, g);
 
-            // Draw the level
-            let left = gui.offset_left as f64;
-            let top = gui.offset_top as f64;
-            let scale = gui.tile_size as f64 / IMAGE_SIZE;
-            gui.scene
-                .draw(c.transform.trans(left, top).scale(scale, scale), g);
+                // Draw the level
+                let left = gui.offset_left as f64;
+                let top = gui.offset_top as f64;
+                let scale = gui.tile_size as f64 / IMAGE_SIZE;
+                gui.scene
+                    .draw(c.transform.trans(left, top).scale(scale, scale), g);
 
 
-            // Overlay message about solving the level.
-            if level_solved {
-                gui.draw_end_of_level_screen(&c, g, &mut glyphs, end_of_collection);
+                // Overlay message about solving the level.
+                if level_solved {
+                    gui.draw_end_of_level_screen(&c, g, &mut glyphs, end_of_collection);
+                }
+                is_draw = true;
+            });
+
+            // Keep track of where the cursor is pointing
+            if let Some(new_pos) = e.mouse_cursor_args() {
+                gui.cursor_pos = new_pos;
             }
-        });
 
-        // Keep track of where the cursor is pointing
-        if let Some(new_pos) = e.mouse_cursor_args() {
-            gui.cursor_pos = new_pos;
+            // Handle key press
+            let command = match e.press_args() {
+                Some(Button::Keyboard(_key)) if level_solved => Command::NextLevel,
+                Some(Button::Keyboard(Key::R)) if gui.control_pressed => {
+                    // Reload images
+                    info!("Reloading textures...");
+                    gui.textures = Textures::new(&mut window.factory);
+                    Command::Nothing
+                }
+                Some(Button::Keyboard(Key::Q)) => std::process::exit(0),
+                Some(args) if !level_solved => gui.press_to_command(args),
+                _ => Command::Nothing,
+            };
+            queue.extend(gui.game.execute(command));
+
+            // and release events
+            if let Some(Button::Keyboard(key)) = e.release_args() {
+                match key {
+                    Key::LCtrl | Key::RCtrl => gui.control_pressed = false,
+                    Key::LShift | Key::RShift => gui.shift_pressed = false,
+                    _ => {}
+                }
+            }
+
+            // If the window size has been changed, update the tile size and recenter the level.
+            if let Some(size) = e.resize_args() {
+                gui.window_size = size;
+                gui.update_size();
+            }
         }
 
-        // Handle key press
-        let command = match e.press_args() {
-            Some(Button::Keyboard(_key)) if level_solved => Command::NextLevel,
-            Some(args) if !level_solved => gui.press_to_command(args),
-            _ => Command::Nothing,
-        };
 
-        // and release events
-        if let Some(Button::Keyboard(key)) = e.release_args() {
-            match key {
-                Key::LCtrl | Key::RCtrl => gui.control_pressed = false,
-                Key::LShift | Key::RShift => gui.shift_pressed = false,
-                _ => {}
-            }
-        }
-
-        // Handle the response from the backend.
-        for response in gui.game.execute(command) {
+        // Handle responses from the backend.
+        while let Some(response) = queue.pop_front() {
             match response {
                 Response::LevelFinished => {
                     if !level_solved {
@@ -439,12 +461,6 @@ fn main() {
                     gui.move_sprite_to(id, pos);
                 }
             }
-        }
-
-        // If the window size has been changed, update the tile size and recenter the level.
-        if let Some(size) = e.resize_args() {
-            gui.window_size = size;
-            gui.update_size();
         }
     }
 }
