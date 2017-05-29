@@ -184,7 +184,7 @@ impl<R: Resources> Gui<R> {
     }
 
 
-    /// Create a `Scene` containing the level’s background.
+    /// Create a `Scene` containing the level’s entities.
     fn generate_level_scene(&mut self) {
         let mut scene = Scene::new();
         let mut crate_ids = vec![];
@@ -195,14 +195,28 @@ impl<R: Resources> Gui<R> {
 
             // Create sprites for the level’s background.
             for (i, cell) in lvl.background.iter().enumerate() {
+                let pos = lvl.position(i);
                 let tex = match *cell {
-                    Background::Empty => self.textures.empty.clone(),
+                    Background::Empty => continue,
                     Background::Floor => self.textures.floor.clone(),
                     Background::Goal => self.textures.goal.clone(),
-                    Background::Wall => self.textures.wall.clone(),
+                    Background::Wall => {
+                        let is_left_end = pos.x == 0 || lvl.background[i - 1] != Background::Wall;
+                        let is_right_end = pos.x == lvl.columns() as isize - 1 ||
+                                           lvl.background[i + 1] != Background::Wall;
+                        if is_left_end && is_right_end {
+                            self.textures.wall_both.clone()
+                        } else if is_left_end {
+                            self.textures.wall_left.clone()
+                        } else if is_right_end {
+                            self.textures.wall_right.clone()
+                        } else {
+                            self.textures.wall.clone()
+                        }
+                    }
                 };
                 let mut sprite = Sprite::from_texture(tex);
-                let (x, y) = scale_position(lvl.position(i), IMAGE_SIZE);
+                let (x, y) = scale_position(pos, IMAGE_SIZE);
                 sprite.set_position(x, y);
                 scene.add_child(sprite);
             }
@@ -323,6 +337,9 @@ fn direction_to_angle(dir: Direction) -> f64 {
 pub struct Textures<R: Resources> {
     empty: Rc<Texture<R>>,
     wall: Rc<Texture<R>>,
+    wall_left: Rc<Texture<R>>,
+    wall_right: Rc<Texture<R>>,
+    wall_both: Rc<Texture<R>>,
     floor: Rc<Texture<R>>,
     goal: Rc<Texture<R>>,
     worker: Rc<Texture<R>>,
@@ -336,6 +353,9 @@ impl<R: Resources> Textures<R> {
     {
         let empty = Rc::new(texture::load(factory, "empty"));
         let wall = Rc::new(texture::load(factory, "wall"));
+        let wall_left = Rc::new(texture::load(factory, "wall_left"));
+        let wall_right = Rc::new(texture::load(factory, "wall_right"));
+        let wall_both = Rc::new(texture::load(factory, "wall_both"));
         let floor = Rc::new(texture::load(factory, "floor"));
         let goal = Rc::new(texture::load(factory, "goal"));
         let worker = Rc::new(texture::load(factory, "worker"));
@@ -344,6 +364,9 @@ impl<R: Resources> Textures<R> {
         Textures {
             empty,
             wall,
+            wall_left,
+            wall_right,
+            wall_both,
             floor,
             goal,
             worker,
@@ -364,7 +387,7 @@ fn main() {
     // Initialize colog after window to suppress some log output.
     colog::init();
 
-    let collection = std::env::var("SOKOBAN_COLLECTION").unwrap_or("original".to_string());
+    let collection = std::env::var("SOKOBAN_COLLECTION").unwrap_or_else(|_| "original".to_string());
     let mut gui = Gui::new(&collection, Textures::new(&mut window.factory));
     info!("Loading level #{}", gui.game.collection.current_level.rank);
 
