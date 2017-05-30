@@ -1,5 +1,7 @@
 use collection::*;
 use command::*;
+use direction::Direction;
+use position::Position;
 use util::SokobanError;
 
 #[derive(Debug)]
@@ -39,5 +41,21 @@ impl Game {
     /// Load the saved state for the collection with the given name.
     pub fn load(&mut self, name: &str) -> Result<(), SokobanError> {
         self.set_collection(name)
+    }
+
+    pub fn worker_position(&self) -> Position {
+        self.collection.current_level.worker_position
+    }
+
+    pub fn worker_direction(&self) -> Direction {
+        self.collection.worker_direction()
+    }
+
+    pub fn columns(&self) -> usize {
+        self.collection.current_level.columns()
+    }
+
+    pub fn rows(&self) -> usize {
+        self.collection.current_level.rows()
     }
 }

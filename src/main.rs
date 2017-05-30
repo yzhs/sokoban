@@ -1,11 +1,7 @@
 // GUI
-extern crate piston_window;
-extern crate graphics;
-extern crate gfx_core;
-extern crate gfx_device_gl;
-extern crate gfx_graphics;
-extern crate sprite;
-extern crate uuid;
+#[macro_use]
+extern crate glium;
+extern crate image;
 
 // Logging
 #[macro_use]
@@ -16,30 +12,28 @@ extern crate sokoban_backend as backend;
 
 use std::cmp::min;
 use std::collections::VecDeque;
-use std::rc::Rc;
 
-use graphics::rectangle;
-use graphics::character::CharacterCache;
-use gfx_core::{Factory, Resources};
-use piston_window::*;
-use sprite::{Scene, Sprite};
-use uuid::Uuid;
+use glium::texture::Texture2d;
+use glium::backend::Facade;
+use glium::glutin::{VirtualKeyCode, MouseButton};
+use glium::backend::glutin_backend::GlutinFacade;
 
 pub mod texture;
 
 use backend::*;
 
-const EMPTY: [f32; 4] = [0.0, 0.0, 0.0, 1.0]; // black
 const IMAGE_SIZE: f64 = 360.0;
+const NO_INDICES: glium::index::NoIndices =
+    glium::index::NoIndices(glium::index::PrimitiveType::TriangleStrip);
 
-pub struct Gui<R: Resources> {
+pub struct Gui {
     game: Game,
 
     window_size: [u32; 2],
-    scene: Scene<Texture<R>>,
-    crate_ids: Vec<Uuid>,
-    worker_id: Uuid,
-    textures: Textures<R>,
+
+    textures: Textures,
+    worker_position: backend::Position,
+    worker_direction: Direction,
 
     /// Is the shift key currently pressed?
     shift_pressed: bool,
@@ -60,22 +54,23 @@ pub struct Gui<R: Resources> {
     offset_top: i32,
 }
 
-impl<R: Resources> Gui<R> {
-    pub fn new(collection_name: &str, textures: Textures<R>) -> Self {
+impl Gui {
+    pub fn new(collection_name: &str, textures: Textures) -> Self {
         let game = Game::new(collection_name);
         if game.is_err() {
             panic!("Failed to load level set: {:?}", game.unwrap_err());
         }
         let game = game.unwrap();
+        let worker_position = game.worker_position().clone();
+        let worker_direction = game.worker_direction();
 
         Gui {
             game,
 
             window_size: [640, 480],
-            scene: Scene::new(),
-            crate_ids: vec![],
-            worker_id: Uuid::new_v4(),
             textures,
+            worker_position,
+            worker_direction,
 
             shift_pressed: false,
             control_pressed: false,
@@ -87,172 +82,183 @@ impl<R: Resources> Gui<R> {
         }
     }
 
-    pub fn current_level(&self) -> &Level {
+    fn current_level(&self) -> &Level {
         &self.game.collection.current_level
     }
 
-    pub fn current_level_mut(&mut self) -> &mut Level {
-        &mut self.game.collection.current_level
-    }
-
-    /// Update the tile size and offsets such that the level fills most of the window.
-    pub fn update_size(&mut self) {
-        let width = self.window_size[0] as i32;
-        let height = self.window_size[1] as i32;
-        let columns = self.current_level().columns() as i32;
-        let rows = self.current_level().rows() as i32;
-
-        self.tile_size = min(width / columns, height / rows);
-        self.offset_left = (width - columns * self.tile_size) / 2;
-        self.offset_top = (height - rows * self.tile_size) / 2;
-
-        self.generate_level_scene();
-    }
-
     /// Handle press event.
-    fn press_to_command(&mut self, args: Button) -> Command {
+    fn press_to_command(&mut self, key: VirtualKeyCode) -> Command {
         use Command::*;
-        match args {
-            Button::Keyboard(key) => {
-                match key {
-                    // Move
-                    Key::Left | Key::Right | Key::Up | Key::Down => {
-                        let dir = key_to_direction(key);
-                        return if self.control_pressed == self.shift_pressed {
-                                   Move(dir)
-                               } else {
-                                   MoveAsFarAsPossible(dir, MayPushCrate(self.shift_pressed))
-                               };
-                    }
-
-                    // Undo and redo
-                    Key::Z if !self.control_pressed => {}
-                    Key::U if self.control_pressed => {}
-                    Key::U | Key::Z if self.shift_pressed => return Redo,
-                    Key::U | Key::Z => return Undo,
-
-                    // Modifier keys
-                    Key::LCtrl | Key::RCtrl => {
-                        self.control_pressed = true;
-                    }
-                    Key::LShift | Key::RShift => {
-                        self.shift_pressed = true;
-                    }
-
-                    Key::P | Key::Less => return PreviousLevel,
-                    Key::N | Key::Greater => return NextLevel,
-
-                    // Open the main menu
-                    Key::Escape => return ResetLevel,
-                    _ => {
-                        error!("Unkown key: {:?}", key);
-                    }
-                }
+        use VirtualKeyCode::*;
+        match key {
+            // Move
+            Left | Right | Up | Down => {
+                let dir = key_to_direction(key);
+                return if self.control_pressed == self.shift_pressed {
+                           Move(dir)
+                       } else {
+                           MoveAsFarAsPossible(dir, MayPushCrate(self.shift_pressed))
+                       };
             }
 
-            Button::Mouse(mouse_button) => {
-                let x = ((self.cursor_pos[0] as i32 - self.offset_left) / self.tile_size) as isize;
-                let y = ((self.cursor_pos[1] as i32 - self.offset_top) / self.tile_size) as isize;
-                if x >= 0 && y >= 0 {
-                    return MoveToPosition(backend::Position { x, y },
-                                          MayPushCrate(mouse_button == MouseButton::Right));
-                }
+            // Undo and redo
+            Z if !self.control_pressed => {}
+            U if self.control_pressed => {}
+            U | Z if self.shift_pressed => return Redo,
+            U | Z => return Undo,
+
+            // Modifier keys
+            LControl | RControl => {
+                self.control_pressed = true;
+            }
+            LShift | RShift => {
+                self.shift_pressed = true;
             }
 
-            x => {
-                error!("Unkown event: {:?}", x);
+            P => return PreviousLevel,
+            N => return NextLevel,
+
+            // Open the main menu
+            Escape => return ResetLevel,
+            _ => {
+                error!("Unkown key: {:?}", key);
             }
         }
-
         Nothing
     }
 
-    /// Move the sprite with the given `id` to position `pos`.
-    fn move_sprite_to(&mut self, id: Uuid, pos: backend::Position) {
-        let (x, y) = scale_position(pos, IMAGE_SIZE);
-
-        self.scene
-            .child_mut(id)
-            .map(|sprite| sprite.set_position(x, y));
-    }
-
-    /// Rotate the sprite by the given angle in degrees.
-    fn rotate_sprite_to(&mut self, id: Uuid, dir: Direction) {
-        self.scene
-            .child_mut(id)
-            .map(|sprite| sprite.set_rotation(direction_to_angle(dir)));
+    fn click_to_command(&mut self, mouse_button: MouseButton) -> Command {
+        let x = (self.cursor_pos[0] / self.tile_size as f64).trunc() as isize;
+        let y = (self.cursor_pos[1] / self.tile_size as f64 - 0.5).trunc() as isize;
+        if x >= 0 && y >= 0 {
+            Command::MoveToPosition(backend::Position { x, y },
+                                    MayPushCrate(mouse_button == MouseButton::Right))
+        } else {
+            Command::Nothing
+        }
     }
 
 
     /// Create a `Scene` containing the level’s entities.
-    fn generate_level_scene(&mut self) {
-        let mut scene = Scene::new();
-        let mut crate_ids = vec![];
-        let worker_id;
+    fn generate_background(&mut self, display: &Facade) -> Texture2d {
+        use glium::Surface;
 
-        {
-            let lvl = self.current_level();
+        self.tile_size = min(self.window_size[0] / self.game.columns() as u32,
+                             self.window_size[1] / self.game.rows() as u32) as
+                         i32;
 
-            // Create sprites for the level’s background.
-            for (i, cell) in lvl.background.iter().enumerate() {
-                let pos = lvl.position(i);
-                let tex = match *cell {
-                    Background::Empty => continue,
-                    Background::Floor => self.textures.floor.clone(),
-                    Background::Goal => self.textures.goal.clone(),
-                    Background::Wall => {
-                        let is_left_end = pos.x == 0 || lvl.background[i - 1] != Background::Wall;
-                        let is_right_end = pos.x == lvl.columns() as isize - 1 ||
-                                           lvl.background[i + 1] != Background::Wall;
-                        if is_left_end && is_right_end {
-                            self.textures.wall_both.clone()
-                        } else if is_left_end {
-                            self.textures.wall_left.clone()
-                        } else if is_right_end {
-                            self.textures.wall_right.clone()
-                        } else {
-                            self.textures.wall.clone()
-                        }
-                    }
-                };
-                let mut sprite = Sprite::from_texture(tex);
-                let (x, y) = scale_position(pos, IMAGE_SIZE);
-                sprite.set_position(x, y);
-                scene.add_child(sprite);
-            }
+        let lvl = self.current_level();
+        let result = glium::texture::Texture2d::empty(display, 800, 600).unwrap();
+        result.as_surface().clear_color(0.0, 0.0, 0.7, 1.0);
+        let columns = lvl.columns() as u32;
+        let rows = lvl.rows() as u32;
 
-            // Create sprites for all crates in their initial position.
-            let mut tmp: Vec<_> = lvl.crates.iter().collect();
-            tmp.sort_by_key(|x| x.1);
-            for (&pos, _) in tmp {
-                let mut sprite = Sprite::from_texture(self.textures.crate_.clone());
-                let (x, y) = scale_position(pos, IMAGE_SIZE);
-                sprite.set_position(x, y);
-                crate_ids.push(scene.add_child(sprite));
-            }
 
-            // Create the worker sprite.
-            let mut sprite = Sprite::from_texture(self.textures.worker.clone());
-            let (x, y) = scale_position(lvl.worker_position, IMAGE_SIZE);
-            sprite.set_position(x, y);
-            sprite.set_rotation(direction_to_angle(lvl.worker_direction()));
-            worker_id = scene.add_child(sprite);
+        for (i, cell) in lvl.background.iter().enumerate() {
+            let pos = lvl.position(i);
+            let texture = match *cell {
+                Background::Empty => continue,
+                Background::Floor => &self.textures.floor,
+                Background::Goal => &self.textures.goal,
+                Background::Wall => &self.textures.wall,
+            };
+            let vertices = texture::create_quad_vertices(pos, columns, rows);
+            let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
+            let program = glium::Program::from_source(display,
+                                                      texture::VERTEX_SHADER,
+                                                      texture::FRAGMENT_SHADER,
+                                                      None)
+                    .unwrap();
+
+            let uniforms = uniform!{
+                tex: texture,
+            };
+
+            result
+                .as_surface()
+                .draw(&vertex_buffer,
+                      &NO_INDICES,
+                      &program,
+                      &uniforms,
+                      &Default::default())
+                .unwrap();
         }
 
-        self.scene = scene;
-        self.crate_ids = crate_ids;
-        self.worker_id = worker_id;
+        result
+    }
+
+    fn render_level(&self, display: &GlutinFacade, bg: &Texture2d, level_solved: bool) {
+        use glium::Surface;
+
+        // Draw background
+        let vertices = texture::create_full_screen_quad();
+        let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
+        let program = glium::Program::from_source(display,
+                                                  texture::VERTEX_SHADER,
+                                                  texture::FRAGMENT_SHADER,
+                                                  None)
+                .unwrap();
+
+        let mut target = display.draw();
+
+        let uniforms = uniform!{
+            tex: bg,
+        };
+
+        target
+            .draw(&vertex_buffer,
+                  &NO_INDICES,
+                  &program,
+                  &uniforms,
+                  &Default::default())
+            .unwrap();
+
+        // Draw foreground
+        let lvl = self.current_level();
+        let columns = lvl.columns() as u32;
+        let rows = lvl.rows() as u32;
+
+        let uniforms = uniform!{
+            tex: &self.textures.crate_,
+        };
+
+        // Draw the crates
+        for (&pos, _) in lvl.crates.iter() {
+            let vertices = texture::create_quad_vertices(pos, columns, rows);
+            let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
+
+            target
+                .draw(&vertex_buffer,
+                      &NO_INDICES,
+                      &program,
+                      &uniforms,
+                      &Default::default())
+                .unwrap();
+        }
+
+        // Draw the worker
+        let vertices = texture::create_quad_vertices(self.worker_position, columns, rows);
+        let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
+
+        let uniforms = uniform!{
+            tex: &self.textures.worker,
+        };
+
+        // TODO rotate worker
+        target
+            .draw(&vertex_buffer,
+                  &NO_INDICES,
+                  &program,
+                  &uniforms,
+                  &Default::default())
+            .unwrap();
+
+        target.finish().unwrap();
     }
 
     /// Draw an overlay with some statistics.
-    fn draw_end_of_level_screen<C, G>(&self,
-                                      c: &Context,
-                                      g: &mut G,
-                                      glyphs: &mut C,
-                                      end_of_collection: bool)
-        where C: CharacterCache,
-              G: Graphics<Texture = <C as CharacterCache>::Texture>
-    {
+    fn draw_end_of_level_screen(&self, display: &Facade, end_of_collection: bool) {
+        /*
         let rectangle = Rectangle::new([0.0, 0.0, 0.0, 0.7]);
         let dims = rectangle::centered([0.0,
                                         0.0,
@@ -303,6 +309,7 @@ impl<R: Resources> Gui<R> {
                      .trans(self.window_size[0] as f64 / 2.0,
                             self.window_size[1] as f64 / 2.0),
                  g);
+        */
     }
 }
 
@@ -312,13 +319,13 @@ fn scale_position(pos: backend::Position, factor: f64) -> (f64, f64) {
 }
 
 /// Map arrow keys to the corresponding directions, panic on other keys.
-fn key_to_direction(key: Key) -> Direction {
+fn key_to_direction(key: VirtualKeyCode) -> Direction {
     use self::Direction::*;
     match key {
-        Key::Left => Left,
-        Key::Right => Right,
-        Key::Up => Up,
-        Key::Down => Down,
+        VirtualKeyCode::Left => Left,
+        VirtualKeyCode::Right => Right,
+        VirtualKeyCode::Up => Up,
+        VirtualKeyCode::Down => Down,
         _ => panic!("Invalid direction key"),
     }
 }
@@ -334,35 +341,30 @@ fn direction_to_angle(dir: Direction) -> f64 {
     }
 }
 
-pub struct Textures<R: Resources> {
-    empty: Rc<Texture<R>>,
-    wall: Rc<Texture<R>>,
-    wall_left: Rc<Texture<R>>,
-    wall_right: Rc<Texture<R>>,
-    wall_both: Rc<Texture<R>>,
-    floor: Rc<Texture<R>>,
-    goal: Rc<Texture<R>>,
-    worker: Rc<Texture<R>>,
-    crate_: Rc<Texture<R>>,
+pub struct Textures {
+    wall: Texture2d,
+    wall_left: Texture2d,
+    wall_right: Texture2d,
+    wall_both: Texture2d,
+    floor: Texture2d,
+    goal: Texture2d,
+    worker: Texture2d,
+    crate_: Texture2d,
 }
 
-impl<R: Resources> Textures<R> {
+impl Textures {
     /// Load all textures.
-    fn new<F>(factory: &mut F) -> Self
-        where F: Factory<R>
-    {
-        let empty = Rc::new(texture::load(factory, "empty"));
-        let wall = Rc::new(texture::load(factory, "wall"));
-        let wall_left = Rc::new(texture::load(factory, "wall_left"));
-        let wall_right = Rc::new(texture::load(factory, "wall_right"));
-        let wall_both = Rc::new(texture::load(factory, "wall_both"));
-        let floor = Rc::new(texture::load(factory, "floor"));
-        let goal = Rc::new(texture::load(factory, "goal"));
-        let worker = Rc::new(texture::load(factory, "worker"));
-        let crate_ = Rc::new(texture::load(factory, "crate"));
+    fn new(factory: &Facade) -> Self {
+        let wall = texture::load(factory, "wall");
+        let wall_left = texture::load(factory, "wall_left");
+        let wall_right = texture::load(factory, "wall_right");
+        let wall_both = texture::load(factory, "wall_both");
+        let floor = texture::load(factory, "floor");
+        let goal = texture::load(factory, "goal");
+        let worker = texture::load(factory, "worker");
+        let crate_ = texture::load(factory, "crate");
 
         Textures {
-            empty,
             wall,
             wall_left,
             wall_right,
@@ -375,58 +377,51 @@ impl<R: Resources> Textures<R> {
     }
 }
 
+
+
 fn main() {
+    use glium::DisplayBuild;
     let title = "Sokoban";
-    let mut window: PistonWindow =
-        WindowSettings::new(title, [640, 480])
-            .vsync(true)
-            .build()
-            .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
-    window.set_lazy(true);
+    let display = glium::glutin::WindowBuilder::new()
+        .with_dimensions(640, 480)
+        .with_title(title)
+        .build_glium()
+        .unwrap_or_else(|e| panic!("Failed to build window: {}", e));
 
     // Initialize colog after window to suppress some log output.
     colog::init();
 
+
     let collection = std::env::var("SOKOBAN_COLLECTION").unwrap_or_else(|_| "original".to_string());
-    let mut gui = Gui::new(&collection, Textures::new(&mut window.factory));
+    let mut gui = Gui::new(&collection, Textures::new(&display));
     info!("Loading level #{}", gui.game.collection.current_level.rank);
 
-    let mut queue = VecDeque::new();
     let mut level_solved = false;
     let mut end_of_collection = false;
-    gui.update_size();
+    let mut bg = gui.generate_background(&display);
 
-    let font = &ASSETS.clone().join("FiraSans-Regular.ttf");
-    let mut glyphs = Glyphs::new(font, window.factory.clone()).unwrap();
+    let mut commands = VecDeque::new();
+    let mut queue = VecDeque::new();
+
+    //let font = &ASSETS.clone().join("FiraSans-Regular.ttf");
+    //let mut glyphs = Glyphs::new(font, &display).unwrap();
 
     loop {
-        // Handle input and rendering
-        if let Some(e) = window.next() {
-            let mut is_draw = false;
-            window.draw_2d(&e, |c, g| {
-                // Black background
-                clear(EMPTY, g);
+        gui.render_level(&display, &bg, level_solved);
 
-                // Draw the level
-                let left = gui.offset_left as f64;
-                let top = gui.offset_top as f64;
-                let scale = gui.tile_size as f64 / IMAGE_SIZE;
-                gui.scene
-                    .draw(c.transform.trans(left, top).scale(scale, scale), g);
+        for ev in display.poll_events() {
+            use glium::glutin::Event;
+            use glium::glutin::ElementState::*;
+            // Draw the current level
 
-
-                // Overlay message about solving the level.
-                if level_solved {
-                    gui.draw_end_of_level_screen(&c, g, &mut glyphs, end_of_collection);
+            match ev {
+                Event::Closed => return,
+                Event::Resized(w, h) => {
+                    info!("Resizing window...");
+                    gui.window_size = [w, h];
+                    bg = gui.generate_background(&display);
                 }
-                is_draw = true;
-            });
-
-            // Keep track of where the cursor is pointing
-            if let Some(new_pos) = e.mouse_cursor_args() {
-                gui.cursor_pos = new_pos;
-            }
-
+                /*
             // Handle key press
             let command = match e.press_args() {
                 Some(Button::Keyboard(_key)) if level_solved => Command::NextLevel,
@@ -436,28 +431,50 @@ fn main() {
                     gui.textures = Textures::new(&mut window.factory);
                     Command::Nothing
                 }
-                Some(Button::Keyboard(Key::Q)) => std::process::exit(0),
                 Some(args) if !level_solved => gui.press_to_command(args),
                 _ => Command::Nothing,
             };
-            queue.extend(gui.game.execute(command));
-
-            // and release events
-            if let Some(Button::Keyboard(key)) = e.release_args() {
-                match key {
-                    Key::LCtrl | Key::RCtrl => gui.control_pressed = false,
-                    Key::LShift | Key::RShift => gui.shift_pressed = false,
-                    _ => {}
+            */
+                Event::KeyboardInput(Pressed, _, Some(VirtualKeyCode::Q)) => return,
+                Event::KeyboardInput(..) |
+                Event::MouseInput(..) if level_solved => {
+                    commands.push_back(Command::NextLevel);
                 }
-            }
+                Event::KeyboardInput(state, _, Some(key)) => {
+                    use glium::glutin::VirtualKeyCode::*;
+                    match key {
+                        LControl | RControl => gui.control_pressed = state == Pressed,
+                        LShift | RShift => gui.shift_pressed = state == Pressed,
+                        _ if state == Pressed => commands.push_back(gui.press_to_command(key)),
+                        _ => (),
+                    }
+                }
 
-            // If the window size has been changed, update the tile size and recenter the level.
-            if let Some(size) = e.resize_args() {
-                gui.window_size = size;
-                gui.update_size();
+                Event::MouseMoved(x, y) => gui.cursor_pos = [x as f64, y as f64],
+                Event::MouseInput(_, btn) => commands.push_back(gui.click_to_command(btn)),
+
+                /*
+                Event::KeyboardInput(_, _, None) |
+                Event::MouseEntered |
+                Event::MouseLeft |
+                Event::MouseWheel(..) |
+                Event::TouchpadPressure(..) |
+                Event::Awakened |
+                Event::Refresh |
+                Event::Suspended(_) |
+                Event::Touch(_) |
+                Event::Moved(..) |
+                Event::ReceivedCharacter(_) |
+                Event::Focused(_) |
+                Event::DroppedFile(_) => (),
+                */
+                _ => (),
             }
         }
 
+        for cmd in commands.drain(..) {
+            queue.extend(gui.game.execute(cmd));
+        }
 
         // Handle responses from the backend.
         while let Some(response) = queue.pop_front() {
@@ -472,16 +489,17 @@ fn main() {
                 Response::NewLevel(rank) => {
                     info!("Loading level #{}", rank);
                     level_solved = false;
-                    gui.update_size();
+                    gui.worker_position = gui.game.worker_position();
+                    gui.worker_direction = gui.game.worker_direction();
+                    bg = gui.generate_background(&display);
                 }
                 Response::MoveWorkerTo(pos, dir) => {
-                    let id = gui.worker_id;
-                    gui.move_sprite_to(id, pos);
-                    gui.rotate_sprite_to(id, dir);
+                    gui.worker_position = pos;
+                    gui.worker_direction = dir;
                 }
-                Response::MoveCrateTo(i, pos) => {
-                    let id = gui.crate_ids[i];
-                    gui.move_sprite_to(id, pos);
+                Response::MoveCrateTo(_i, _pos) => {
+                    //let id = gui.crate_ids[i];
+                    //gui.move_sprite_to(id, pos);
                 }
             }
         }
