@@ -148,8 +148,10 @@ impl Gui {
                          i32;
 
         let lvl = self.current_level();
-        let result = glium::texture::Texture2d::empty(display, 800, 600).unwrap();
-        result.as_surface().clear_color(0.0, 0.0, 0.7, 1.0);
+        let result =
+            glium::texture::Texture2d::empty(display, self.window_size[0], self.window_size[1])
+                .unwrap();
+        result.as_surface().clear_color(0.0, 0.0, 0.0, 1.0);
         let columns = lvl.columns() as u32;
         let rows = lvl.rows() as u32;
 
@@ -218,6 +220,11 @@ impl Gui {
         let columns = lvl.columns() as u32;
         let rows = lvl.rows() as u32;
 
+        let params = glium::DrawParameters {
+            blend: glium::Blend::alpha_blending(),
+            ..Default::default()
+        };
+
         let uniforms = uniform!{
             tex: &self.textures.crate_,
         };
@@ -228,11 +235,7 @@ impl Gui {
             let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
 
             target
-                .draw(&vertex_buffer,
-                      &NO_INDICES,
-                      &program,
-                      &uniforms,
-                      &Default::default())
+                .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
                 .unwrap();
         }
 
@@ -246,11 +249,7 @@ impl Gui {
 
         // TODO rotate worker
         target
-            .draw(&vertex_buffer,
-                  &NO_INDICES,
-                  &program,
-                  &uniforms,
-                  &Default::default())
+            .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
             .unwrap();
 
         target.finish().unwrap();
