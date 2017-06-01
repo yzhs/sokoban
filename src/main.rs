@@ -367,6 +367,7 @@ fn main() {
             use glium::glutin::Event;
             use glium::glutin::ElementState::*;
             // Draw the current level
+            let mut cmd = Comand::Nothing;
 
             match ev {
                 Event::Closed |
@@ -374,20 +375,20 @@ fn main() {
 
                 Event::KeyboardInput(Pressed, _, _) |
                 Event::MouseInput(..) if gui.level_solved => {
-                    commands.push_back(Command::NextLevel);
+                    cmd = Command::NextLevel;
                 }
                 Event::KeyboardInput(state, _, Some(key)) => {
                     use glium::glutin::VirtualKeyCode::*;
                     match key {
                         LControl | RControl => gui.control_pressed = state == Pressed,
                         LShift | RShift => gui.shift_pressed = state == Pressed,
-                        _ if state == Pressed => commands.push_back(gui.press_to_command(key)),
+                        _ if state == Pressed => cmd = gui.press_to_command(key),
                         _ => (),
                     }
                 }
 
                 Event::MouseMoved(x, y) => gui.cursor_pos = [x as f64, y as f64],
-                Event::MouseInput(_, btn) => commands.push_back(gui.click_to_command(btn)),
+                Event::MouseInput(_, btn) => cmd = gui.click_to_command(btn),
 
                 Event::Resized(w, h) => {
                     gui.window_size = [w, h];
@@ -413,9 +414,7 @@ fn main() {
             }
         }
 
-        for cmd in commands.drain(..) {
-            queue.extend(gui.game.execute(cmd));
-        }
+        queue.extend(gui.game.execute(cmd));
 
         // Handle responses from the backend.
         while let Some(response) = queue.pop_front() {
