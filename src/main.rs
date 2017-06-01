@@ -1,6 +1,7 @@
 // GUI
 #[macro_use]
 extern crate glium;
+extern crate glium_text;
 extern crate image;
 
 // Logging
@@ -12,12 +13,14 @@ extern crate sokoban_backend as backend;
 
 use std::cmp::min;
 use std::collections::VecDeque;
+use std::fs::File;
 
 use glium::Surface;
 use glium::backend::Facade;
 use glium::backend::glutin_backend::GlutinFacade;
 use glium::glutin::{VirtualKeyCode, MouseButton};
 use glium::texture::Texture2d;
+use glium_text::{TextSystem, FontTexture};
 
 pub mod texture;
 
@@ -377,6 +380,11 @@ fn main() {
     // Initialize colog after window to suppress some log output.
     colog::init();
 
+    let font_path = ASSETS.join("FiraSans-Regular.ttf");
+
+    let system = TextSystem::new(&display);
+    let font16 = FontTexture::new(&display, File::open(&font_path).unwrap(), 16).unwrap();
+    let font32 = FontTexture::new(&display, File::open(&font_path).unwrap(), 32).unwrap();
 
     let collection = std::env::var("SOKOBAN_COLLECTION").unwrap_or_else(|_| "original".to_string());
     let mut gui = Gui::new(&collection, Textures::new(&display));
