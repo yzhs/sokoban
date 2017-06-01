@@ -13,10 +13,11 @@ extern crate sokoban_backend as backend;
 use std::cmp::min;
 use std::collections::VecDeque;
 
-use glium::texture::Texture2d;
+use glium::Surface;
 use glium::backend::Facade;
-use glium::glutin::{VirtualKeyCode, MouseButton};
 use glium::backend::glutin_backend::GlutinFacade;
+use glium::glutin::{VirtualKeyCode, MouseButton};
+use glium::texture::Texture2d;
 
 pub mod texture;
 
@@ -46,12 +47,6 @@ pub struct Gui {
 
     /// Size of each cell
     tile_size: i32,
-
-    /// Horizontal margin
-    offset_left: i32,
-
-    /// Vertical margin
-    offset_top: i32,
 }
 
 impl Gui {
@@ -77,8 +72,6 @@ impl Gui {
             cursor_pos: [0.0, 0.0],
 
             tile_size: 50,
-            offset_left: 0,
-            offset_top: 0,
         }
     }
 
@@ -141,8 +134,6 @@ impl Gui {
 
     /// Create a `Scene` containing the level’s entities.
     fn generate_background(&mut self, display: &Facade) -> Texture2d {
-        use glium::Surface;
-
         self.tile_size = min(self.window_size[0] / self.game.columns() as u32,
                              self.window_size[1] / self.game.rows() as u32) as
                          i32;
@@ -190,8 +181,6 @@ impl Gui {
     }
 
     fn render_level(&self, display: &GlutinFacade, bg: &Texture2d, level_solved: bool) {
-        use glium::Surface;
-
         // Draw background
         let vertices = texture::create_full_screen_quad();
         let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
@@ -312,11 +301,6 @@ impl Gui {
     }
 }
 
-/// Multiply a position by a factor as a way of mapping tile coordinates to pixel coordinates.
-fn scale_position(pos: backend::Position, factor: f64) -> (f64, f64) {
-    ((pos.x as f64 + 0.5) * factor, (pos.y as f64 + 0.5) * factor)
-}
-
 /// Map arrow keys to the corresponding directions, panic on other keys.
 fn key_to_direction(key: VirtualKeyCode) -> Direction {
     use self::Direction::*;
@@ -419,24 +403,9 @@ fn main() {
             match ev {
                 Event::Closed => return,
                 Event::Resized(w, h) => {
-                    info!("Resizing window...");
                     gui.window_size = [w, h];
                     bg = gui.generate_background(&display);
                 }
-                /*
-            // Handle key press
-            let command = match e.press_args() {
-                Some(Button::Keyboard(_key)) if level_solved => Command::NextLevel,
-                Some(Button::Keyboard(Key::R)) if gui.control_pressed => {
-                    // Reload images
-                    info!("Reloading textures...");
-                    gui.textures = Textures::new(&mut window.factory);
-                    Command::Nothing
-                }
-                Some(args) if !level_solved => gui.press_to_command(args),
-                _ => Command::Nothing,
-            };
-            */
                 Event::KeyboardInput(Pressed, _, Some(VirtualKeyCode::Q)) => return,
                 Event::KeyboardInput(..) |
                 Event::MouseInput(..) if level_solved => {
