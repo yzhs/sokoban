@@ -244,7 +244,7 @@ impl Gui {
         let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
 
         let uniforms = uniform!{
-            tex: &self.textures.worker,
+            tex: &self.textures.worker[direction_to_index(self.worker_direction)],
         };
 
         // TODO rotate worker
@@ -331,12 +331,12 @@ fn key_to_direction(key: VirtualKeyCode) -> Direction {
 
 /// All tiles face left by default, so the worker has to turned by 90 degrees (clockwise) to face
 /// up instead of left, etc.
-fn direction_to_angle(dir: Direction) -> f64 {
+fn direction_to_index(dir: Direction) -> usize {
     match dir {
-        Direction::Left => 0.0,
-        Direction::Right => 180.0,
-        Direction::Up => 90.0,
-        Direction::Down => 270.0,
+        Direction::Left => 0,
+        Direction::Right => 1,
+        Direction::Up => 2,
+        Direction::Down => 3,
     }
 }
 
@@ -347,7 +347,7 @@ pub struct Textures {
     wall_both: Texture2d,
     floor: Texture2d,
     goal: Texture2d,
-    worker: Texture2d,
+    worker: [Texture2d; 4],
     crate_: Texture2d,
 }
 
@@ -360,7 +360,10 @@ impl Textures {
         let wall_both = texture::load(factory, "wall_both");
         let floor = texture::load(factory, "floor");
         let goal = texture::load(factory, "goal");
-        let worker = texture::load(factory, "worker");
+        let worker_l = texture::load(factory, "worker_l");
+        let worker_r = texture::load(factory, "worker_r");
+        let worker_u = texture::load(factory, "worker_u");
+        let worker_d = texture::load(factory, "worker_d");
         let crate_ = texture::load(factory, "crate");
 
         Textures {
@@ -370,7 +373,7 @@ impl Textures {
             wall_both,
             floor,
             goal,
-            worker,
+            worker: [worker_l, worker_r, worker_u, worker_d],
             crate_,
         }
     }
