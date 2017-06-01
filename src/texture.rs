@@ -1,10 +1,50 @@
 
 use glium;
+use glium::texture::Texture2d;
 use glium::backend::Facade;
 use image;
 
 use backend::{self, ASSETS};
 
+
+pub struct Textures {
+    pub wall: Texture2d,
+    pub wall_left: Texture2d,
+    pub wall_right: Texture2d,
+    pub wall_both: Texture2d,
+    pub floor: Texture2d,
+    pub goal: Texture2d,
+    pub worker: [Texture2d; 4],
+    pub crate_: Texture2d,
+}
+
+impl Textures {
+    /// Load all textures.
+    pub fn new(factory: &Facade) -> Self {
+        let wall = load(factory, "wall");
+        let wall_left = load(factory, "wall_left");
+        let wall_right = load(factory, "wall_right");
+        let wall_both = load(factory, "wall_both");
+        let floor = load(factory, "floor");
+        let goal = load(factory, "goal");
+        let worker_l = load(factory, "worker_l");
+        let worker_r = load(factory, "worker_r");
+        let worker_u = load(factory, "worker_u");
+        let worker_d = load(factory, "worker_d");
+        let crate_ = load(factory, "crate");
+
+        Textures {
+            wall,
+            wall_left,
+            wall_right,
+            wall_both,
+            floor,
+            goal,
+            worker: [worker_l, worker_r, worker_u, worker_d],
+            crate_,
+        }
+    }
+}
 
 #[derive(Copy, Clone)]
 pub struct Vertex {
@@ -80,7 +120,7 @@ pub fn create_full_screen_quad() -> Vec<Vertex> {
 }
 
 /// Load an image from the assets directory and turn it into a `Texture2d`.
-pub fn load(display: &Facade, name: &str) -> glium::texture::Texture2d {
+pub fn load(display: &Facade, name: &str) -> Texture2d {
     let mut path = ASSETS.join("images");
     path.push(name);
     path.set_extension("png");
@@ -88,5 +128,5 @@ pub fn load(display: &Facade, name: &str) -> glium::texture::Texture2d {
     let image_dimensions = image.dimensions();
     let image = glium::texture::RawImage2d::from_raw_rgba_reversed(image.into_raw(),
                                                                    image_dimensions);
-    glium::texture::Texture2d::new(display, image).unwrap()
+    Texture2d::new(display, image).unwrap()
 }

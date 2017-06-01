@@ -22,9 +22,10 @@ use glium::glutin::{VirtualKeyCode, MouseButton};
 use glium::texture::Texture2d;
 use glium_text::{TextSystem, FontTexture};
 
-pub mod texture;
+mod texture;
 
 use backend::*;
+use texture::*;
 
 const IMAGE_SIZE: f64 = 360.0;
 const NO_INDICES: glium::index::NoIndices =
@@ -324,45 +325,6 @@ fn direction_to_index(dir: Direction) -> usize {
         Direction::Right => 1,
         Direction::Up => 2,
         Direction::Down => 3,
-    }
-}
-
-pub struct Textures {
-    wall: Texture2d,
-    wall_left: Texture2d,
-    wall_right: Texture2d,
-    wall_both: Texture2d,
-    floor: Texture2d,
-    goal: Texture2d,
-    worker: [Texture2d; 4],
-    crate_: Texture2d,
-}
-
-impl Textures {
-    /// Load all textures.
-    fn new(factory: &Facade) -> Self {
-        let wall = texture::load(factory, "wall");
-        let wall_left = texture::load(factory, "wall_left");
-        let wall_right = texture::load(factory, "wall_right");
-        let wall_both = texture::load(factory, "wall_both");
-        let floor = texture::load(factory, "floor");
-        let goal = texture::load(factory, "goal");
-        let worker_l = texture::load(factory, "worker_l");
-        let worker_r = texture::load(factory, "worker_r");
-        let worker_u = texture::load(factory, "worker_u");
-        let worker_d = texture::load(factory, "worker_d");
-        let crate_ = texture::load(factory, "crate");
-
-        Textures {
-            wall,
-            wall_left,
-            wall_right,
-            wall_both,
-            floor,
-            goal,
-            worker: [worker_l, worker_r, worker_u, worker_d],
-            crate_,
-        }
     }
 }
 
