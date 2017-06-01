@@ -27,12 +27,14 @@ mod texture;
 use backend::*;
 use texture::*;
 
-const IMAGE_SIZE: f64 = 360.0;
 const NO_INDICES: glium::index::NoIndices =
     glium::index::NoIndices(glium::index::PrimitiveType::TriangleStrip);
 
 pub struct Gui {
     game: Game,
+
+    level_solved: bool,
+    end_of_collection: bool,
 
     window_size: [u32; 2],
 
@@ -60,11 +62,13 @@ impl Gui {
             panic!("Failed to load level set: {:?}", game.unwrap_err());
         }
         let game = game.unwrap();
-        let worker_position = game.worker_position().clone();
+        let worker_position = game.worker_position();
         let worker_direction = game.worker_direction();
 
         Gui {
             game,
+            level_solved: false,
+            end_of_collection: false,
 
             window_size: [640, 480],
             textures,
@@ -184,7 +188,12 @@ impl Gui {
         result
     }
 
-    fn render_level(&self, display: &GlutinFacade, bg: &Texture2d, level_solved: bool) {
+    fn render_level(&self, display: &GlutinFacade, bg: &Texture2d) {
+        let params = glium::DrawParameters {
+            blend: glium::Blend::alpha_blending(),
+            ..Default::default()
+        };
+
         // Draw background
         let vertices = texture::create_full_screen_quad();
         let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
@@ -201,11 +210,7 @@ impl Gui {
         };
 
         target
-            .draw(&vertex_buffer,
-                  &NO_INDICES,
-                  &program,
-                  &uniforms,
-                  &Default::default())
+            .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
             .unwrap();
 
         // Draw foreground
@@ -213,17 +218,12 @@ impl Gui {
         let columns = lvl.columns() as u32;
         let rows = lvl.rows() as u32;
 
-        let params = glium::DrawParameters {
-            blend: glium::Blend::alpha_blending(),
-            ..Default::default()
-        };
-
         let uniforms = uniform!{
             tex: &self.textures.crate_,
         };
 
         // Draw the crates
-        for (&pos, _) in lvl.crates.iter() {
+        for &pos in lvl.crates.keys() {
             let vertices = texture::create_quad_vertices(pos, columns, rows);
             let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
 
@@ -352,8 +352,6 @@ fn main() {
     let mut gui = Gui::new(&collection, Textures::new(&display));
     info!("Loading level #{}", gui.game.collection.current_level.rank);
 
-    let mut level_solved = false;
-    let mut end_of_collection = false;
     let mut bg = gui.generate_background(&display);
 
     let mut commands = VecDeque::new();
@@ -363,7 +361,7 @@ fn main() {
     //let mut glyphs = Glyphs::new(font, &display).unwrap();
 
     loop {
-        gui.render_level(&display, &bg, level_solved);
+        gui.render_level(&display, &bg);
 
         for ev in display.poll_events() {
             use glium::glutin::Event;
@@ -371,14 +369,11 @@ fn main() {
             // Draw the current level
 
             match ev {
-                Event::Closed => return,
-                Event::Resized(w, h) => {
-                    gui.window_size = [w, h];
-                    bg = gui.generate_background(&display);
-                }
+                Event::Closed |
                 Event::KeyboardInput(Pressed, _, Some(VirtualKeyCode::Q)) => return,
-                Event::KeyboardInput(..) |
-                Event::MouseInput(..) if level_solved => {
+
+                Event::KeyboardInput(Pressed, _, _) |
+                Event::MouseInput(..) if gui.level_solved => {
                     commands.push_back(Command::NextLevel);
                 }
                 Event::KeyboardInput(state, _, Some(key)) => {
@@ -393,6 +388,11 @@ fn main() {
 
                 Event::MouseMoved(x, y) => gui.cursor_pos = [x as f64, y as f64],
                 Event::MouseInput(_, btn) => commands.push_back(gui.click_to_command(btn)),
+
+                Event::Resized(w, h) => {
+                    gui.window_size = [w, h];
+                    bg = gui.generate_background(&display);
+                }
 
                 /*
                 Event::KeyboardInput(_, _, None) |
@@ -421,15 +421,15 @@ fn main() {
         while let Some(response) = queue.pop_front() {
             match response {
                 Response::LevelFinished => {
-                    if !level_solved {
-                        level_solved = true;
-                        end_of_collection = gui.current_level().rank ==
-                                            gui.game.collection.number_of_levels();
+                    if !gui.level_solved {
+                        gui.level_solved = true;
+                        gui.end_of_collection = gui.current_level().rank ==
+                                                gui.game.collection.number_of_levels();
                     }
                 }
                 Response::NewLevel(rank) => {
                     info!("Loading level #{}", rank);
-                    level_solved = false;
+                    gui.level_solved = false;
                     gui.worker_position = gui.game.worker_position();
                     gui.worker_direction = gui.game.worker_direction();
                     bg = gui.generate_background(&display);
