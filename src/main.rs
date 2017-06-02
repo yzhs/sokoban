@@ -191,6 +191,7 @@ impl Gui {
 
     fn render_level(&self, display: &GlutinFacade, bg: &Texture2d, font_data: &FontData) {
         let params = glium::DrawParameters {
+            backface_culling: glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,
             blend: glium::Blend::alpha_blending(),
             ..Default::default()
         };
