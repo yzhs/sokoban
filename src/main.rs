@@ -21,7 +21,7 @@ use glium::backend::Facade;
 use glium::backend::glutin_backend::GlutinFacade;
 use glium::glutin::{VirtualKeyCode, MouseButton};
 use glium::texture::Texture2d;
-use glium_text::{TextSystem, FontTexture};
+use glium_text::{FontTexture, TextDisplay, TextSystem};
 
 mod texture;
 
@@ -273,11 +273,9 @@ impl Gui {
                 .unwrap();
 
             // Text
+            let text = font_data.heading("Congratulations!");
             let w = self.window_size[0] as f32;
             let h = self.window_size[1] as f32;
-            let text = glium_text::TextDisplay::new(&font_data.system,
-                                                    &font_data.font32,
-                                                    "Congratulations!");
             let text_width = text.get_width();
 
             let matrix = [[1.0 / text_width, 0.0, 0.0, 0.0],
@@ -296,8 +294,7 @@ impl Gui {
                                      self.game.rank(),
                                      self.game.number_of_moves(),
                                      self.game.number_of_pushes());
-            let text =
-                glium_text::TextDisplay::new(&font_data.system, &font_data.font16, &stats_text);
+            let text = font_data.text(&stats_text);
             let text_width = text.get_width();
 
             let matrix = [[1.0 / text_width, 0.0, 0.0, 0.0],
@@ -357,6 +354,14 @@ impl FontData {
             font16,
             font32,
         }
+    }
+
+    pub fn text(&self, content: &str) -> TextDisplay<&FontTexture> {
+        TextDisplay::new(&self.system, &self.font16, content)
+    }
+
+    pub fn heading(&self, content: &str) -> TextDisplay<&FontTexture> {
+        TextDisplay::new(&self.system, &self.font32, content)
     }
 }
 
