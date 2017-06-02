@@ -58,4 +58,16 @@ impl Game {
     pub fn rows(&self) -> usize {
         self.collection.current_level.rows()
     }
+
+    pub fn rank(&self) -> usize {
+        self.collection.current_level.rank
+    }
+
+    pub fn number_of_moves(&self) -> usize {
+        self.collection.current_level.number_of_moves()
+    }
+
+    pub fn number_of_pushes(&self) -> usize {
+        self.collection.current_level.number_of_pushes()
+    }
 }

@@ -14,6 +14,7 @@ extern crate sokoban_backend as backend;
 use std::cmp::min;
 use std::collections::VecDeque;
 use std::fs::File;
+use std::path::Path;
 
 use glium::Surface;
 use glium::backend::Facade;
@@ -188,7 +189,7 @@ impl Gui {
         result
     }
 
-    fn render_level(&self, display: &GlutinFacade, bg: &Texture2d) {
+    fn render_level(&self, display: &GlutinFacade, bg: &Texture2d, font_data: &FontData) {
         let params = glium::DrawParameters {
             blend: glium::Blend::alpha_blending(),
             ..Default::default()
@@ -240,68 +241,79 @@ impl Gui {
             tex: &self.textures.worker[direction_to_index(self.worker_direction)],
         };
 
-        // TODO rotate worker
         target
             .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
             .unwrap();
 
+
+        // Draw an overlay with some statistics.
+        if self.level_solved {
+            // Darken background
+            const DARKEN_SHADER: &str = r#"
+            #version 140
+
+            in vec2 v_tex_coords;
+            out vec4 color;
+
+            void main() {
+                color = vec4(0.0, 0.0, 0.0, 0.6);
+            }
+            "#;
+
+            let vertices = texture::create_full_screen_quad();
+            let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
+
+            let program =
+                glium::Program::from_source(display, texture::VERTEX_SHADER, DARKEN_SHADER, None)
+                    .unwrap();
+
+            let uniforms = uniform!{};
+            target
+                .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
+                .unwrap();
+
+            // Text
+            let w = self.window_size[0] as f32;
+            let h = self.window_size[1] as f32;
+            let text = glium_text::TextDisplay::new(&font_data.system,
+                                                    &font_data.font32,
+                                                    "Congratulations!");
+            let text_width = text.get_width();
+
+            let matrix = [[1.0 / text_width, 0.0, 0.0, 0.0],
+                          [0.0, 1.0 * w / h / text_width, 0.0, 0.0],
+                          [0.0, 0.0, 1.0, 0.0],
+                          [-0.5, 0.3, 0.0, 1.0_f32]];
+
+            glium_text::draw(&text,
+                             &font_data.system,
+                             &mut target,
+                             matrix,
+                             (1.0, 1.0, 1.0, 1.0));
+
+            let stats_text = format!("You have finished the level {} using {} moves, \
+                                      {} of which moved a crate.",
+                                     self.game.rank(),
+                                     self.game.number_of_moves(),
+                                     self.game.number_of_pushes());
+            let text =
+                glium_text::TextDisplay::new(&font_data.system, &font_data.font16, &stats_text);
+            let text_width = text.get_width();
+
+            let matrix = [[1.0 / text_width, 0.0, 0.0, 0.0],
+                          [0.0, 1.0 * w / h / text_width, 0.0, 0.0],
+                          [0.0, 0.0, 1.0, 0.0],
+                          [-0.5, -0.2, 0.0, 1.0_f32]];
+
+
+            glium_text::draw(&text,
+                             &font_data.system,
+                             &mut target,
+                             matrix,
+                             (1.0, 1.0, 1.0, 1.0));
+        }
+
         target.finish().unwrap();
-    }
-
-    /// Draw an overlay with some statistics.
-    fn draw_end_of_level_screen(&self, display: &Facade, end_of_collection: bool) {
-        /*
-        let rectangle = Rectangle::new([0.0, 0.0, 0.0, 0.7]);
-        let dims = rectangle::centered([0.0,
-                                        0.0,
-                                        self.window_size[0] as f64,
-                                        self.window_size[1] as f64]);
-        rectangle.draw(dims, &c.draw_state, c.transform, g);
-
-        let lvl = self.current_level();
-        let rank = lvl.rank;
-        let moves = lvl.number_of_moves();
-        let pushes = lvl.number_of_pushes();
-
-        let heading = text::Text::new_color(color::WHITE, 32 as types::FontSize);
-        heading.draw("Congratulations!",
-                     glyphs,
-                     &c.draw_state,
-                     c.transform
-                         .trans(-150.0, -32.0)
-                         .trans(self.window_size[0] as f64 / 2.0,
-                                self.window_size[1] as f64 / 2.0),
-                     g);
-
-        let txt = text::Text::new_color(color::WHITE, 16 as types::FontSize);
-        let msg = format!("You have solved level {rank} with {moves} \
-                                  moves, {pushes} of which moved a crate.",
-                          rank = rank,
-                          moves = moves,
-                          pushes = pushes);
-
-        txt.draw(&msg,
-                 glyphs,
-                 &c.draw_state,
-                 c.transform
-                     .trans(-270.0, 0.0)
-                     .trans(self.window_size[0] as f64 / 2.0,
-                            self.window_size[1] as f64 / 2.0),
-                 g);
-
-        txt.draw(if end_of_collection {
-                     "This is the end of the collection."
-                 } else {
-                     "Press any key to continue"
-                 },
-                 glyphs,
-                 &c.draw_state,
-                 c.transform
-                     .trans(-120.0, 120.0)
-                     .trans(self.window_size[0] as f64 / 2.0,
-                            self.window_size[1] as f64 / 2.0),
-                 g);
-        */
     }
 }
 
@@ -328,7 +340,25 @@ fn direction_to_index(dir: Direction) -> usize {
     }
 }
 
+struct FontData {
+    system: TextSystem,
+    font16: FontTexture,
+    font32: FontTexture,
+}
 
+impl FontData {
+    pub fn new<P: AsRef<Path>>(display: &GlutinFacade, font_path: P) -> Self {
+        let system = TextSystem::new(display);
+        let font16 = FontTexture::new(display, File::open(&font_path).unwrap(), 16).unwrap();
+        let font32 = FontTexture::new(display, File::open(&font_path).unwrap(), 32).unwrap();
+
+        FontData {
+            system,
+            font16,
+            font32,
+        }
+    }
+}
 
 fn main() {
     use glium::DisplayBuild;
@@ -342,11 +372,7 @@ fn main() {
     // Initialize colog after window to suppress some log output.
     colog::init();
 
-    let font_path = ASSETS.join("FiraSans-Regular.ttf");
-
-    let system = TextSystem::new(&display);
-    let font16 = FontTexture::new(&display, File::open(&font_path).unwrap(), 16).unwrap();
-    let font32 = FontTexture::new(&display, File::open(&font_path).unwrap(), 32).unwrap();
+    let font_data = FontData::new(&display, ASSETS.join("FiraSans-Regular.ttf"));
 
     let collection = std::env::var("SOKOBAN_COLLECTION").unwrap_or_else(|_| "original".to_string());
     let mut gui = Gui::new(&collection, Textures::new(&display));
@@ -354,20 +380,16 @@ fn main() {
 
     let mut bg = gui.generate_background(&display);
 
-    let mut commands = VecDeque::new();
     let mut queue = VecDeque::new();
 
-    //let font = &ASSETS.clone().join("FiraSans-Regular.ttf");
-    //let mut glyphs = Glyphs::new(font, &display).unwrap();
-
     loop {
-        gui.render_level(&display, &bg);
+        gui.render_level(&display, &bg, &font_data);
 
         for ev in display.poll_events() {
             use glium::glutin::Event;
             use glium::glutin::ElementState::*;
             // Draw the current level
-            let mut cmd = Comand::Nothing;
+            let mut cmd = Command::Nothing;
 
             match ev {
                 Event::Closed |
@@ -396,25 +418,17 @@ fn main() {
                 }
 
                 /*
-                Event::KeyboardInput(_, _, None) |
-                Event::MouseEntered |
-                Event::MouseLeft |
-                Event::MouseWheel(..) |
-                Event::TouchpadPressure(..) |
-                Event::Awakened |
-                Event::Refresh |
-                Event::Suspended(_) |
-                Event::Touch(_) |
-                Event::Moved(..) |
-                Event::ReceivedCharacter(_) |
-                Event::Focused(_) |
-                Event::DroppedFile(_) => (),
+                Event::KeyboardInput(_, _, None) | Event::MouseEntered | Event::MouseLeft |
+                Event::MouseWheel(..) | Event::TouchpadPressure(..) | Event::Awakened |
+                Event::Refresh | Event::Suspended(_) | Event::Touch(_) | Event::Moved(..) |
+                Event::ReceivedCharacter(_) | Event::Focused(_) | Event::DroppedFile(_) => (),
                 */
                 _ => (),
             }
+
+            queue.extend(gui.game.execute(cmd));
         }
 
-        queue.extend(gui.game.execute(cmd));
 
         // Handle responses from the backend.
         while let Some(response) = queue.pop_front() {
