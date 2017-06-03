@@ -129,6 +129,7 @@ impl Gui {
         Nothing
     }
 
+    /// Handle a mouse click.
     fn click_to_command(&mut self, mouse_button: MouseButton) -> Command {
         let x = (self.cursor_pos[0] / self.tile_size as f64).trunc() as isize;
         let y = (self.cursor_pos[1] / self.tile_size as f64 - 0.5).trunc() as isize;
@@ -172,7 +173,13 @@ impl Gui {
                                                       None)
                     .unwrap();
 
+            let perspective = [[1.0, 0.0, 0.0, 0.0],
+                               [0.0, 1.0, 0.0, 0.0],
+                               [0.0, 0.0, 1.0, 0.0],
+                               [0.0, 0.0, 0.0, 1.0_f32]];
+
             let uniforms = uniform!{
+                perspective: perspective,
                 tex: texture,
             };
 
@@ -189,12 +196,16 @@ impl Gui {
         result
     }
 
+    /// Render the current level. `bg` is the static part of the level.
     fn render_level(&self, display: &GlutinFacade, bg: &Texture2d, font_data: &FontData) {
         let params = glium::DrawParameters {
             backface_culling: glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,
             blend: glium::Blend::alpha_blending(),
             ..Default::default()
         };
+
+        let mut target = display.draw();
+        target.clear_color(0.0, 0.0, 0.0, 1.0);
 
         // Draw background
         let vertices = texture::create_full_screen_quad();
@@ -205,9 +216,17 @@ impl Gui {
                                                   None)
                 .unwrap();
 
-        let mut target = display.draw();
+        let perspective = {
+            let (width, height) = target.get_dimensions();
+            let aspect_ratio = height as f32 / width as f32;
+            [[aspect_ratio, 0.0, 0.0, 0.0],
+             [0.0, 1.0, 0.0, 0.0],
+             [0.0, 0.0, 1.0, 0.0],
+             [0.0, 0.0, 0.0, 1.0]]
+        };
 
         let uniforms = uniform!{
+            perspective: perspective,
             tex: bg,
         };
 
@@ -221,6 +240,7 @@ impl Gui {
         let rows = lvl.rows() as u32;
 
         let uniforms = uniform!{
+            perspective: perspective,
             tex: &self.textures.crate_,
         };
 
@@ -239,9 +259,30 @@ impl Gui {
         let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
 
         let uniforms = uniform!{
+            perspective: perspective,
             tex: &self.textures.worker[direction_to_index(self.worker_direction)],
         };
 
+
+        // Show some statistics
+        let w = self.window_size[0] as f32;
+        let h = self.window_size[1] as f32;
+        let text = font_data.text(&format!("Level: {}, Steps: {}, Pushes: {}",
+                                           self.game.rank(),
+                                           self.game.number_of_moves(),
+                                           self.game.number_of_pushes()));
+
+        let matrix = [[0.02, 0.0, 0.0, 0.0],
+                      [0.0, 0.02 * w / h, 0.0, 0.0],
+                      [0.0, 0.0, 1.0, 0.0],
+                      [0.6, -0.9, 0.0, 1.0_f32]];
+
+
+        glium_text::draw(&text,
+                         &font_data.system,
+                         &mut target,
+                         matrix,
+                         (1.0, 1.0, 1.0, 1.0));
         target
             .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
             .unwrap();
@@ -268,15 +309,15 @@ impl Gui {
                 glium::Program::from_source(display, texture::VERTEX_SHADER, DARKEN_SHADER, None)
                     .unwrap();
 
-            let uniforms = uniform!{};
+            let uniforms = uniform!{
+                perspective: perspective,
+            };
             target
                 .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
                 .unwrap();
 
             // Text
             let text = font_data.heading("Congratulations!");
-            let w = self.window_size[0] as f32;
-            let h = self.window_size[1] as f32;
             let text_width = text.get_width();
 
             let matrix = [[1.0 / text_width, 0.0, 0.0, 0.0],
