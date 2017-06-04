@@ -151,27 +151,32 @@ impl Gui {
         let height = self.tile_size as u32 * rows;
 
         let lvl = self.current_level();
-        let target = glium::texture::Texture2d::empty(display, width * 5, height * 5).unwrap();
+        let target = glium::texture::Texture2d::empty(display, width * 2, height * 2).unwrap();
         target.as_surface().clear_color(0.0, 0.0, 0.0, 1.0);
 
+        let program = glium::Program::from_source(display,
+                                                  texture::VERTEX_SHADER,
+                                                  texture::FRAGMENT_SHADER,
+                                                  None)
+                .unwrap();
 
-        for (i, cell) in lvl.background.iter().enumerate() {
-            let pos = lvl.position(i);
-            let texture = match *cell {
+        for &value in &[Background::Floor, Background::Goal, Background::Wall] {
+            let mut vertices = vec![];
+            for (i, &cell) in lvl.background.iter().enumerate() {
+                if cell != value {
+                    continue;
+                }
+                let pos = lvl.position(i);
+                vertices.extend(texture::create_quad_vertices(pos, columns, rows, 1.0));
+            }
+            let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
+
+            let texture = match value {
                 Background::Empty => continue,
                 Background::Floor => &self.textures.floor,
                 Background::Goal => &self.textures.goal,
                 Background::Wall => &self.textures.wall,
             };
-            let vertices = texture::create_quad_vertices(pos, columns, rows, 1.0);
-            let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
-            let program = glium::Program::from_source(display,
-                                                      texture::VERTEX_SHADER,
-                                                      texture::FRAGMENT_SHADER,
-                                                      None)
-                    .unwrap();
-
-
             let uniforms = uniform!{
                 tex: texture,
             };
