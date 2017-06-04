@@ -254,33 +254,11 @@ impl Gui {
             tex: &self.textures.worker[direction_to_index(self.worker_direction)],
         };
 
-
-        // Show some statistics
         let w = self.window_size[0] as f32;
         let h = self.window_size[1] as f32;
-        let text = font_data.text(&format!("Level: {}, Steps: {}, Pushes: {}",
-                                           self.game.rank(),
-                                           self.game.number_of_moves(),
-                                           self.game.number_of_pushes()));
 
-        let matrix = [[0.02, 0.0, 0.0, 0.0],
-                      [0.0, 0.02 * w / h, 0.0, 0.0],
-                      [0.0, 0.0, 1.0, 0.0],
-                      [0.6, -0.9, 0.0, 1.0_f32]];
-
-
-        glium_text::draw(&text,
-                         &font_data.system,
-                         &mut target,
-                         matrix,
-                         (1.0, 1.0, 1.0, 1.0));
-        target
-            .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
-            .unwrap();
-
-
-        // Draw an overlay with some statistics.
         if self.level_solved {
+            // Draw an overlay with some statistics.
             // Darken background
             const DARKEN_SHADER: &str = r#"
             #version 140
@@ -339,6 +317,28 @@ impl Gui {
                              &mut target,
                              matrix,
                              (1.0, 1.0, 1.0, 1.0));
+        } else {
+            // Show some statistics
+            let text = font_data.text(&format!("Level: {}, Steps: {}, Pushes: {}",
+                                               self.game.rank(),
+                                               self.game.number_of_moves(),
+                                               self.game.number_of_pushes()));
+
+            let matrix = [[0.02, 0.0, 0.0, 0.0],
+                          [0.0, 0.02 * w / h, 0.0, 0.0],
+                          [0.0, 0.0, 1.0, 0.0],
+                          [0.6, -0.9, 0.0, 1.0_f32]];
+
+
+            glium_text::draw(&text,
+                             &font_data.system,
+                             &mut target,
+                             matrix,
+                             (1.0, 1.0, 1.0, 1.0));
+            target
+                .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
+                .unwrap();
+
         }
 
         target.finish().unwrap();
