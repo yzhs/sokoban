@@ -266,9 +266,6 @@ impl Gui {
             .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
             .unwrap();
 
-        let w = self.window_size[0] as f32;
-        let h = self.window_size[1] as f32;
-
         if self.level_solved {
             // Draw an overlay with some statistics.
             // Darken background
@@ -297,9 +294,10 @@ impl Gui {
             // Text
             let text = font_data.heading("Congratulations!");
             let text_width = text.get_width();
+            let aspect_ratio = self.aspect_ratio();
 
             let matrix = [[1.0 / text_width, 0.0, 0.0, 0.0],
-                          [0.0, 1.0 * w / h / text_width, 0.0, 0.0],
+                          [0.0, 1.0 / aspect_ratio / text_width, 0.0, 0.0],
                           [0.0, 0.0, 1.0, 0.0],
                           [-0.5, 0.3, 0.0, 1.0_f32]];
 
@@ -318,7 +316,7 @@ impl Gui {
             let text_width = text.get_width();
 
             let matrix = [[1.0 / text_width, 0.0, 0.0, 0.0],
-                          [0.0, 1.0 * w / h / text_width, 0.0, 0.0],
+                          [0.0, 1.0 / aspect_ratio / text_width, 0.0, 0.0],
                           [0.0, 0.0, 1.0, 0.0],
                           [-0.5, -0.2, 0.0, 1.0_f32]];
 
@@ -336,7 +334,7 @@ impl Gui {
                                                self.game.number_of_pushes()));
 
             let matrix = [[0.02, 0.0, 0.0, 0.0],
-                          [0.0, 0.02 * w / h, 0.0, 0.0],
+                          [0.0, 0.02 / aspect_ratio, 0.0, 0.0],
                           [0.0, 0.0, 1.0, 0.0],
                           [0.6, -0.9, 0.0, 1.0_f32]];
 
