@@ -29,7 +29,7 @@ use backend::*;
 use texture::*;
 
 const NO_INDICES: glium::index::NoIndices =
-    glium::index::NoIndices(glium::index::PrimitiveType::TriangleStrip);
+    glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
 
 pub struct Gui {
     game: Game,
@@ -189,6 +189,12 @@ impl Gui {
         target
     }
 
+    fn aspect_ratio(&self) -> f32 {
+        let width = self.window_size[0];
+        let height = self.window_size[1];
+        height as f32 / width as f32
+    }
+
     /// Render the current level. `bg` is the static part of the level.
     fn render_level(&self, display: &GlutinFacade, bg: &Texture2d, font_data: &FontData) {
         let params = glium::DrawParameters {
@@ -197,16 +203,11 @@ impl Gui {
             ..Default::default()
         };
 
-        let mut target = display.draw();
-        target.clear_color(0.0, 0.0, 0.0, 1.0);
-
         // Draw background
-        let vertices = {
-            let (width, height) = target.get_dimensions();
-            let aspect_ratio = height as f32 / width as f32;
-            texture::create_background_quad(aspect_ratio, self.game.columns(), self.game.rows())
-        };
-        let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
+        let vertices = texture::create_background_quad(self.aspect_ratio(),
+                                                       self.game.columns(),
+                                                       self.game.rows());
+        let vertex_buffer_bg = glium::VertexBuffer::new(display, &vertices).unwrap();
         let program = glium::Program::from_source(display,
                                                   texture::VERTEX_SHADER,
                                                   texture::FRAGMENT_SHADER,
@@ -221,8 +222,11 @@ impl Gui {
             tex: bg,
         };
 
+        let mut target = display.draw();
+        target.clear_color(0.0, 0.0, 0.0, 1.0);
+
         target
-            .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
+            .draw(&vertex_buffer_bg, &NO_INDICES, &program, &uniforms, &params)
             .unwrap();
 
         // Draw foreground
@@ -231,19 +235,19 @@ impl Gui {
             width as f32 / height as f32 * rows as f32 / columns as f32
         };
 
+        // Draw the crates
+        let mut vertices = vec![];
+        for &pos in lvl.crates.keys() {
+            vertices.extend(texture::create_quad_vertices(pos, columns, rows, aspect_ratio));
+        }
+        let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
+
         let uniforms = uniform!{
             tex: &self.textures.crate_,
         };
-
-        // Draw the crates
-        for &pos in lvl.crates.keys() {
-            let vertices = texture::create_quad_vertices(pos, columns, rows, aspect_ratio);
-            let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
-
-            target
-                .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
-                .unwrap();
-        }
+        target
+            .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
+            .unwrap();
 
         // Draw the worker
         let vertices =
@@ -253,6 +257,9 @@ impl Gui {
         let uniforms = uniform!{
             tex: &self.textures.worker[direction_to_index(self.worker_direction)],
         };
+        target
+            .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
+            .unwrap();
 
         let w = self.window_size[0] as f32;
         let h = self.window_size[1] as f32;
@@ -278,7 +285,6 @@ impl Gui {
                 glium::Program::from_source(display, texture::VERTEX_SHADER, DARKEN_SHADER, None)
                     .unwrap();
 
-            let uniforms = uniform!{};
             target
                 .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
                 .unwrap();

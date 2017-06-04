@@ -84,22 +84,23 @@ void main() {
 
 
 fn lrtp_to_vertices(left: f32, right: f32, top: f32, bottom: f32) -> Vec<Vertex> {
-    vec![Vertex {
-             position: [left, top],
-             tex_coords: [0.0, 0.0],
-         },
-         Vertex {
-             position: [left, bottom],
-             tex_coords: [0.0, 1.0],
-         },
-         Vertex {
-             position: [right, top],
-             tex_coords: [1.0, 0.0],
-         },
-         Vertex {
-             position: [right, bottom],
-             tex_coords: [1.0, 1.0],
-         }]
+    let a = Vertex {
+        position: [left, top],
+        tex_coords: [0.0, 0.0],
+    };
+    let b = Vertex {
+        position: [left, bottom],
+        tex_coords: [0.0, 1.0],
+    };
+    let c = Vertex {
+        position: [right, top],
+        tex_coords: [1.0, 0.0],
+    };
+    let d = Vertex {
+        position: [right, bottom],
+        tex_coords: [1.0, 1.0],
+    };
+    vec![a, b, c, c, b, d]
 }
 
 /// Create a bunch of vertices for rendering a textured square.
