@@ -62,11 +62,9 @@ in vec2 position;
 in vec2 tex_coords;
 out vec2 v_tex_coords;
 
-uniform mat4 perspective;
-
 void main() {
     v_tex_coords = tex_coords;
-    gl_Position = perspective * vec4(position, 0.0, 1.0);
+    gl_Position = vec4(position, 0.0, 1.0);
 }
 "#;
 
@@ -105,12 +103,21 @@ fn lrtp_to_vertices(left: f32, right: f32, top: f32, bottom: f32) -> Vec<Vertex>
 }
 
 /// Create a bunch of vertices for rendering a textured square.
-pub fn create_quad_vertices(pos: backend::Position, columns: u32, rows: u32) -> Vec<Vertex> {
+pub fn create_quad_vertices(pos: backend::Position,
+                            columns: u32,
+                            rows: u32,
+                            aspect_ratio: f32)
+                            -> Vec<Vertex> {
     let left = 2.0 * pos.x as f32 / columns as f32 - 1.0;
     let right = left + 2.0 / columns as f32;
     let bottom = -2.0 * pos.y as f32 / rows as f32 + 1.0;
     let top = bottom - 2.0 / rows as f32;
-    lrtp_to_vertices(left, right, top, bottom)
+
+    if aspect_ratio < 1.0 {
+        lrtp_to_vertices(left, right, top * aspect_ratio, bottom * aspect_ratio)
+    } else {
+        lrtp_to_vertices(left / aspect_ratio, right / aspect_ratio, top, bottom)
+    }
 }
 
 pub fn create_full_screen_quad() -> Vec<Vertex> {
@@ -119,6 +126,18 @@ pub fn create_full_screen_quad() -> Vec<Vertex> {
     let top = -1.0;
     let bottom = 1.0;
     lrtp_to_vertices(left, right, top, bottom)
+}
+
+pub fn create_background_quad(window_aspect_ratio: f32,
+                              columns: usize,
+                              rows: usize)
+                              -> Vec<Vertex> {
+    let aspect_ratio = columns as f32 / rows as f32 * window_aspect_ratio;
+    if aspect_ratio < 1.0 {
+        lrtp_to_vertices(-aspect_ratio, aspect_ratio, -1.0, 1.0)
+    } else {
+        lrtp_to_vertices(-1.0, 1.0, -1.0 / aspect_ratio, 1.0 / aspect_ratio)
+    }
 }
 
 /// Load an image from the assets directory and turn it into a `Texture2d`.

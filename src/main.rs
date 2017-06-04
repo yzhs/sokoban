@@ -144,17 +144,15 @@ impl Gui {
 
     /// Create a `Scene` containing the level’s entities.
     fn generate_background(&mut self, display: &Facade) -> Texture2d {
-        self.tile_size = min(self.window_size[0] / self.game.columns() as u32,
-                             self.window_size[1] / self.game.rows() as u32) as
-                         i32;
+        let columns = self.game.columns() as u32;
+        let rows = self.game.rows() as u32;
+        self.tile_size = min(self.window_size[0] / columns, self.window_size[1] / rows) as i32;
+        let width = self.tile_size as u32 * columns;
+        let height = self.tile_size as u32 * rows;
 
         let lvl = self.current_level();
-        let result =
-            glium::texture::Texture2d::empty(display, self.window_size[0], self.window_size[1])
-                .unwrap();
-        result.as_surface().clear_color(0.0, 0.0, 0.0, 1.0);
-        let columns = lvl.columns() as u32;
-        let rows = lvl.rows() as u32;
+        let target = glium::texture::Texture2d::empty(display, width * 5, height * 5).unwrap();
+        target.as_surface().clear_color(0.0, 0.0, 0.0, 1.0);
 
 
         for (i, cell) in lvl.background.iter().enumerate() {
@@ -165,7 +163,7 @@ impl Gui {
                 Background::Goal => &self.textures.goal,
                 Background::Wall => &self.textures.wall,
             };
-            let vertices = texture::create_quad_vertices(pos, columns, rows);
+            let vertices = texture::create_quad_vertices(pos, columns, rows, 1.0);
             let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
             let program = glium::Program::from_source(display,
                                                       texture::VERTEX_SHADER,
@@ -173,17 +171,12 @@ impl Gui {
                                                       None)
                     .unwrap();
 
-            let perspective = [[1.0, 0.0, 0.0, 0.0],
-                               [0.0, 1.0, 0.0, 0.0],
-                               [0.0, 0.0, 1.0, 0.0],
-                               [0.0, 0.0, 0.0, 1.0_f32]];
 
             let uniforms = uniform!{
-                perspective: perspective,
                 tex: texture,
             };
 
-            result
+            target
                 .as_surface()
                 .draw(&vertex_buffer,
                       &NO_INDICES,
@@ -193,7 +186,7 @@ impl Gui {
                 .unwrap();
         }
 
-        result
+        target
     }
 
     /// Render the current level. `bg` is the static part of the level.
@@ -208,7 +201,11 @@ impl Gui {
         target.clear_color(0.0, 0.0, 0.0, 1.0);
 
         // Draw background
-        let vertices = texture::create_full_screen_quad();
+        let vertices = {
+            let (width, height) = target.get_dimensions();
+            let aspect_ratio = height as f32 / width as f32;
+            texture::create_background_quad(aspect_ratio, self.game.columns(), self.game.rows())
+        };
         let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
         let program = glium::Program::from_source(display,
                                                   texture::VERTEX_SHADER,
@@ -216,17 +213,11 @@ impl Gui {
                                                   None)
                 .unwrap();
 
-        let perspective = {
-            let (width, height) = target.get_dimensions();
-            let aspect_ratio = height as f32 / width as f32;
-            [[aspect_ratio, 0.0, 0.0, 0.0],
-             [0.0, 1.0, 0.0, 0.0],
-             [0.0, 0.0, 1.0, 0.0],
-             [0.0, 0.0, 0.0, 1.0]]
-        };
+        let lvl = self.current_level();
+        let columns = lvl.columns() as u32;
+        let rows = lvl.rows() as u32;
 
         let uniforms = uniform!{
-            perspective: perspective,
             tex: bg,
         };
 
@@ -235,18 +226,18 @@ impl Gui {
             .unwrap();
 
         // Draw foreground
-        let lvl = self.current_level();
-        let columns = lvl.columns() as u32;
-        let rows = lvl.rows() as u32;
+        let aspect_ratio = {
+            let (width, height) = target.get_dimensions();
+            width as f32 / height as f32 * rows as f32 / columns as f32
+        };
 
         let uniforms = uniform!{
-            perspective: perspective,
             tex: &self.textures.crate_,
         };
 
         // Draw the crates
         for &pos in lvl.crates.keys() {
-            let vertices = texture::create_quad_vertices(pos, columns, rows);
+            let vertices = texture::create_quad_vertices(pos, columns, rows, aspect_ratio);
             let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
 
             target
@@ -255,11 +246,11 @@ impl Gui {
         }
 
         // Draw the worker
-        let vertices = texture::create_quad_vertices(self.worker_position, columns, rows);
+        let vertices =
+            texture::create_quad_vertices(self.worker_position, columns, rows, aspect_ratio);
         let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
 
         let uniforms = uniform!{
-            perspective: perspective,
             tex: &self.textures.worker[direction_to_index(self.worker_direction)],
         };
 
@@ -309,9 +300,7 @@ impl Gui {
                 glium::Program::from_source(display, texture::VERTEX_SHADER, DARKEN_SHADER, None)
                     .unwrap();
 
-            let uniforms = uniform!{
-                perspective: perspective,
-            };
+            let uniforms = uniform!{};
             target
                 .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
                 .unwrap();
