@@ -1,11 +1,32 @@
+extern crate clap;
 extern crate image;
 extern crate sokoban_backend as sokoban;
 
+use std::path::Path;
+
+use clap::{App, Arg};
 use image::{GenericImage, Pixel};
 
 fn main() {
+    let matches = App::new("image-to-level")
+        .author("Colin Benner <colin@yzhs.de>")
+        .version(env!("CARGO_PKG_VERSION"))
+        .about("Convert a raster image into a Sokoban level")
+        .arg(Arg::with_name("INPUTS")
+                 .value_name("FILE")
+                 .help("The rastar images to be converted")
+                 .required(true)
+                 .multiple(true))
+        .get_matches();
+
+    for file in matches.values_of("INPUTS").unwrap() {
+        println!("\n{}", image_to_level(file));
+    }
+}
+
+fn image_to_level<P: AsRef<Path>>(path: P) -> String {
     // Parse the image
-    let img = image::open("planar_crossover.png").unwrap();
+    let img = image::open(path).unwrap();
     let (width, _) = img.dimensions();
 
     // Read key
@@ -20,8 +41,8 @@ fn main() {
 
     // Generate result
     let mut result = "".to_owned();
-
     let mut tmp = "".to_owned();
+
     for (x, y, pixel) in img.pixels().skip(width as usize) {
         tmp.push(if pixel == empty_color || pixel == floor_color {
                      ' '
@@ -48,5 +69,5 @@ fn main() {
         }
     }
 
-    println!("{}", result);
+    result
 }

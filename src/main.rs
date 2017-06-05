@@ -420,9 +420,12 @@ fn main() {
     let font_data = FontData::new(&display, ASSETS.join("FiraSans-Regular.ttf"));
 
     let collection = std::env::var("SOKOBAN_COLLECTION").unwrap_or_else(|_| "original".to_string());
+    info!("Loading collection {}", collection);
+
     let mut gui = Gui::new(&collection, Textures::new(&display));
     info!("Loading level #{}", gui.game.collection.current_level.rank);
 
+    // Render static part of the level
     let mut bg = gui.generate_background(&display);
 
     let mut queue = VecDeque::new();
