@@ -1,13 +1,15 @@
 # Sokoban
-This is a Sokoban clone written in [Rust](https://rust-lang.org) using the
+This is a Sokoban clone written in [Rust](https://rust-lang.org) using
 [Glium](https://github.com/tomaka/glium) as a graphics back-end.
 
 ## Installation
 Download Sokoban:
+
 ```sh
 git clone https://github.com/yzhs/sokoban
 cd sokoban
 ```
+
 To compile the game, you will need a recent nightly version of Rust. Assuming
 you are using nightly by default, you can run the game using `cargo run
 --release`.
