@@ -1,7 +1,7 @@
 [package]
 authors = ["Colin Benner <colin@yzhs.de>"]
 name = "sokoban"
-version = "0.2.0"
+version = "0.3.0"
 
 [[bin]]
 doc = false
