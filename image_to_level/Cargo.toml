@@ -1,0 +1,10 @@
+[package]
+authors = ["Colin Benner <colin@yzhs.de>"]
+name = "image_to_level"
+version = "0.1.0"
+
+[dependencies]
+image = "0.13.0"
+
+[dependencies.sokoban]
+path = "../"
