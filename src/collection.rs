@@ -80,6 +80,10 @@ impl Collection {
         let n = self.current_level.rank;
         let finished = self.current_level.is_finished();
         if finished {
+            if n == self.levels.len() {
+                self.saved.collection_solved = true;
+            }
+
             // Save information on old level
             if let Err(e) = self.save() {
                 error!("Failed to create data file: {}", e);
@@ -89,7 +93,6 @@ impl Collection {
                 self.current_level = self.levels[n].clone();
                 Ok(vec![Response::NewLevel(n + 1)])
             } else {
-                self.saved.collection_solved = true;
                 Err(NextLevelError::EndOfCollection)
             }
         } else if self.saved.levels.len() >= n && n < self.levels.len() {
