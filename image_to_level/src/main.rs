@@ -2,7 +2,9 @@ extern crate clap;
 extern crate image;
 extern crate sokoban_backend as sokoban;
 
-use std::path::Path;
+use std::fs::File;
+use std::io::{self, Read, Write};
+use std::path::{Path, PathBuf};
 
 use clap::{App, Arg};
 use image::{GenericImage, Pixel};
@@ -19,9 +21,37 @@ fn main() {
                  .multiple(true))
         .get_matches();
 
-    for file in matches.values_of("INPUTS").unwrap() {
-        println!("\n{}", image_to_level(file));
+    for dir in matches.values_of("INPUTS").unwrap() {
+        let collection = directory_to_collection(dir).unwrap();
+        let mut output = PathBuf::new();
+        output.push(dir);
+        output.set_extension("lvl");
+        let mut output_file = File::create(output).unwrap();
+        write!(output_file, "{}", collection).unwrap();
     }
+}
+
+fn directory_to_collection<P: AsRef<Path>>(dir: P) -> io::Result<String> {
+    use std::fs::read_dir;
+
+    let mut result = "".to_string();
+
+    let dir = dir.as_ref();
+    for file in read_dir(dir)? {
+        let path = file?.path();
+        if let Some(ref ext) = path.extension() {
+            if ext == &std::ffi::OsStr::new("txt") {
+                let mut tmp = "".to_string();
+                File::open(&path).unwrap().read_to_string(&mut tmp)?;
+                result.push_str(&tmp);
+            } else {
+                result.push_str(&image_to_level(&path));
+            }
+        }
+        result.push('\n');
+    }
+
+    Ok(result)
 }
 
 fn image_to_level<P: AsRef<Path>>(path: P) -> String {
