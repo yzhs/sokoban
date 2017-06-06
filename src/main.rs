@@ -9,6 +9,9 @@ extern crate image;
 extern crate log;
 extern crate colog;
 
+// Argument handling
+extern crate clap;
+
 extern crate sokoban_backend as backend;
 
 use std::cmp::min;
@@ -22,6 +25,7 @@ use glium::backend::glutin_backend::GlutinFacade;
 use glium::glutin::{VirtualKeyCode, MouseButton};
 use glium::texture::Texture2d;
 use glium_text::{FontTexture, TextDisplay, TextSystem};
+use clap::{App, Arg};
 
 mod texture;
 
@@ -407,10 +411,19 @@ impl FontData {
 
 fn main() {
     use glium::DisplayBuild;
-    let title = "Sokoban";
+    const TITLE: &'static str = "Sokoban";
+
+    let matches = App::new(TITLE)
+        .author(env!("CARGO_PKG_AUTHORS"))
+        .version(env!("CARGO_PKG_VERSION"))
+        .arg(Arg::with_name("collection")
+                 .help("The level collection to load during startup")
+                 .index(1))
+        .get_matches();
+
     let display = glium::glutin::WindowBuilder::new()
         .with_dimensions(640, 480)
-        .with_title(title)
+        .with_title(TITLE)
         .build_glium()
         .unwrap_or_else(|e| panic!("Failed to build window: {}", e));
 
@@ -419,7 +432,12 @@ fn main() {
 
     let font_data = FontData::new(&display, ASSETS.join("FiraSans-Regular.ttf"));
 
-    let collection = std::env::var("SOKOBAN_COLLECTION").unwrap_or_else(|_| "original".to_string());
+    let collection = match matches.value_of("collection") {
+        None | Some("") => {
+            std::env::var("SOKOBAN_COLLECTION").unwrap_or_else(|_| "original".to_string())
+        }
+        Some(c) => c.to_string(),
+    };
     info!("Loading collection {}", collection);
 
     let mut gui = Gui::new(&collection, Textures::new(&display));
