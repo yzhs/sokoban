@@ -1,6 +1,6 @@
 [package]
 authors = ["Colin Benner <colin@yzhs.de>"]
-name = "image_to_level"
+name = "image-to-level"
 version = "0.1.0"
 
 [dependencies]
