@@ -43,8 +43,8 @@ fn write_collection<P: AsRef<Path>>(dir: P) -> io::Result<()> {
 
     for file in fs::read_dir(&dir)? {
         let path = file?.path();
-        if let Some(ref ext) = path.extension() {
-            if ext == &std::ffi::OsStr::new("txt") {
+        if let Some(ext) = path.extension() {
+            if ext == std::ffi::OsStr::new("txt") {
                 let mut tmp = "".to_string();
                 fs::File::open(&path).unwrap().read_to_string(&mut tmp)?;
                 collection.push_str(&tmp);
@@ -133,10 +133,6 @@ fn image_to_level<P: AsRef<Path>>(path: P) -> String {
 fn level_to_image<P: AsRef<Path>>(target: P, level: &sokoban::Level) -> std::io::Result<()> {
     use image::{Rgb, ImageBuffer};
 
-    let width = level.columns() as u32;
-    let height = level.rows() as u32 + 1;
-    let mut img = ImageBuffer::new(width, height);
-
     const EMPTY_COLOR: Rgb<u8> = Rgb { data: [0, 0, 0] };
     const WALL_COLOR: Rgb<u8> = Rgb { data: [255, 0, 0] };
     const FLOOR_COLOR: Rgb<u8> = Rgb { data: [160, 160, 160] };
@@ -146,6 +142,9 @@ fn level_to_image<P: AsRef<Path>>(target: P, level: &sokoban::Level) -> std::io:
     const GOAL_COLOR: Rgb<u8> = Rgb { data: [64, 64, 64] };
     const WORKER_ON_GOAL_COLOR: Rgb<u8> = Rgb { data: [255, 216, 0] };
 
+    let width = level.columns() as u32;
+    let height = level.rows() as u32 + 1;
+    let mut img = ImageBuffer::new(width, height);
 
     // Write key into first row
     for i in 0..level.columns() {
