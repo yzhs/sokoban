@@ -46,8 +46,9 @@ impl Collection {
 
         let state = CollectionState::load(name);
         let levels_finished = state.levels_finished();
-        let current_level = if levels.len() == levels_finished {
-            levels[levels_finished - 1].clone()
+        let current_level = if state.collection_solved {
+            info!("The collection has already been solved.");
+            levels[0].clone()
         } else {
             levels[levels_finished].clone()
         };
