@@ -65,6 +65,10 @@ impl Collection {
         self.levels.len()
     }
 
+    pub fn levels(&self) -> &[Level] {
+        &self.levels
+    }
+
     fn reset_level(&mut self) -> Response {
         let n = self.current_level.rank;
         self.current_level = self.levels[n - 1].clone();

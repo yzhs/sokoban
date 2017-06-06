@@ -2,9 +2,9 @@ extern crate clap;
 extern crate image;
 extern crate sokoban_backend as sokoban;
 
-use std::fs::File;
+use std::fs;
 use std::io::{self, Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use clap::{App, Arg};
 use image::{GenericImage, Pixel};
@@ -25,38 +25,61 @@ fn main() {
                  .long("reverse"))
         .get_matches();
 
-    for dir in matches.values_of("INPUTS").unwrap() {
-        let collection = directory_to_collection(dir).unwrap();
-        let mut output = PathBuf::new();
-        output.push(dir);
-        output.set_extension("lvl");
-        let mut output_file = File::create(output).unwrap();
-        write!(output_file, "{}", collection).unwrap();
+    if matches.is_present("reverse") {
+        for name in matches.values_of("INPUTS").unwrap() {
+            write_image_directory(name).unwrap();
+        }
+    } else {
+        for dir in matches.values_of("INPUTS").unwrap() {
+            write_collection(dir).unwrap();
+        }
     }
 }
 
-fn directory_to_collection<P: AsRef<Path>>(dir: P) -> io::Result<String> {
-    use std::fs::read_dir;
+/// Given the path to a directory containing any number of images and a text file containing the
+/// title, create a collection of Sokoban levels in the usual ASCII format.
+fn write_collection<P: AsRef<Path>>(dir: P) -> io::Result<()> {
+    let mut collection = "".to_string();
 
-    let mut result = "".to_string();
-
-    let dir = dir.as_ref();
-    for file in read_dir(dir)? {
+    for file in fs::read_dir(&dir)? {
         let path = file?.path();
         if let Some(ref ext) = path.extension() {
             if ext == &std::ffi::OsStr::new("txt") {
                 let mut tmp = "".to_string();
-                File::open(&path).unwrap().read_to_string(&mut tmp)?;
-                result.push_str(&tmp);
+                fs::File::open(&path).unwrap().read_to_string(&mut tmp)?;
+                collection.push_str(&tmp);
             } else {
-                result.push_str(&image_to_level(&path));
+                collection.push_str(&image_to_level(&path));
             }
         }
-        result.push('\n');
+        collection.push('\n');
     }
 
-    Ok(result)
+    let mut output = dir.as_ref().to_path_buf();
+    output.set_extension("lvl");
+    let mut output_file = fs::File::create(output)?;
+    write!(output_file, "{}", collection)
 }
+
+fn write_image_directory<P: AsRef<Path>>(name: P) -> io::Result<()> {
+    let collection = sokoban::Collection::load(name.as_ref().to_str().unwrap()).unwrap();
+    let mut path = name.as_ref().to_path_buf();
+    path.set_extension("");
+
+    fs::create_dir(&path).unwrap_or(());
+    write!(fs::File::create(path.join("0000_title.txt")).unwrap(),
+           "{}",
+           collection.name)?;
+
+    for (i, level) in collection.levels().iter().enumerate() {
+        level_to_image(path.join(format!("{:04}_level.png", i + 1)), level)?;
+    }
+
+    Ok(())
+}
+
+/// Convert the collection of Sokoban levels into a directory of images with a text file for the
+/// collection’s name.
 
 fn image_to_level<P: AsRef<Path>>(path: P) -> String {
     // Parse the image
@@ -106,9 +129,12 @@ fn image_to_level<P: AsRef<Path>>(path: P) -> String {
     result
 }
 
-fn level_to_image<P: AsRef<Path>>(target: P, level: sokoban::Level) -> std::io::Result<()> {
+fn level_to_image<P: AsRef<Path>>(target: P, level: &sokoban::Level) -> std::io::Result<()> {
     use image::{Rgb, ImageBuffer};
-    let mut img = ImageBuffer::new(level.columns() as u32 + 1, level.rows() as u32);
+
+    let width = level.columns() as u32;
+    let height = level.rows() as u32 + 1;
+    let mut img = ImageBuffer::new(width, height);
 
     const EMPTY_COLOR: Rgb<u8> = Rgb { data: [0, 0, 0] };
     const WALL_COLOR: Rgb<u8> = Rgb { data: [255, 0, 0] };
@@ -159,7 +185,7 @@ fn level_to_image<P: AsRef<Path>>(target: P, level: sokoban::Level) -> std::io::
                 }
             }
         };
-        img.put_pixel(pos.x as u32 + 1, pos.y as u32, pixel);
+        img.put_pixel(pos.x as u32, pos.y as u32 + 1, pixel);
     }
 
     img.save(target)
