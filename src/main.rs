@@ -296,10 +296,10 @@ impl Gui {
             let text_width = text.get_width();
             let aspect_ratio = self.aspect_ratio();
 
-            let matrix = [[1.0 / text_width, 0.0, 0.0, 0.0],
-                          [0.0, 1.0 / aspect_ratio / text_width, 0.0, 0.0],
+            let matrix = [[0.6 / text_width, 0.0, 0.0, 0.0],
+                          [0.0, 0.6 / aspect_ratio / text_width, 0.0, 0.0],
                           [0.0, 0.0, 1.0, 0.0],
-                          [-0.5, 0.3, 0.0, 1.0_f32]];
+                          [-0.3, 0.3, 0.0, 1.0_f32]];
 
             glium_text::draw(&text,
                              &font_data.system,
@@ -379,29 +379,29 @@ fn direction_to_index(dir: Direction) -> usize {
 
 struct FontData {
     system: TextSystem,
-    font16: FontTexture,
-    font32: FontTexture,
+    text_font: FontTexture,
+    heading_font: FontTexture,
 }
 
 impl FontData {
     pub fn new<P: AsRef<Path>>(display: &GlutinFacade, font_path: P) -> Self {
         let system = TextSystem::new(display);
-        let font16 = FontTexture::new(display, File::open(&font_path).unwrap(), 16).unwrap();
-        let font32 = FontTexture::new(display, File::open(&font_path).unwrap(), 32).unwrap();
+        let text_font = FontTexture::new(display, File::open(&font_path).unwrap(), 24).unwrap();
+        let heading_font = FontTexture::new(display, File::open(&font_path).unwrap(), 48).unwrap();
 
         FontData {
             system,
-            font16,
-            font32,
+            text_font,
+            heading_font,
         }
     }
 
     pub fn text(&self, content: &str) -> TextDisplay<&FontTexture> {
-        TextDisplay::new(&self.system, &self.font16, content)
+        TextDisplay::new(&self.system, &self.text_font, content)
     }
 
     pub fn heading(&self, content: &str) -> TextDisplay<&FontTexture> {
-        TextDisplay::new(&self.system, &self.font32, content)
+        TextDisplay::new(&self.system, &self.heading_font, content)
     }
 }
 
