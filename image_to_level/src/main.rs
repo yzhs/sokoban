@@ -61,6 +61,8 @@ fn write_collection<P: AsRef<Path>>(dir: P) -> io::Result<()> {
     write!(output_file, "{}", collection)
 }
 
+/// Read a collection in the Sokoban assets directory and create a directory containing one image
+/// for each level of that collection.
 fn write_image_directory<P: AsRef<Path>>(name: P) -> io::Result<()> {
     let collection = sokoban::Collection::load(name.as_ref().to_str().unwrap()).unwrap();
     let mut path = name.as_ref().to_path_buf();
@@ -78,9 +80,7 @@ fn write_image_directory<P: AsRef<Path>>(name: P) -> io::Result<()> {
     Ok(())
 }
 
-/// Convert the collection of Sokoban levels into a directory of images with a text file for the
-/// collection’s name.
-
+/// Generate the ASCII representation of a level given an image.
 fn image_to_level<P: AsRef<Path>>(path: P) -> String {
     // Parse the image
     let img = image::open(path).unwrap();
@@ -129,6 +129,7 @@ fn image_to_level<P: AsRef<Path>>(path: P) -> String {
     result
 }
 
+/// Generate an image representation of a given level.
 fn level_to_image<P: AsRef<Path>>(target: P, level: &sokoban::Level) -> std::io::Result<()> {
     use image::{Rgb, ImageBuffer};
 
