@@ -41,15 +41,16 @@ fn main() {
 fn write_collection<P: AsRef<Path>>(dir: P) -> io::Result<()> {
     let mut collection = "".to_string();
 
-    for file in fs::read_dir(&dir)? {
-        let path = file?.path();
-        if let Some(ext) = path.extension() {
+    let mut files: Vec<_> = fs::read_dir(&dir)?.map(|x| x.unwrap().path()).collect();
+    files.sort();
+    for file in files {
+        if let Some(ext) = file.extension() {
             if ext == std::ffi::OsStr::new("txt") {
                 let mut tmp = "".to_string();
-                fs::File::open(&path).unwrap().read_to_string(&mut tmp)?;
+                fs::File::open(&file).unwrap().read_to_string(&mut tmp)?;
                 collection.push_str(&tmp);
             } else {
-                collection.push_str(&image_to_level(&path));
+                collection.push_str(&image_to_level(&file));
             }
         }
         collection.push('\n');
