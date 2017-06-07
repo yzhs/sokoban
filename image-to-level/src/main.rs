@@ -137,11 +137,11 @@ fn level_to_image<P: AsRef<Path>>(target: P, level: &sokoban::Level) -> std::io:
     const EMPTY_COLOR: Rgb<u8> = Rgb { data: [0, 0, 0] };
     const WALL_COLOR: Rgb<u8> = Rgb { data: [255, 0, 0] };
     const FLOOR_COLOR: Rgb<u8> = Rgb { data: [160, 160, 160] };
-    const WORKER_COLOR: Rgb<u8> = Rgb { data: [0, 255, 33] };
-    const CRATE_ON_GOAL_COLOR: Rgb<u8> = Rgb { data: [0, 38, 255] };
+    const WORKER_COLOR: Rgb<u8> = Rgb { data: [255, 255, 00] };
+    const CRATE_ON_GOAL_COLOR: Rgb<u8> = Rgb { data: [0, 128, 128] };
     const CRATE_COLOR: Rgb<u8> = Rgb { data: [0, 255, 255] };
     const GOAL_COLOR: Rgb<u8> = Rgb { data: [64, 64, 64] };
-    const WORKER_ON_GOAL_COLOR: Rgb<u8> = Rgb { data: [255, 216, 0] };
+    const WORKER_ON_GOAL_COLOR: Rgb<u8> = Rgb { data: [128, 128, 0] };
 
     let width = level.columns() as u32;
     let height = level.rows() as u32 + 1;
