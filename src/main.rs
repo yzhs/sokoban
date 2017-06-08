@@ -135,9 +135,19 @@ impl Gui {
 
     /// Handle a mouse click.
     fn click_to_command(&mut self, mouse_button: MouseButton) -> Command {
-        let x = (self.cursor_pos[0] / self.tile_size as f64).trunc() as isize;
-        let y = (self.cursor_pos[1] / self.tile_size as f64 - 0.5).trunc() as isize;
-        if x >= 0 && y >= 0 {
+        let columns = self.game.columns() as isize;
+        let rows = self.game.rows() as isize;
+        let tile_size = self.tile_size as f64;
+
+        let (offset_x, offset_y) = if self.aspect_ratio() < 1.0 {
+            ((self.window_size[0] as f64 - columns as f64 * tile_size) / 2.0, 0.0)
+        } else {
+            (0.0, (self.window_size[1] as f64 - rows as f64 * tile_size) / 2.0)
+        };
+
+        let x = ((self.cursor_pos[0] - offset_x) / tile_size).trunc() as isize;
+        let y = ((self.cursor_pos[1] - offset_y - 0.5) / tile_size).trunc() as isize;
+        if x >= 0 && y >= 0 && x < columns && y < rows {
             Command::MoveToPosition(backend::Position { x, y },
                                     MayPushCrate(mouse_button == MouseButton::Right))
         } else {
