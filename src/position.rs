@@ -10,15 +10,26 @@ pub struct Position {
 }
 
 impl Position {
-    pub fn new(x: usize, y: usize) -> Position {
+    pub fn new(x: usize, y: usize) -> Self {
         Position {
             x: x as isize,
             y: y as isize,
         }
     }
 
+    pub fn from_index(index: usize, columns: usize) -> Self {
+        Position {
+            x: (index % columns) as isize,
+            y: (index / columns) as isize,
+        }
+    }
+
+    pub fn to_index(&self, columns: usize) -> usize {
+        self.x as usize + self.y as usize * columns
+    }
+
     /// Return the neighbouring Position in the given direction.
-    pub fn neighbour(&self, direction: Direction) -> Position {
+    pub fn neighbour(&self, direction: Direction) -> Self {
         use super::Direction::*;
         let (x, y) = match direction {
             Left => (self.x - 1, self.y),

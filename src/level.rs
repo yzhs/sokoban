@@ -103,25 +103,54 @@ impl Level {
         }
 
         // Fix the mistakes of the above heuristic for detecting which cells are on the inside.
-        let mut changed = true;
-        while changed {
-            changed = false;
-            for i in 0..rows {
-                for j in 0..columns {
-                    let index = i * columns + j;
-                    if background[index] != Background::Floor {
-                        continue;
-                    }
+        let mut queue = VecDeque::new();
+        let mut visited = vec![false; background.len()];
+        let mut inside = vec![false; background.len()];
 
-                    // A non-wall cell next to an outside cell has to be on the outside itself.
-                    if index > columns && background[index - columns] == Background::Empty ||
-                       i < rows - 1 && background[index + columns] == Background::Empty ||
-                       j < columns - 1 && background[index + 1] == Background::Empty ||
-                       i == rows - 1 {
-                        background[index] = Background::Empty;
-                        changed = true;
-                    }
+        visited[worker_position.to_index(columns)] = true;
+        inside[worker_position.to_index(columns)] = true;
+        queue.push_back(worker_position);
+
+        for crate_pos in &crates {
+            visited[crate_pos.to_index(columns)] = true;
+            queue.push_back(*crate_pos);
+        }
+
+        for (i, &bg) in background.iter().enumerate() {
+            match bg {
+                Background::Wall => visited[i] = true,
+                Background::Goal if !visited[i] => {
+                    inside[i] = true;
+                    visited[i] = true;
+                    queue.push_back(Position::from_index(i, columns));
                 }
+                _ => (),
+            }
+        }
+
+        // Flood fill from all positions adde above
+        while let Some(pos) = queue.pop_front() {
+            use Direction::*;
+            let i = pos.to_index(columns);
+            if let Background::Wall = background[i] {
+                continue;
+            } else {
+                inside[i] = true;
+            }
+            for n in [Up, Down, Left, Right].iter().map(|&x| pos.neighbour(x)) {
+                // The outermost rows and columns may only contain empty space and walls, so
+                // n has to bee within bounds.
+                let j = n.to_index(columns);
+                if !visited[j] {
+                    visited[j] = true;
+                    queue.push_back(n);
+                }
+            }
+        }
+
+        for (i, bg) in background.iter_mut().enumerate() {
+            if !inside[i] && *bg == Background::Floor {
+                *bg = Background::Empty;
             }
         }
 
