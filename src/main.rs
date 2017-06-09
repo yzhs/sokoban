@@ -280,6 +280,8 @@ impl Gui {
             .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
             .unwrap();
 
+        // Display text overlay
+        let aspect_ratio = self.aspect_ratio();
         if self.level_solved {
             // Draw an overlay with some statistics.
             // Darken background
@@ -308,7 +310,6 @@ impl Gui {
             // Text
             let text = font_data.heading("Congratulations!");
             let text_width = text.get_width();
-            let aspect_ratio = self.aspect_ratio();
 
             let matrix = [[0.6 / text_width, 0.0, 0.0, 0.0],
                           [0.0, 0.6 / aspect_ratio / text_width, 0.0, 0.0],
