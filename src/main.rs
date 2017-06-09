@@ -342,6 +342,7 @@ impl Gui {
                              matrix,
                              (1.0, 1.0, 1.0, 1.0));
         } else {
+            // TODO show collection name
             // Show some statistics
             let text = font_data.text(&format!("Level: {}, Steps: {}, Pushes: {}",
                                                self.game.rank(),
@@ -430,7 +431,26 @@ fn main() {
         .arg(Arg::with_name("collection")
                  .help("The level collection to load during startup")
                  .index(1))
+        .arg(Arg::with_name("list")
+                 .help("Print a list of available level sets")
+                 .short("l")
+                 .long("list"))
         .get_matches();
+
+    // Print a list of available collections
+    if matches.is_present("list") {
+        for file in std::fs::read_dir(ASSETS.join("levels")).unwrap() {
+            let path = file.unwrap().path();
+            if let Some(ext) = path.extension() {
+                if ext == std::ffi::OsStr::new("lvl") {
+                    // TODO show full name and number of levels
+                    println!("{}: {}", path.file_stem().unwrap().to_str().unwrap(), "");
+                }
+            }
+        }
+
+        return;
+    }
 
     let display = glium::glutin::WindowBuilder::new()
         .with_dimensions(640, 480)
