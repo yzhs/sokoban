@@ -35,6 +35,33 @@ use texture::*;
 const NO_INDICES: glium::index::NoIndices =
     glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
 
+#[derive(Clone, Debug)]
+enum Sprite {
+    Static { position: backend::Position },
+    Animated {
+        old_position: backend::Position,
+        new_position: backend::Position,
+    },
+}
+
+impl Sprite {
+    fn position(&self) -> backend::Position {
+        match self {
+            &Sprite::Static { position: pos } |
+            &Sprite::Animated { new_position: pos, .. } => pos,
+        }
+    }
+
+    fn move_to(&mut self, new_position: backend::Position) {
+        info!("Moving sprite to new position...");
+        let old_position = self.position();
+        *self = Sprite::Animated {
+            old_position,
+            new_position,
+        };
+    }
+}
+
 pub struct Gui {
     game: Game,
 
@@ -58,6 +85,8 @@ pub struct Gui {
 
     /// Size of each cell
     tile_size: i32,
+
+    sprites: Vec<Sprite>,
 }
 
 impl Gui {
@@ -70,7 +99,7 @@ impl Gui {
         let worker_position = game.worker_position();
         let worker_direction = game.worker_direction();
 
-        Gui {
+        let mut gui = Gui {
             game,
             level_solved: false,
             end_of_collection: false,
@@ -85,7 +114,10 @@ impl Gui {
             cursor_pos: [0.0, 0.0],
 
             tile_size: 50,
-        }
+            sprites: vec![],
+        };
+        gui.update_sprites();
+        gui
     }
 
     fn current_level(&self) -> &Level {
@@ -206,6 +238,17 @@ impl Gui {
         }
 
         target
+    }
+
+    fn update_sprites(&mut self) {
+        info!("Updating sprites...");
+        let crates = &self.game.collection.current_level.crates;
+        let mut sprites = vec![Sprite::Static{position: self.worker_position}; crates.len()+1];
+        for (&pos, i) in self.game.collection.current_level.crates.iter() {
+            sprites[i + 1] = Sprite::Static { position: pos };
+        }
+
+        self.sprites = sprites;
     }
 
     fn aspect_ratio(&self) -> f32 {
@@ -542,16 +585,14 @@ fn main() {
                     gui.level_solved = false;
                     gui.worker_position = gui.game.worker_position();
                     gui.worker_direction = gui.game.worker_direction();
+                    gui.update_sprites();
                     bg = gui.generate_background(&display);
                 }
                 Response::MoveWorkerTo(pos, dir) => {
                     gui.worker_position = pos;
                     gui.worker_direction = dir;
                 }
-                Response::MoveCrateTo(_i, _pos) => {
-                    //let id = gui.crate_ids[i];
-                    //gui.move_sprite_to(id, pos);
-                }
+                Response::MoveCrateTo(id, pos) => gui.sprites[id].move_to(pos),
             }
         }
     }
