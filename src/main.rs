@@ -60,7 +60,8 @@ pub struct Gui {
     /// Size of each cell
     tile_size: i32,
 
-    sprites: Vec<Sprite>,
+    worker: Sprite,
+    crates: Vec<Sprite>,
 }
 
 impl Gui {
@@ -71,6 +72,7 @@ impl Gui {
         }
         let game = game.unwrap();
         let worker_direction = game.worker_direction();
+        let worker = Sprite::new(game.worker_position());
 
         let mut gui = Gui {
             game,
@@ -86,7 +88,8 @@ impl Gui {
             cursor_pos: [0.0, 0.0],
 
             tile_size: 50,
-            sprites: vec![],
+            worker,
+            crates: vec![],
         };
         gui.update_sprites();
         gui
@@ -214,14 +217,18 @@ impl Gui {
 
     fn update_sprites(&mut self) {
         info!("Updating sprites...");
-        let lvl = &self.game.collection.current_level;
-        let crates = &lvl.crates;
-        let mut sprites = vec![Sprite::new(lvl.worker_position); crates.len()+1];
-        for (&pos, i) in crates.iter() {
-            sprites[i + 1] = Sprite::new(pos);
-        }
-
-        self.sprites = sprites;
+        self.worker = Sprite::new(self.game.worker_position());
+        let mut crates = self.game
+            .collection
+            .current_level
+            .crates
+            .iter()
+            .collect::<Vec<_>>();
+        crates.sort_by_key(|&(_pos, id)| id);
+        self.crates = crates
+            .iter()
+            .map(|&(&pos, _id)| Sprite::new(pos))
+            .collect();
     }
 
     fn aspect_ratio(&self) -> f32 {
@@ -272,7 +279,7 @@ impl Gui {
 
         // Draw the crates
         let mut vertices = vec![];
-        for sprite in &self.sprites[1..] {
+        for sprite in &self.crates {
             vertices.extend(sprite.quad(columns, rows, aspect_ratio));
         }
         let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
@@ -285,7 +292,7 @@ impl Gui {
             .unwrap();
 
         // Draw the worker
-        let vertices = self.sprites[0].quad(columns, rows, aspect_ratio);
+        let vertices = self.worker.quad(columns, rows, aspect_ratio);
         let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
 
         let uniforms = uniform!{
@@ -560,10 +567,10 @@ fn main() {
                     bg = gui.generate_background(&display);
                 }
                 Response::MoveWorkerTo(pos, dir) => {
-                    gui.sprites[0].move_to(pos);
+                    gui.worker.move_to(pos);
                     gui.worker_direction = dir;
                 }
-                Response::MoveCrateTo(id, pos) => gui.sprites[id + 1].move_to(pos),
+                Response::MoveCrateTo(id, pos) => gui.crates[id].move_to(pos),
             }
         }
     }
