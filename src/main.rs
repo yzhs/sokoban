@@ -45,6 +45,10 @@ enum Sprite {
 }
 
 impl Sprite {
+    fn new(position: backend::Position) -> Self {
+        Sprite::Static { position }
+    }
+
     fn position(&self) -> backend::Position {
         match self {
             &Sprite::Static { position: pos } |
@@ -53,12 +57,15 @@ impl Sprite {
     }
 
     fn move_to(&mut self, new_position: backend::Position) {
-        info!("Moving sprite to new position...");
         let old_position = self.position();
         *self = Sprite::Animated {
             old_position,
             new_position,
         };
+    }
+
+    fn quad(&self, columns: u32, rows: u32, aspect_ratio: f32) -> Vec<Vertex> {
+        texture::create_quad_vertices(self.position(), columns, rows, aspect_ratio)
     }
 }
 
@@ -71,7 +78,6 @@ pub struct Gui {
     window_size: [u32; 2],
 
     textures: Textures,
-    worker_position: backend::Position,
     worker_direction: Direction,
 
     /// Is the shift key currently pressed?
@@ -96,7 +102,6 @@ impl Gui {
             panic!("Failed to load level set: {:?}", game.unwrap_err());
         }
         let game = game.unwrap();
-        let worker_position = game.worker_position();
         let worker_direction = game.worker_direction();
 
         let mut gui = Gui {
@@ -106,7 +111,6 @@ impl Gui {
 
             window_size: [640, 480],
             textures,
-            worker_position,
             worker_direction,
 
             shift_pressed: false,
@@ -242,10 +246,11 @@ impl Gui {
 
     fn update_sprites(&mut self) {
         info!("Updating sprites...");
-        let crates = &self.game.collection.current_level.crates;
-        let mut sprites = vec![Sprite::Static{position: self.worker_position}; crates.len()+1];
-        for (&pos, i) in self.game.collection.current_level.crates.iter() {
-            sprites[i + 1] = Sprite::Static { position: pos };
+        let lvl = &self.game.collection.current_level;
+        let crates = &lvl.crates;
+        let mut sprites = vec![Sprite::new(lvl.worker_position); crates.len()+1];
+        for (&pos, i) in crates.iter() {
+            sprites[i + 1] = Sprite::new(pos);
         }
 
         self.sprites = sprites;
@@ -299,8 +304,8 @@ impl Gui {
 
         // Draw the crates
         let mut vertices = vec![];
-        for &pos in lvl.crates.keys() {
-            vertices.extend(texture::create_quad_vertices(pos, columns, rows, aspect_ratio));
+        for sprite in &self.sprites[1..] {
+            vertices.extend(sprite.quad(columns, rows, aspect_ratio));
         }
         let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
 
@@ -312,8 +317,7 @@ impl Gui {
             .unwrap();
 
         // Draw the worker
-        let vertices =
-            texture::create_quad_vertices(self.worker_position, columns, rows, aspect_ratio);
+        let vertices = self.sprites[0].quad(columns, rows, aspect_ratio);
         let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
 
         let uniforms = uniform!{
@@ -583,16 +587,15 @@ fn main() {
                 Response::NewLevel(rank) => {
                     info!("Loading level #{}", rank);
                     gui.level_solved = false;
-                    gui.worker_position = gui.game.worker_position();
                     gui.worker_direction = gui.game.worker_direction();
                     gui.update_sprites();
                     bg = gui.generate_background(&display);
                 }
                 Response::MoveWorkerTo(pos, dir) => {
-                    gui.worker_position = pos;
+                    gui.sprites[0].move_to(pos);
                     gui.worker_direction = dir;
                 }
-                Response::MoveCrateTo(id, pos) => gui.sprites[id].move_to(pos),
+                Response::MoveCrateTo(id, pos) => gui.sprites[id + 1].move_to(pos),
             }
         }
     }
