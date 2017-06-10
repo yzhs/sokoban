@@ -1,3 +1,4 @@
+* Clean up UI code
 * Add a background image?
 * Nicer walls
 * Better error handling, e.g. responses when

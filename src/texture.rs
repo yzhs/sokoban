@@ -134,19 +134,15 @@ pub fn interpolate_quad_vertices(new: backend::Position,
         let old_bottom = -2.0 * old.y as f32 / rows as f32 + 1.0;
         let old_top = old_bottom - 2.0 / rows as f32;
 
-        if old != new {
-            let new_left = 2.0 * new.x as f32 / columns as f32 - 1.0;
-            let new_right = new_left + 2.0 / columns as f32;
-            let new_bottom = -2.0 * new.y as f32 / rows as f32 + 1.0;
-            let new_top = new_bottom - 2.0 / rows as f32;
+        let new_left = 2.0 * new.x as f32 / columns as f32 - 1.0;
+        let new_right = new_left + 2.0 / columns as f32;
+        let new_bottom = -2.0 * new.y as f32 / rows as f32 + 1.0;
+        let new_top = new_bottom - 2.0 / rows as f32;
 
-            (lambda * new_left + (1.0 - lambda) * old_left,
-             lambda * new_right + (1.0 - lambda) * old_right,
-             lambda * new_top + (1.0 - lambda) * old_top,
-             lambda * new_bottom + (1.0 - lambda) * old_bottom)
-        } else {
-            (old_left, old_right, old_top, old_bottom)
-        }
+        (lambda * new_left + (1.0 - lambda) * old_left,
+         lambda * new_right + (1.0 - lambda) * old_right,
+         lambda * new_top + (1.0 - lambda) * old_top,
+         lambda * new_bottom + (1.0 - lambda) * old_bottom)
     };
 
     if aspect_ratio < 1.0 {
