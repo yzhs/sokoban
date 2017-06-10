@@ -28,46 +28,14 @@ use glium_text::{FontTexture, TextDisplay, TextSystem};
 use clap::{App, Arg};
 
 mod texture;
+mod sprite;
 
 use backend::*;
 use texture::*;
+use sprite::*;
 
 const NO_INDICES: glium::index::NoIndices =
     glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
-
-#[derive(Clone, Debug)]
-enum Sprite {
-    Static { position: backend::Position },
-    Animated {
-        old_position: backend::Position,
-        new_position: backend::Position,
-    },
-}
-
-impl Sprite {
-    fn new(position: backend::Position) -> Self {
-        Sprite::Static { position }
-    }
-
-    fn position(&self) -> backend::Position {
-        match self {
-            &Sprite::Static { position: pos } |
-            &Sprite::Animated { new_position: pos, .. } => pos,
-        }
-    }
-
-    fn move_to(&mut self, new_position: backend::Position) {
-        let old_position = self.position();
-        *self = Sprite::Animated {
-            old_position,
-            new_position,
-        };
-    }
-
-    fn quad(&self, columns: u32, rows: u32, aspect_ratio: f32) -> Vec<Vertex> {
-        texture::create_quad_vertices(self.position(), columns, rows, aspect_ratio)
-    }
-}
 
 pub struct Gui {
     game: Game,
