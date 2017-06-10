@@ -238,7 +238,7 @@ impl Gui {
     }
 
     /// Render the current level. `bg` is the static part of the level.
-    fn render_level(&self, display: &GlutinFacade, bg: &Texture2d, font_data: &FontData) {
+    fn render_level(&mut self, display: &GlutinFacade, bg: &Texture2d, font_data: &FontData) {
         let params = glium::DrawParameters {
             backface_culling: glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,
             blend: glium::Blend::alpha_blending(),
@@ -569,6 +569,7 @@ fn main() {
                 Response::MoveWorkerTo(pos, dir) => {
                     gui.worker.move_to(pos);
                     gui.worker_direction = dir;
+                    break;
                 }
                 Response::MoveCrateTo(id, pos) => gui.crates[id].move_to(pos),
             }

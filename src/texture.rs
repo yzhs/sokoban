@@ -121,6 +121,41 @@ pub fn create_quad_vertices(pos: backend::Position,
     }
 }
 
+pub fn interpolate_quad_vertices(new: backend::Position,
+                                 old: backend::Position,
+                                 lambda: f32,
+                                 columns: u32,
+                                 rows: u32,
+                                 aspect_ratio: f32)
+                                 -> Vec<Vertex> {
+    let (left, right, top, bottom) = {
+        let old_left = 2.0 * old.x as f32 / columns as f32 - 1.0;
+        let old_right = old_left + 2.0 / columns as f32;
+        let old_bottom = -2.0 * old.y as f32 / rows as f32 + 1.0;
+        let old_top = old_bottom - 2.0 / rows as f32;
+
+        if old != new {
+            let new_left = 2.0 * new.x as f32 / columns as f32 - 1.0;
+            let new_right = new_left + 2.0 / columns as f32;
+            let new_bottom = -2.0 * new.y as f32 / rows as f32 + 1.0;
+            let new_top = new_bottom - 2.0 / rows as f32;
+
+            (lambda * new_left + (1.0 - lambda) * old_left,
+             lambda * new_right + (1.0 - lambda) * old_right,
+             lambda * new_top + (1.0 - lambda) * old_top,
+             lambda * new_bottom + (1.0 - lambda) * old_bottom)
+        } else {
+            (old_left, old_right, old_top, old_bottom)
+        }
+    };
+
+    if aspect_ratio < 1.0 {
+        lrtp_to_vertices(left, right, top * aspect_ratio, bottom * aspect_ratio)
+    } else {
+        lrtp_to_vertices(left / aspect_ratio, right / aspect_ratio, top, bottom)
+    }
+}
+
 pub fn create_full_screen_quad() -> Vec<Vertex> {
     let left = -1.0;
     let right = 1.0;
