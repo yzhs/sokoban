@@ -55,6 +55,7 @@ pub struct Vertex {
 implement_vertex!(Vertex, position, tex_coords);
 
 
+/// Pass through coordinates and texture coordinates.
 pub const VERTEX_SHADER: &str = r#"
 #version 140
 
@@ -69,6 +70,7 @@ void main() {
 "#;
 
 
+/// Render texture on triangles.
 pub const FRAGMENT_SHADER: &str = r#"
 #version 140
 
@@ -83,6 +85,8 @@ void main() {
 "#;
 
 
+/// Create a vector of vertices consisting of two triangles which together form a square with the
+/// given coordinates, together with texture coordinates to fill that square with a texture.
 fn lrtp_to_vertices(left: f32, right: f32, top: f32, bottom: f32) -> Vec<Vertex> {
     let a = Vertex {
         position: [left, top],
@@ -121,6 +125,7 @@ pub fn create_quad_vertices(pos: backend::Position,
     }
 }
 
+/// Interpolate the position between two tiles.
 pub fn interpolate_quad_vertices(new: backend::Position,
                                  old: backend::Position,
                                  lambda: f32,
@@ -152,6 +157,7 @@ pub fn interpolate_quad_vertices(new: backend::Position,
     }
 }
 
+/// Create a rectangle covering the entire viewport.
 pub fn create_full_screen_quad() -> Vec<Vertex> {
     let left = -1.0;
     let right = 1.0;
@@ -160,6 +166,8 @@ pub fn create_full_screen_quad() -> Vec<Vertex> {
     lrtp_to_vertices(left, right, top, bottom)
 }
 
+/// Create a centered rectangle with the right size to display the static parts of a level with
+/// the correct aspect ratio.
 pub fn create_background_quad(window_aspect_ratio: f32,
                               columns: usize,
                               rows: usize)
