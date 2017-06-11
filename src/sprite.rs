@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::time::Instant;
 
-use backend::Position;
+use backend::{Direction, Position};
 use texture::*;
 
 const ANIMATION_DURATION: f32 = 0.08;
@@ -15,14 +15,20 @@ pub struct Sprite {
     /// `None` if the sprite is not moving at the moment. Otherwise, a pair of the instant the
     /// animation was started and the position it started from.
     animation: Cell<Option<(Instant, Position)>>,
+
+    tile_kind: TileKind,
+
+    direction: Direction,
 }
 
 impl Sprite {
     /// Create a static sprite at the given position.
-    pub fn new(position: Position) -> Self {
+    pub fn new(position: Position, tile_kind: TileKind) -> Self {
         Sprite {
             position,
             animation: Cell::new(None),
+            tile_kind,
+            direction: Direction::Left,
         }
     }
 
@@ -34,28 +40,113 @@ impl Sprite {
         // TODO What if self.animation.get() != None?
     }
 
+    pub fn set_direction(&mut self, dir: Direction) {
+        self.direction = dir;
+    }
+
     /// Create a list of vertices of two triangles making up a square on which the texture for
     /// this sprite can be drawn.
     pub fn quad(&self, columns: u32, rows: u32, aspect_ratio: f32) -> Vec<Vertex> {
-        match self.animation.get() {
-            None => create_quad_vertices(self.position, columns, rows, aspect_ratio),
-            Some((start, old)) => {
-                let duration = Instant::now() - start;
-                let duration_seconds = duration.as_secs() as f32 +
-                                       duration.subsec_nanos() as f32 / 1.0e9;
-                let lambda = duration_seconds / ANIMATION_DURATION;
-                if lambda >= 1.0 {
-                    self.animation.set(None);
-                    self.quad(columns, rows, aspect_ratio)
-                } else {
-                    interpolate_quad_vertices(self.position,
-                                              old,
-                                              lambda,
-                                              columns,
-                                              rows,
-                                              aspect_ratio)
-                }
+        let lambda;
+        let old;
+        if let Some((start, old_pos)) = self.animation.get() {
+            let duration = Instant::now() - start;
+            let duration_seconds = duration.as_secs() as f32 +
+                                   duration.subsec_nanos() as f32 / 1.0e9;
+            lambda = duration_seconds / ANIMATION_DURATION;
+            if lambda >= 1.0 {
+                self.animation.set(None);
+                return self.quad(columns, rows, aspect_ratio);
             }
+            old = old_pos;
+        } else {
+            lambda = 0.0;
+            old = self.position;
         }
+        let new = self.position;
+
+        let texture_offset = match self.tile_kind {
+            TileKind::Empty => 0.0,
+            TileKind::Wall => 1.0,
+            TileKind::Floor => 2.0,
+            TileKind::Goal => 3.0,
+            TileKind::Crate => 4.0,
+            TileKind::Worker => 5.0,
+        } / 6.0;
+
+        let (mut left, mut right, mut top, mut bottom) = {
+            let old_left = 2.0 * old.x as f32 / columns as f32 - 1.0;
+            let old_right = old_left + 2.0 / columns as f32;
+            let old_bottom = -2.0 * old.y as f32 / rows as f32 + 1.0;
+            let old_top = old_bottom - 2.0 / rows as f32;
+
+            let new_left = 2.0 * new.x as f32 / columns as f32 - 1.0;
+            let new_right = new_left + 2.0 / columns as f32;
+            let new_bottom = -2.0 * new.y as f32 / rows as f32 + 1.0;
+            let new_top = new_bottom - 2.0 / rows as f32;
+
+            (lambda * new_left + (1.0 - lambda) * old_left,
+             lambda * new_right + (1.0 - lambda) * old_right,
+             lambda * new_top + (1.0 - lambda) * old_top,
+             lambda * new_bottom + (1.0 - lambda) * old_bottom)
+        };
+
+        if aspect_ratio < 1.0 {
+            top *= aspect_ratio;
+            bottom *= aspect_ratio;
+        } else {
+            left /= aspect_ratio;
+            right /= aspect_ratio;
+        }
+
+        lrtp_to_vertices_texture(left, right, top, bottom, texture_offset, self.direction)
     }
+}
+
+/// All tiles face left by default, so the worker has to turned by 90 degrees (clockwise) to face
+/// up instead of left, etc.
+fn direction_to_index(dir: Direction) -> usize {
+    match dir {
+        Direction::Left => 0,
+        Direction::Down => 1,
+        Direction::Right => 2,
+        Direction::Up => 3,
+    }
+}
+
+
+/// Create a vector of vertices consisting of two triangles which together form a square with the
+/// given coordinates, together with texture coordinates to fill that square with a texture.
+fn lrtp_to_vertices_texture(left: f32,
+                            right: f32,
+                            top: f32,
+                            bottom: f32,
+                            texture_offset: f32,
+                            dir: Direction)
+                            -> Vec<Vertex> {
+
+    let tex = [[texture_offset, 0.0],
+               [texture_offset, 1.0],
+               [texture_offset + 1.0 / 6.0, 1.0],
+               [texture_offset + 1.0 / 6.0, 0.0]];
+
+    let rot = direction_to_index(dir);
+
+    let a = Vertex {
+        position: [left, top],
+        tex_coords: tex[rot],
+    };
+    let b = Vertex {
+        position: [left, bottom],
+        tex_coords: tex[(rot + 1) % 4],
+    };
+    let c = Vertex {
+        position: [right, bottom],
+        tex_coords: tex[(rot + 2) % 4],
+    };
+    let d = Vertex {
+        position: [right, top],
+        tex_coords: tex[(rot + 3) % 4],
+    };
+    vec![a, b, c, c, d, a]
 }

@@ -46,7 +46,6 @@ pub struct Gui {
     window_size: [u32; 2],
 
     textures: Textures,
-    worker_direction: Direction,
 
     /// Is the shift key currently pressed?
     shift_pressed: bool,
@@ -71,8 +70,8 @@ impl Gui {
             panic!("Failed to load level set: {:?}", game.unwrap_err());
         }
         let game = game.unwrap();
-        let worker_direction = game.worker_direction();
-        let worker = Sprite::new(game.worker_position());
+        let mut worker = Sprite::new(game.worker_position(), texture::TileKind::Worker);
+        worker.set_direction(game.worker_direction());
 
         let mut gui = Gui {
             game,
@@ -81,7 +80,6 @@ impl Gui {
 
             window_size: [640, 480],
             textures,
-            worker_direction,
 
             shift_pressed: false,
             control_pressed: false,
@@ -217,7 +215,7 @@ impl Gui {
 
     fn update_sprites(&mut self) {
         info!("Updating sprites...");
-        self.worker = Sprite::new(self.game.worker_position());
+        self.worker = Sprite::new(self.game.worker_position(), texture::TileKind::Worker);
         let mut crates = self.game
             .collection
             .current_level
@@ -227,7 +225,7 @@ impl Gui {
         crates.sort_by_key(|&(_pos, id)| id);
         self.crates = crates
             .iter()
-            .map(|&(&pos, _id)| Sprite::new(pos))
+            .map(|&(&pos, _id)| Sprite::new(pos, texture::TileKind::Crate))
             .collect();
     }
 
@@ -285,7 +283,7 @@ impl Gui {
         let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
 
         let uniforms = uniform!{
-            tex: &self.textures.crate_,
+            tex: &self.textures.combined,
         };
         target
             .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
@@ -295,9 +293,6 @@ impl Gui {
         let vertices = self.worker.quad(columns, rows, aspect_ratio);
         let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
 
-        let uniforms = uniform!{
-            tex: &self.textures.worker[direction_to_index(self.worker_direction)],
-        };
         target
             .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
             .unwrap();
@@ -401,17 +396,6 @@ fn key_to_direction(key: VirtualKeyCode) -> Direction {
         VirtualKeyCode::Up => Up,
         VirtualKeyCode::Down => Down,
         _ => panic!("Invalid direction key"),
-    }
-}
-
-/// All tiles face left by default, so the worker has to turned by 90 degrees (clockwise) to face
-/// up instead of left, etc.
-fn direction_to_index(dir: Direction) -> usize {
-    match dir {
-        Direction::Left => 0,
-        Direction::Right => 1,
-        Direction::Up => 2,
-        Direction::Down => 3,
     }
 }
 
@@ -562,13 +546,12 @@ fn main() {
                 Response::NewLevel(rank) => {
                     info!("Loading level #{}", rank);
                     gui.level_solved = false;
-                    gui.worker_direction = gui.game.worker_direction();
                     gui.update_sprites();
                     bg = gui.generate_background(&display);
                 }
                 Response::MoveWorkerTo(pos, dir) => {
                     gui.worker.move_to(pos);
-                    gui.worker_direction = dir;
+                    gui.worker.set_direction(dir);
                     break;
                 }
                 Response::MoveCrateTo(id, pos) => gui.crates[id].move_to(pos),
