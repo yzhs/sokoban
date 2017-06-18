@@ -87,7 +87,20 @@ pub enum TileKind {
     Worker,
 }
 
-fn lrtp_to_vertices(left: f32, right: f32, top: f32, bottom: f32) -> Vec<Vertex> {
+fn lrtp_to_vertices(mut left: f32,
+                    mut right: f32,
+                    mut top: f32,
+                    mut bottom: f32,
+                    aspect_ratio: f32)
+                    -> Vec<Vertex> {
+    if aspect_ratio < 1.0 {
+        top *= aspect_ratio;
+        bottom *= aspect_ratio;
+    } else if aspect_ratio > 1.0 {
+        left /= aspect_ratio;
+        right /= aspect_ratio;
+    }
+
     let a = Vertex {
         position: [left, top],
         tex_coords: [0.0, 0.0],
@@ -119,21 +132,13 @@ pub fn create_quad_vertices(pos: Position,
     let bottom = -2.0 * pos.y as f32 / rows as f32 + 1.0;
     let top = bottom - 2.0 / rows as f32;
 
-    if aspect_ratio < 1.0 {
-        lrtp_to_vertices(left, right, top * aspect_ratio, bottom * aspect_ratio)
-    } else {
-        lrtp_to_vertices(left / aspect_ratio, right / aspect_ratio, top, bottom)
-    }
+    lrtp_to_vertices(left, right, top, bottom, aspect_ratio)
 }
 
 
 /// Create a rectangle covering the entire viewport.
 pub fn create_full_screen_quad() -> Vec<Vertex> {
-    let left = -1.0;
-    let right = 1.0;
-    let top = -1.0;
-    let bottom = 1.0;
-    lrtp_to_vertices(left, right, top, bottom)
+    lrtp_to_vertices(-1.0, 1.0, -1.0, 1.0, 1.0)
 }
 
 /// Create a centered rectangle with the right size to display the static parts of a level with
@@ -144,9 +149,9 @@ pub fn create_background_quad(window_aspect_ratio: f32,
                               -> Vec<Vertex> {
     let aspect_ratio = columns as f32 / rows as f32 * window_aspect_ratio;
     if aspect_ratio < 1.0 {
-        lrtp_to_vertices(-aspect_ratio, aspect_ratio, -1.0, 1.0)
+        lrtp_to_vertices(-aspect_ratio, aspect_ratio, -1.0, 1.0, 1.0)
     } else {
-        lrtp_to_vertices(-1.0, 1.0, -1.0 / aspect_ratio, 1.0 / aspect_ratio)
+        lrtp_to_vertices(-1.0, 1.0, -1.0 / aspect_ratio, 1.0 / aspect_ratio, 1.0)
     }
 }
 

@@ -74,7 +74,7 @@ impl Sprite {
             TileKind::Worker => 5.0,
         } / 6.0;
 
-        let (mut left, mut right, mut top, mut bottom) = {
+        let (left, right, top, bottom) = {
             let old_left = 2.0 * old.x as f32 / columns as f32 - 1.0;
             let old_right = old_left + 2.0 / columns as f32;
             let old_bottom = -2.0 * old.y as f32 / rows as f32 + 1.0;
@@ -91,15 +91,13 @@ impl Sprite {
              lambda * new_bottom + (1.0 - lambda) * old_bottom)
         };
 
-        if aspect_ratio < 1.0 {
-            top *= aspect_ratio;
-            bottom *= aspect_ratio;
-        } else {
-            left /= aspect_ratio;
-            right /= aspect_ratio;
-        }
-
-        lrtp_to_vertices_texture(left, right, top, bottom, texture_offset, self.direction)
+        lrtp_to_vertices_texture(left,
+                                 right,
+                                 top,
+                                 bottom,
+                                 texture_offset,
+                                 self.direction,
+                                 aspect_ratio)
     }
 }
 
@@ -117,13 +115,22 @@ fn direction_to_index(dir: Direction) -> usize {
 
 /// Create a vector of vertices consisting of two triangles which together form a square with the
 /// given coordinates, together with texture coordinates to fill that square with a texture.
-fn lrtp_to_vertices_texture(left: f32,
-                            right: f32,
-                            top: f32,
-                            bottom: f32,
+fn lrtp_to_vertices_texture(mut left: f32,
+                            mut right: f32,
+                            mut top: f32,
+                            mut bottom: f32,
                             texture_offset: f32,
-                            dir: Direction)
+                            dir: Direction,
+                            aspect_ratio: f32)
                             -> Vec<Vertex> {
+
+    if aspect_ratio < 1.0 {
+        top *= aspect_ratio;
+        bottom *= aspect_ratio;
+    } else {
+        left /= aspect_ratio;
+        right /= aspect_ratio;
+    }
 
     let tex = [[texture_offset, 0.0],
                [texture_offset, 1.0],
