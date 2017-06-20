@@ -185,7 +185,7 @@ impl Collection {
 
         let mut path = PathBuf::new();
         path.push("sokoban");
-        path.push(&self.name);
+        path.push(&self.short_name);
         path.set_extension("json");
         match BASE_DIR
                   .place_data_file(path.as_path())
