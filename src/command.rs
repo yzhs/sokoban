@@ -54,6 +54,9 @@ pub enum Response {
     /// A new level has been loaded. The number is the rank in the current level set.
     NewLevel(usize),
 
+    /// The current level has been reset.
+    ResetLevel,
+
     /// The worker was moved to the given position and facing the given direction
     MoveWorkerTo(Position, Direction),
 

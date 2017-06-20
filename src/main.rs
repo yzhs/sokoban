@@ -94,7 +94,7 @@ impl Gui {
     }
 
     fn current_level(&self) -> &Level {
-        &self.game.collection.current_level
+        self.game.current_level()
     }
 
     /// Handle press event.
@@ -213,22 +213,18 @@ impl Gui {
         target
     }
 
+    /// Create sprites for movable entities of the current level.
     fn update_sprites(&mut self) {
-        info!("Updating sprites...");
         self.worker = Sprite::new(self.game.worker_position(), texture::TileKind::Worker);
-        let mut crates = self.game
-            .collection
-            .current_level
-            .crates
+        self.crates = self.game
+            .crate_positions()
             .iter()
-            .collect::<Vec<_>>();
-        crates.sort_by_key(|&(_pos, id)| id);
-        self.crates = crates
-            .iter()
-            .map(|&(&pos, _id)| Sprite::new(pos, texture::TileKind::Crate))
+            .map(|&pos| Sprite::new(pos, texture::TileKind::Crate))
             .collect();
+        // TODO simplify hashmap -> iter -> vec -> iter -> vec -> iter -> vec
     }
 
+    /// Compute the window’s aspect ratio.
     fn aspect_ratio(&self) -> f32 {
         let width = self.window_size[0];
         let height = self.window_size[1];
@@ -478,7 +474,7 @@ fn main() {
     info!("Loading collection {}", collection);
 
     let mut gui = Gui::new(&collection, Textures::new(&display));
-    info!("Loading level #{}", gui.game.collection.current_level.rank);
+    info!("Loading level #{}", gui.game.rank());
 
     // Render static part of the level
     let mut bg = gui.generate_background(&display);
@@ -539,8 +535,7 @@ fn main() {
                 Response::LevelFinished(resp) => {
                     if !gui.level_solved {
                         gui.level_solved = true;
-                        gui.end_of_collection = gui.current_level().rank ==
-                                                gui.game.collection.number_of_levels();
+                        gui.end_of_collection = gui.game.end_of_collection();
                         use save::UpdateResponse::*;
                         match resp {
                             FirstTimeSolved => {
@@ -555,14 +550,17 @@ fn main() {
                                 } else if pushes {
                                     info!("Your solution is the best so far in terms of pushes!");
                                 } else {
-                                    info!("Moving to next level.")
+                                    info!("Solved the level without creating a new high score.")
                                 }
                             }
                         }
                     }
                 }
-                Response::NewLevel(rank) => {
-                    info!("Loading level #{}", rank);
+                Response::ResetLevel |
+                Response::NewLevel(_) => {
+                    if let Response::NewLevel(rank) = response {
+                        info!("Loading level #{}", rank);
+                    }
                     gui.level_solved = false;
                     gui.update_sprites();
                     bg = gui.generate_background(&display);

@@ -40,10 +40,12 @@ impl Solution {
         }
     }
 
+    /// Is `self` a solution with less moves than `other`?
     pub fn less_moves(&self, other: &Solution) -> bool {
         self.number_of_moves < other.number_of_moves
     }
 
+    /// Is `self` a solution with less pushes than `other`?
     pub fn less_pushes(&self, other: &Solution) -> bool {
         self.number_of_pushes < other.number_of_pushes
     }
@@ -66,15 +68,21 @@ impl<'a> TryFrom<&'a Level> for Solution {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LevelState {
+    /// The level has not been finished.
     Started(Level),
+
+    /// The level has been finished.
     Finished {
+        /// The solution using the least number of moves.
         least_moves: Solution,
+
+        /// The solution using the least number of pushes.
         least_pushes: Solution,
     },
 }
 
 impl LevelState {
-    pub fn new(solution: Solution) -> Self {
+    pub fn new_solved(solution: Solution) -> Self {
         LevelState::Finished {
             least_moves: solution.clone(),
             least_pushes: solution,
@@ -95,7 +103,7 @@ impl<'a> From<&'a Level> for LevelState {
     fn from(lvl: &'a Level) -> Self {
         if lvl.is_finished() {
             let soln = Solution::try_from(lvl).unwrap();
-            LevelState::new(soln)
+            LevelState::new_solved(soln)
         } else {
             LevelState::Started(lvl.clone())
         }

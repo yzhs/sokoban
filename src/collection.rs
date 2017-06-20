@@ -14,20 +14,32 @@ use util::*;
 /// A collection of levels.
 #[derive(Debug)]
 pub struct Collection {
+    /// The full name of the collection.
     pub name: String,
+
+    /// The name of the file containing the level collection.
+    pub short_name: String,
+
+    /// A copy of one of the levels.
     pub current_level: Level,
+
+    /// All levels of this collection. This variable is only written to when loading the
+    /// collection.
     levels: Vec<Level>,
-    pub saved: CollectionState,
+
+    /// What levels have been solved and with how many moves/pushes.
+    saved: CollectionState,
 }
 
 impl Collection {
     /// Load a file containing a bunch of levels separated by an empty line.
-    pub fn load(name: &str) -> Result<Collection, SokobanError> {
+    pub fn load(short_name: &str) -> Result<Collection, SokobanError> {
         let mut level_path = ASSETS.clone();
         level_path.push("levels");
-        level_path.push(name);
+        level_path.push(short_name);
         level_path.set_extension("lvl");
 
+        // Read the collection’s file
         let mut level_file = File::open(level_path)?;
         let mut content = "".to_string();
         level_file.read_to_string(&mut content)?;
@@ -38,23 +50,25 @@ impl Collection {
             .collect();
         let name = level_strings[0];
 
+        // Parse the individual levels
         let levels = level_strings[1..]
             .iter()
             .enumerate()
             .map(|(i, l)| Level::parse(i, l))
             .collect::<Result<Vec<_>, _>>()?;
 
-        let state = CollectionState::load(name);
-        let levels_finished = state.levels_finished();
+        // Try to load the collection’s status
+        let state = CollectionState::load(short_name);
         let current_level = if state.collection_solved {
             info!("The collection has already been solved.");
             levels[0].clone()
         } else {
-            levels[levels_finished].clone()
+            levels[state.levels_finished()].clone()
         };
 
         let result = Collection {
             name: name.to_string(),
+            short_name: short_name.to_string(),
             current_level,
             levels,
             saved: state,
@@ -62,49 +76,21 @@ impl Collection {
         Ok(result)
     }
 
-    pub fn number_of_levels(&self) -> usize {
-        self.levels.len()
+    // Accessor methods
+
+    /// Is the current level the last one in this collection?
+    pub fn end_of_collection(&self) -> bool {
+        self.current_level.rank == self.levels.len()
     }
 
-    pub fn levels(&self) -> &[Level] {
-        &self.levels
+    /// Find out which direction the worker is currently facing.
+    pub fn worker_direction(&self) -> Direction {
+        self.current_level.worker_direction()
     }
+}
 
-    fn reset_level(&mut self) -> Response {
-        let n = self.current_level.rank;
-        self.current_level = self.levels[n - 1].clone();
-        Response::NewLevel(n)
-    }
 
-    /// If `current_level` is finished, switch to the next level.
-    fn next_level(&mut self) -> Result<Vec<Response>, NextLevelError> {
-        let n = self.current_level.rank;
-        let finished = self.current_level.is_finished();
-        if finished {
-            if n < self.levels.len() {
-                self.current_level = self.levels[n].clone();
-                Ok(vec![Response::NewLevel(n + 1)])
-            } else {
-                Err(NextLevelError::EndOfCollection)
-            }
-        } else if self.saved.levels.len() >= n && n < self.levels.len() {
-            self.current_level = self.levels[n].clone();
-            Ok(vec![Response::NewLevel(n + 1)])
-        } else {
-            Err(NextLevelError::LevelNotFinished)
-        }
-    }
-
-    fn previous_level(&mut self) -> Result<Vec<Response>, ()> {
-        let n = self.current_level.rank;
-        if n < 2 {
-            Err(())
-        } else {
-            self.current_level = self.levels[n - 2].clone();
-            Ok(vec![Response::NewLevel(n - 1)])
-        }
-    }
-
+impl Collection {
     /// Execute whatever command we get from the frontend.
     pub fn execute(&mut self, command: Command) -> Vec<Response> {
         use Command::*;
@@ -148,16 +134,51 @@ impl Collection {
         result
     }
 
-    /// Find out which direction the worker is currently facing.
-    pub fn worker_direction(&self) -> Direction {
-        self.current_level.worker_direction()
+    // Helpers for Collection::execute
+
+    /// Replace the current level by a clean copy.
+    fn reset_level(&mut self) -> Response {
+        let n = self.current_level.rank;
+        self.current_level = self.levels[n - 1].clone();
+        Response::ResetLevel
     }
 
-    // TODO self should not be mut
-    pub fn save(&mut self) -> Result<UpdateResponse, SaveError> {
+    /// If `current_level` is finished, switch to the next level.
+    fn next_level(&mut self) -> Result<Vec<Response>, NextLevelError> {
+        let n = self.current_level.rank;
+        let finished = self.current_level.is_finished();
+        if finished {
+            if n < self.levels.len() {
+                self.current_level = self.levels[n].clone();
+                Ok(vec![Response::NewLevel(n + 1)])
+            } else {
+                Err(NextLevelError::EndOfCollection)
+            }
+        } else if self.saved.levels.len() >= n && n < self.levels.len() {
+            self.current_level = self.levels[n].clone();
+            Ok(vec![Response::NewLevel(n + 1)])
+        } else {
+            Err(NextLevelError::LevelNotFinished)
+        }
+    }
+
+    /// Go to the previous level unless this is already the first level in this collection.
+    fn previous_level(&mut self) -> Result<Vec<Response>, ()> {
+        let n = self.current_level.rank;
+        if n < 2 {
+            Err(())
+        } else {
+            self.current_level = self.levels[n - 2].clone();
+            Ok(vec![Response::NewLevel(n - 1)])
+        }
+    }
+
+    /// Save the state of this collection including the state of the current level.
+    fn save(&mut self) -> Result<UpdateResponse, SaveError> {
+        // TODO self should not be mut
         let rank = self.current_level.rank;
         let level_state = match Solution::try_from(&self.current_level) {
-            Ok(soln) => LevelState::new(soln),
+            Ok(soln) => LevelState::new_solved(soln),
             _ => LevelState::Started(self.current_level.clone()),
         };
         let response = self.saved.update(rank - 1, level_state);
@@ -181,7 +202,10 @@ impl Collection {
 
 #[derive(Debug)]
 pub enum NextLevelError {
+    /// Tried to move to the next levels when the current one has not been solved.
     LevelNotFinished,
+
+    /// Cannot move past the last level of a collection.
     EndOfCollection,
 }
 
