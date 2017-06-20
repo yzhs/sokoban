@@ -509,7 +509,7 @@ fn main() {
                 }
 
                 Event::MouseMoved(x, y) => gui.cursor_pos = [x as f64, y as f64],
-                Event::MouseInput(_, btn) => cmd = gui.click_to_command(btn),
+                Event::MouseInput(Released, btn) => cmd = gui.click_to_command(btn),
 
                 Event::Resized(w, h) => {
                     gui.window_size = [w, h];
@@ -517,9 +517,10 @@ fn main() {
                 }
 
                 /*
-                Event::KeyboardInput(_, _, None) | Event::MouseEntered | Event::MouseLeft |
-                Event::MouseWheel(..) | Event::TouchpadPressure(..) | Event::Awakened |
-                Event::Refresh | Event::Suspended(_) | Event::Touch(_) | Event::Moved(..) |
+                Event::KeyboardInput(_, _, None) | Event::MouseInput(Pressed, _) |
+                Event::MouseEntered | Event::MouseLeft | Event::MouseWheel(..) |
+                Event::TouchpadPressure(..) | Event::Awakened | Event::Refresh |
+                Event::Suspended(_) | Event::Touch(_) | Event::Moved(..) |
                 Event::ReceivedCharacter(_) | Event::Focused(_) | Event::DroppedFile(_) => (),
                 */
                 _ => (),
