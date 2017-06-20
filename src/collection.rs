@@ -81,15 +81,6 @@ impl Collection {
         let n = self.current_level.rank;
         let finished = self.current_level.is_finished();
         if finished {
-            if n == self.levels.len() {
-                self.saved.collection_solved = true;
-            }
-
-            // Save information on old level
-            if let Err(e) = self.save() {
-                error!("Failed to create data file: {}", e);
-            }
-
             if n < self.levels.len() {
                 self.current_level = self.levels[n].clone();
                 Ok(vec![Response::NewLevel(n + 1)])
@@ -135,12 +126,24 @@ impl Collection {
             PreviousLevel => self.previous_level().unwrap_or_default(),
             LoadCollection(_) => unreachable!(),
             Save => {
-                self.save().unwrap();
+                let _ = self.save().unwrap();
                 vec![]
             }
         };
         if self.current_level.is_finished() {
-            result.push(Response::LevelFinished);
+            if self.current_level.rank == self.levels.len() {
+                self.saved.collection_solved = true;
+            }
+
+            // Save information on old level
+            match self.save() {
+                Ok(resp) => result.push(Response::LevelFinished(resp)),
+                Err(e) => {
+                    error!("Failed to create data file: {}", e);
+                    result.push(Response::LevelFinished(UpdateResponse::FirstTimeSolved))
+                }
+            }
+
         }
         result
     }
@@ -151,13 +154,13 @@ impl Collection {
     }
 
     // TODO self should not be mut
-    pub fn save(&mut self) -> Result<(), SaveError> {
+    pub fn save(&mut self) -> Result<UpdateResponse, SaveError> {
         let rank = self.current_level.rank;
         let level_state = match Solution::try_from(&self.current_level) {
             Ok(soln) => LevelState::new(soln),
             _ => LevelState::Started(self.current_level.clone()),
         };
-        self.saved.update(rank - 1, level_state);
+        let response = self.saved.update(rank - 1, level_state);
 
         let mut path = PathBuf::new();
         path.push("sokoban");
@@ -167,7 +170,11 @@ impl Collection {
                   .place_data_file(path.as_path())
                   .and_then(File::create) {
             Err(e) => Err(SaveError::from(e)),
-            Ok(file) => ::serde_json::to_writer(file, &self.saved).map_err(SaveError::from),
+            Ok(file) => {
+                ::serde_json::to_writer(file, &self.saved)
+                    .map_err(SaveError::from)?;
+                Ok(response)
+            }
         }
     }
 }

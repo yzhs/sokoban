@@ -1,5 +1,6 @@
 use direction::*;
 use position::*;
+use save::UpdateResponse;
 
 
 pub struct MayPushCrate(pub bool);
@@ -46,8 +47,9 @@ pub enum Command {
 /// This encodes whatever the GUI needs to update according to the command just executed.
 #[derive(Debug)]
 pub enum Response {
-    /// The current level has just been solved.
-    LevelFinished,
+    /// The current level has just been solved. Additionally, signify whether, and if so which,
+    /// high score has been improved upon.
+    LevelFinished(UpdateResponse),
 
     /// A new level has been loaded. The number is the rank in the current level set.
     NewLevel(usize),

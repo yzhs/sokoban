@@ -3,6 +3,7 @@ use command::*;
 use direction::Direction;
 use position::Position;
 use util::SokobanError;
+use save::UpdateResponse;
 
 #[derive(Debug)]
 pub struct Game {
@@ -34,7 +35,7 @@ impl Game {
     }
 
     /// Save current state.
-    pub fn save(&mut self) -> Result<(), SaveError> {
+    pub fn save(&mut self) -> Result<UpdateResponse, SaveError> {
         self.collection.save()
     }
 

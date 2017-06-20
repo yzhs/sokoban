@@ -536,11 +536,29 @@ fn main() {
         // Handle responses from the backend.
         while let Some(response) = queue.pop_front() {
             match response {
-                Response::LevelFinished => {
+                Response::LevelFinished(resp) => {
                     if !gui.level_solved {
                         gui.level_solved = true;
                         gui.end_of_collection = gui.current_level().rank ==
                                                 gui.game.collection.number_of_levels();
+                        use save::UpdateResponse::*;
+                        match resp {
+                            FirstTimeSolved => {
+                                info!("You have successfully solved this level for the first time! \
+                                   Congratulations!")
+                            }
+                            Update { moves, pushes } => {
+                                if moves && pushes {
+                                    info!("Your solution is the best so far, both in terms of moves and pushes!");
+                                } else if moves {
+                                    info!("Your solution is the best so far in terms of moves!");
+                                } else if pushes {
+                                    info!("Your solution is the best so far in terms of pushes!");
+                                } else {
+                                    info!("Moving to next level.")
+                                }
+                            }
+                        }
                     }
                 }
                 Response::NewLevel(rank) => {

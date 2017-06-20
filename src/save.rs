@@ -7,6 +7,12 @@ use std::cmp::Ordering;
 use level::*;
 use util::BASE_DIR;
 
+#[derive(Debug, Clone, Copy)]
+pub enum UpdateResponse {
+    FirstTimeSolved,
+    Update { moves: bool, pushes: bool },
+}
+
 /// One particular solution of a level.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Solution {
@@ -32,6 +38,14 @@ impl Solution {
             Ordering::Equal if self.number_of_moves <= other.number_of_moves => self.clone(),
             _ => other.clone(),
         }
+    }
+
+    pub fn less_moves(&self, other: &Solution) -> bool {
+        self.number_of_moves < other.number_of_moves
+    }
+
+    pub fn less_pushes(&self, other: &Solution) -> bool {
+        self.number_of_pushes < other.number_of_pushes
     }
 }
 
@@ -121,14 +135,18 @@ impl CollectionState {
 
     /// If a better or more complete solution for the current level is available, replace the old
     /// one with it.
-    pub fn update(&mut self, index: usize, level_state: LevelState) {
+    pub fn update(&mut self, index: usize, level_state: LevelState) -> UpdateResponse {
         if index >= self.levels.len() {
             self.levels.push(level_state);
+            UpdateResponse::FirstTimeSolved
         } else {
             use self::LevelState::*;
             let ls_old = self.levels[index].clone();
             match ls_old {
-                Started(_) => self.levels[index] = level_state,
+                Started(_) => {
+                    self.levels[index] = level_state;
+                    UpdateResponse::FirstTimeSolved
+                }
                 Finished {
                     least_moves: ref lm_old,
                     least_pushes: ref lp_old,
@@ -141,6 +159,17 @@ impl CollectionState {
                             least_moves: lm_old.min_moves(lm),
                             least_pushes: lp_old.min_pushes(lp),
                         };
+                        let highscore_moves = lm_old.less_moves(lm);
+                        let highscore_pushes = lp_old.less_pushes(lp);
+                        UpdateResponse::Update {
+                            moves: highscore_moves,
+                            pushes: highscore_pushes,
+                        }
+                    } else {
+                        UpdateResponse::Update {
+                            moves: false,
+                            pushes: false,
+                        }
                     }
                 }
             }
