@@ -96,17 +96,15 @@ impl Collection {
         use Command::*;
         let mut result = match command {
             Command::Nothing => vec![],
-            Move(dir) => self.current_level.try_move(dir).unwrap_or_default(),
+            Move(dir) => self.current_level.try_move(dir),
             MoveAsFarAsPossible(dir, MayPushCrate(b)) => {
                 self.current_level
                     .move_until(dir, b)
                     .unwrap_or_default()
             }
-            MoveToPosition(pos, MayPushCrate(b)) => {
-                self.current_level.move_to(pos, b).unwrap_or_default()
-            }
-            Undo => self.current_level.undo().unwrap_or_default(),
-            Redo => self.current_level.redo().unwrap_or_default(),
+            MoveToPosition(pos, MayPushCrate(b)) => self.current_level.move_to(pos, b),
+            Undo => self.current_level.undo(),
+            Redo => self.current_level.redo(),
             ResetLevel => vec![self.reset_level()],
             NextLevel => self.next_level().unwrap_or_default(),
             PreviousLevel => self.previous_level().unwrap_or_default(),

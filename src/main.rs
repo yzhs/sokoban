@@ -531,11 +531,11 @@ fn main() {
 
         // Handle responses from the backend.
         while let Some(response) = queue.pop_front() {
+            use Response::*;
             match response {
-                Response::LevelFinished(resp) => {
+                LevelFinished(resp) => {
                     if !gui.level_solved {
                         gui.level_solved = true;
-                        gui.end_of_collection = gui.game.end_of_collection();
                         use save::UpdateResponse::*;
                         match resp {
                             FirstTimeSolved => {
@@ -556,21 +556,31 @@ fn main() {
                         }
                     }
                 }
-                Response::ResetLevel |
-                Response::NewLevel(_) => {
+                ResetLevel | NewLevel(_) => {
                     if let Response::NewLevel(rank) = response {
                         info!("Loading level #{}", rank);
                     }
+                    gui.end_of_collection = false;
                     gui.level_solved = false;
                     gui.update_sprites();
                     bg = gui.generate_background(&display);
                 }
-                Response::MoveWorkerTo(pos, dir) => {
+                MoveWorkerTo(pos, dir) => {
                     gui.worker.move_to(pos);
                     gui.worker.set_direction(dir);
                     break;
                 }
-                Response::MoveCrateTo(id, pos) => gui.crates[id].move_to(pos),
+                MoveCrateTo(id, pos) => gui.crates[id].move_to(pos),
+
+                // Errors
+                CannotMove(WithCrate(true), Obstacle::Wall) => info!("A crate hit a wall"),
+                CannotMove(WithCrate(false), Obstacle::Wall) => info!("The worker hit a wall"),
+                CannotMove(WithCrate(true), Obstacle::Crate) => info!("Two crates collided"),
+                CannotMove(WithCrate(false), Obstacle::Crate) => info!("The worker ran into a crate"),
+                NoPathfindingWhilePushing => error!("Path finding when moving crates is not implemented"),
+                NothingToUndo | Response::NothingToRedo => warn!("Cannot undo/redo move"),
+                NoPreviousLevel => warn!("Cannot go backwards past level 1"),
+                EndOfCollection => gui.end_of_collection = true,
             }
         }
     }

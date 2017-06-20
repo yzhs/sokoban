@@ -62,4 +62,35 @@ pub enum Response {
 
     /// The crate with the given index was pushed from to this new position.
     MoveCrateTo(usize, Position),
+
+    // Errors
+    /// Tried to move but hit an obstacle
+    CannotMove(WithCrate, Obstacle),
+
+    /// Tried to undo when no move has been made.
+    NothingToUndo,
+
+    /// Failed to redo a move.
+    NothingToRedo,
+
+    /// Tried to go to the non-existant level 0.
+    NoPreviousLevel,
+
+    /// Cannot load next level, the current level is the last one.
+    EndOfCollection,
+
+    /// Cannot find a path when crates may be moved.
+    NoPathfindingWhilePushing,
+}
+
+/// Did the player try to move a crate?
+#[derive(Debug)]
+pub struct WithCrate(pub bool);
+
+/// What blacked a movement?
+#[derive(Debug)]
+pub enum Obstacle {
+    Wall,
+    Crate,
+    // TODO multiple workers might block each other
 }

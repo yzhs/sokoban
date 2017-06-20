@@ -3,7 +3,7 @@ use std::fmt;
 use std::collections::{VecDeque, HashMap};
 
 use cell::*;
-use command::Response;
+use command::{Response, Obstacle, WithCrate};
 use direction::*;
 use move_::*;
 use position::*;
@@ -310,7 +310,7 @@ impl Level {
     fn move_helper(&mut self,
                    direction: Direction,
                    may_push_crate: bool)
-                   -> Result<Vec<Response>, ()> {
+                   -> Result<Vec<Response>, Response> {
         let mut result = vec![];
         let next = self.worker_position.neighbour(direction);
         let next_but_one = next.neighbour(direction);
@@ -325,7 +325,13 @@ impl Level {
             result.push(Response::MoveCrateTo(self.crates[&next_but_one], next_but_one));
             true
         } else {
-            return Err(());
+            let b = may_push_crate && self.is_crate(next);
+            let obj = if b && self.is_crate(next_but_one) {
+                Obstacle::Crate
+            } else {
+                Obstacle::Wall
+            };
+            return Err(Response::CannotMove(WithCrate(b), obj));
         };
 
         // Move worker to new position
@@ -358,12 +364,12 @@ impl Level {
 
     /// Move the worker towards `to`. If may_push_crate is set, `to` must be in the same row or
     /// column as the worker. In that case, the worker moves to `to`
-    pub fn move_to(&mut self, to: Position, may_push_crate: bool) -> Result<Vec<Response>, ()> {
+    pub fn move_to(&mut self, to: Position, may_push_crate: bool) -> Vec<Response> {
         match direction(self.worker_position, to) {
             Ok(dir) => {
                 let (dx, dy) = to - self.worker_position;
                 if !may_push_crate && dx.abs() + dy.abs() > 1 {
-                    self.find_path(to)
+                    self.find_path(to).unwrap_or_default()
                 } else {
                     let mut result = vec![];
                     // Note that this takes care of both movements of just one step and all cases
@@ -374,21 +380,21 @@ impl Level {
                             break;
                         }
                     }
-                    Ok(result)
+                    result
                 }
             }
-            Err(None) => Ok(vec![]),
-            Err(_) if !may_push_crate => self.find_path(to),
-            Err(_) => {
-                error!("Can only move along a row or column when pushing crates");
-                Err(())
-            }
+            Err(None) => vec![],
+            Err(_) if !may_push_crate => self.find_path(to).unwrap_or_default(),
+            Err(_) => vec![Response::NoPathfindingWhilePushing],
         }
     }
 
     /// Try to move in the given direction. Return an error if that is not possile.
-    pub fn try_move(&mut self, direction: Direction) -> Result<Vec<Response>, ()> {
-        self.move_helper(direction, true)
+    pub fn try_move(&mut self, direction: Direction) -> Vec<Response> {
+        match self.move_helper(direction, true) {
+            Ok(resp) => resp,
+            Err(e) => vec![e],
+        }
     }
 
     /// Try to find a shortest path from the workers current position to `to` and execute it if one
@@ -442,7 +448,7 @@ impl Level {
                     if distances[self.index(neighbour)] <
                        distances[self.index(self.worker_position)] {
                         let dir = direction(self.worker_position, neighbour);
-                        result.extend(self.try_move(dir.unwrap())?)
+                        result.extend(self.try_move(dir.unwrap()))
                     }
                 }
                 if self.worker_position == to {
@@ -472,10 +478,10 @@ impl Level {
     }
 
     /// Undo the most recent move.
-    pub fn undo(&mut self) -> Result<Vec<Response>, ()> {
+    pub fn undo(&mut self) -> Vec<Response> {
         if self.number_of_moves == 0 {
             warn!("Nothing to undo!");
-            return Err(());
+            return vec![Response::NothingToRedo];
         } else {
             self.number_of_moves -= 1;
         }
@@ -492,16 +498,16 @@ impl Level {
         }
         result.push(Response::MoveWorkerTo(worker_pos, self.worker_direction()));
 
-        Ok(result)
+        result
     }
 
     /// If a move has been undone previously, redo it.
-    pub fn redo(&mut self) -> Result<Vec<Response>, ()> {
+    pub fn redo(&mut self) -> Vec<Response> {
         if self.moves.len() > self.number_of_moves {
             let dir = self.moves[self.number_of_moves].direction;
             self.try_move(dir)
         } else {
-            Err(())
+            vec![Response::NothingToRedo]
         }
     }
 }
