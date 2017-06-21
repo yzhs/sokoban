@@ -593,6 +593,20 @@ mod test {
         assert_eq!(res.unwrap_err().to_string(), "NoWorker(1)");
     }
 
+    fn is_error(r: &Response) -> bool {
+        use Response::*;
+        match *r {
+            LevelFinished(_) | NewLevel(_) | ResetLevel | MoveWorkerTo(..) | MoveCrateTo(..) => {
+                false
+            }
+            _ => true,
+        }
+    }
+
+    fn contains_error(responses: Vec<Response>) -> bool {
+        responses.iter().any(is_error)
+    }
+
     #[test]
     fn test_trivial_move_1() {
         use self::Direction::*;
@@ -612,11 +626,11 @@ mod test {
             }
         }
 
-        assert!(lvl.try_move(Right).is_ok());
-        assert!(lvl.try_move(Left).is_ok());
-        assert!(lvl.try_move(Left).is_err());
-        assert!(lvl.try_move(Up).is_err());
-        assert!(lvl.try_move(Down).is_err());
+        assert!(!contains_error(lvl.try_move(Right)));
+        assert!(!contains_error(lvl.try_move(Left)));
+        assert!(contains_error(lvl.try_move(Left)));
+        assert!(contains_error(lvl.try_move(Up)));
+        assert!(contains_error(lvl.try_move(Down)));
     }
 
     #[test]
@@ -629,9 +643,9 @@ mod test {
                 .unwrap();
         assert_eq!(lvl.worker_position.x, 3);
         assert_eq!(lvl.worker_position.y, 1);
-        assert!(lvl.try_move(Right).is_ok());
-        assert!(lvl.try_move(Left).is_ok());
-        assert!(lvl.try_move(Up).is_err());
-        assert!(lvl.try_move(Down).is_err());
+        assert!(!contains_error(lvl.try_move(Right)));
+        assert!(!contains_error(lvl.try_move(Left)));
+        assert!(contains_error(lvl.try_move(Up)));
+        assert!(contains_error(lvl.try_move(Down)));
     }
 }

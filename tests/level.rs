@@ -16,6 +16,19 @@ const ORIGINAL_LEVEL_1: &str = r#"
     #######
 "#;
 
+fn is_error(r: &Response) -> bool {
+    use Response::*;
+    match *r {
+        LevelFinished(_) | NewLevel(_) | ResetLevel | MoveWorkerTo(..) | MoveCrateTo(..) => false,
+        _ => true,
+    }
+}
+
+fn contains_error(responses: Vec<Response>) -> bool {
+    responses.iter().any(is_error)
+}
+
+
 fn char_to_direction(c: char) -> Direction {
     use self::Direction::*;
     match c {
@@ -40,7 +53,10 @@ fn test_simple_moves() {
                      lllllllluuulluuulDDDDDuulldddrRRRRRRRRRRR\
                      llllllluuulluuurDDllddddrrruuuLLulDDDuulldddrRRRRRRRRRRdrUluR";
     for (i, mv) in moves.chars().map(char_to_direction).enumerate() {
-        assert!(lvl.try_move(mv).is_ok(), "Move #{} failed:\n{}\n", i, lvl);
+        assert!(!contains_error(lvl.try_move(mv)),
+                "Move #{} failed:\n{}\n",
+                i,
+                lvl);
     }
     assert!(lvl.is_finished(), "\n{}\n", lvl);
 }
@@ -54,14 +70,20 @@ fn test_path_finding() {
                 .chars()
                 .map(char_to_direction)
                 .enumerate() {
-        assert!(lvl.try_move(mv).is_ok(), "Move #{} failed:\n{}\n", i, lvl);
+        assert!(!contains_error(lvl.try_move(mv)),
+                "Move #{} failed:\n{}\n",
+                i,
+                lvl);
     }
     let pos = Position { x: 5, y: 4 };
     let _ = lvl.find_path(pos);
     assert_eq!(lvl.worker_position, pos);
 
     for (i, mv) in "DDuulldddr".chars().map(char_to_direction).enumerate() {
-        assert!(lvl.try_move(mv).is_ok(), "Move #{} failed:\n{}\n", i, lvl);
+        assert!(!contains_error(lvl.try_move(mv)),
+                "Move #{} failed:\n{}\n",
+                i,
+                lvl);
     }
 
     let pos = lvl.worker_position;
@@ -76,7 +98,10 @@ fn test_path_finding() {
                 .chars()
                 .map(char_to_direction)
                 .enumerate() {
-        assert!(lvl.try_move(mv).is_ok(), "Move #{} failed:\n{}\n", i, lvl);
+        assert!(!contains_error(lvl.try_move(mv)),
+                "Move #{} failed:\n{}\n",
+                i,
+                lvl);
     }
 
     assert!(lvl.is_finished());
