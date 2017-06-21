@@ -4,17 +4,17 @@ use glium::texture::Texture2d;
 use glium::backend::Facade;
 use image;
 
-use backend::{ASSETS, Position};
-
+use backend::{ASSETS, Direction, Position};
 
 pub struct Textures {
     pub combined: Texture2d,
     pub wall: Texture2d,
-    pub wall_left: Texture2d,
-    pub wall_right: Texture2d,
-    pub wall_both: Texture2d,
     pub floor: Texture2d,
     pub goal: Texture2d,
+    pub transition_wall_empty_vertical: Texture2d,
+    pub transition_wall_floor_vertical: Texture2d,
+    pub transition_wall_empty_horizontal: Texture2d,
+    pub transition_wall_floor_horizontal: Texture2d,
 }
 
 impl Textures {
@@ -22,23 +22,38 @@ impl Textures {
     pub fn new(factory: &Facade) -> Self {
         let combined = load(factory, "combined");
         let wall = load(factory, "wall");
-        let wall_left = load(factory, "wall_left");
-        let wall_right = load(factory, "wall_right");
-        let wall_both = load(factory, "wall_both");
         let floor = load(factory, "floor");
         let goal = load(factory, "goal");
+        let transition_wall_empty_vertical = load(factory, "transition_wall_empty_vertical");
+        let transition_wall_floor_vertical = load(factory, "transition_wall_floor_vertical");
+        let transition_wall_empty_horizontal = load(factory, "transition_wall_empty_horizontal");
+        let transition_wall_floor_horizontal = load(factory, "transition_wall_floor_horizontal");
 
         Textures {
             combined,
             wall,
-            wall_left,
-            wall_right,
-            wall_both,
             floor,
             goal,
+            transition_wall_empty_vertical,
+            transition_wall_floor_vertical,
+            transition_wall_empty_horizontal,
+            transition_wall_floor_horizontal,
         }
     }
 }
+
+/// Load an image from the assets directory and turn it into a `Texture2d`.
+pub fn load(display: &Facade, name: &str) -> Texture2d {
+    let mut path = ASSETS.join("images");
+    path.push(name);
+    path.set_extension("png");
+    let image = image::open(path).unwrap().to_rgba();
+    let image_dimensions = image.dimensions();
+    let image = glium::texture::RawImage2d::from_raw_rgba_reversed(image.into_raw(),
+                                                                   image_dimensions);
+    Texture2d::new(display, image).unwrap()
+}
+
 
 #[derive(Copy, Clone)]
 pub struct Vertex {
@@ -110,14 +125,14 @@ fn lrtp_to_vertices(mut left: f32,
         tex_coords: [0.0, 1.0],
     };
     let c = Vertex {
-        position: [right, top],
-        tex_coords: [1.0, 0.0],
-    };
-    let d = Vertex {
         position: [right, bottom],
         tex_coords: [1.0, 1.0],
     };
-    vec![a, b, c, c, b, d]
+    let d = Vertex {
+        position: [right, top],
+        tex_coords: [1.0, 0.0],
+    };
+    vec![a, b, c, c, d, a]
 }
 
 
@@ -155,14 +170,29 @@ pub fn create_background_quad(window_aspect_ratio: f32,
     }
 }
 
-/// Load an image from the assets directory and turn it into a `Texture2d`.
-pub fn load(display: &Facade, name: &str) -> Texture2d {
-    let mut path = ASSETS.join("images");
-    path.push(name);
-    path.set_extension("png");
-    let image = image::open(path).unwrap().to_rgba();
-    let image_dimensions = image.dimensions();
-    let image = glium::texture::RawImage2d::from_raw_rgba_reversed(image.into_raw(),
-                                                                   image_dimensions);
-    Texture2d::new(display, image).unwrap()
+pub fn create_transition(pos: Position,
+                         columns: u32,
+                         rows: u32,
+                         orientation: Direction)
+                         -> Vec<Vertex> {
+    let left;
+    let right;
+    let top;
+    let bottom;
+    match orientation {
+        Direction::Left | Direction::Right => {
+            left = (2.0 * pos.x as f32 - 0.25) / columns as f32 - 1.0;
+            right = left + 0.5 / columns as f32;
+            bottom = -2.0 * pos.y as f32 / rows as f32 + 1.0;
+            top = bottom - 2.0 / rows as f32;
+        }
+        Direction::Up | Direction::Down => {
+            left = 2.0 * pos.x as f32 / columns as f32 - 1.0;
+            right = left + 2.0 / columns as f32;
+            bottom = (-2.0 * pos.y as f32 + 0.25) / rows as f32 + 1.0;
+            top = bottom - 0.5 / rows as f32;
+        }
+    }
+    lrtp_to_vertices(left, right, top, bottom, 1.0)
+
 }

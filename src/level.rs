@@ -204,13 +204,12 @@ impl Level {
             .collect()
     }
 
+    fn in_bounds(&self, pos: Position) -> bool {
+        pos.x >= 0 && pos.y >= 0 && pos.x < self.columns() as isize && pos.y < self.rows() as isize
+    }
+
     /// Is there a crate at the given position?
     fn is_crate(&self, pos: Position) -> bool {
-        // Check bounds
-        if pos.x < 0 || pos.y < 0 || pos.x as usize >= self.columns() ||
-           pos.y as usize >= self.rows() {
-            return false;
-        }
 
         // Check the cell itself
         self.crates.get(&pos).is_some()
@@ -218,24 +217,30 @@ impl Level {
 
     /// Is the cell with the given coordinates empty, i.e. could a crate be moved into it?
     fn is_empty(&self, pos: Position) -> bool {
-        use self::Background::*;
-        let (x, y) = (pos.x as isize, pos.y as isize);
+        self.is_interior(pos) && !self.is_crate(pos)
+    }
 
-        // Check bounds
-        if pos.x < 0 || pos.y < 0 || x as usize >= self.columns() || y as usize >= self.rows() {
-            return false;
-        }
-
-        // Check the cell itself
-        match *self.background(pos) {
-            Floor | Goal => !self.is_crate(pos),
-            _ => false,
-        }
+    pub fn is_outside(&self, pos: Position) -> bool {
+        !self.in_bounds(pos) || *self.background(pos) == Background::Empty
     }
 
     /// Is the cell with the given coordinates empty, i.e. could a crate be moved into it?
     fn is_worker(&self, pos: Position) -> bool {
         pos == self.worker_position
+    }
+
+    /// The cell at the given position is neither empty, nor does it contain a wall.
+    pub fn is_interior(&self, pos: Position) -> bool {
+        use self::Background::*;
+
+        if !self.in_bounds(pos) {
+            return false;
+        }
+
+        match *self.background(pos) {
+            Floor | Goal => true,
+            _ => false,
+        }
     }
 
 

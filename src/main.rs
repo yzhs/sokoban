@@ -161,7 +161,7 @@ impl Gui {
     }
 
 
-    /// Create a `Scene` containing the level’s entities.
+    /// Render the static tiles of the current level onto a texture.
     fn generate_background(&mut self, display: &Facade) -> Texture2d {
         let columns = self.game.columns() as u32;
         let rows = self.game.rows() as u32;
@@ -170,6 +170,54 @@ impl Gui {
         let height = self.tile_size as u32 * rows;
 
         let lvl = self.current_level();
+
+        // Find transitions between wall and non-wall tiles
+        let mut horizontal_wall_floor = vec![];
+        let mut horizontal_wall_empty = vec![];
+        let mut vertical_wall_floor = vec![];
+        let mut vertical_wall_empty = vec![];
+
+        let mut previous_cell = Background::Empty;
+        for (i, &cell) in lvl.background.iter().enumerate() {
+            use Background::*;
+            let pos = lvl.position(i);
+            if pos.x == 0 {
+                previous_cell = Background::Empty;
+            }
+
+            match (previous_cell, cell) {
+                (Empty, Wall) | (Wall, Empty) => vertical_wall_empty.push(pos),
+                (Wall, Wall) => (),
+                (_, Wall) | (Wall, _) => vertical_wall_floor.push(pos),
+                _ => (),
+            }
+
+            previous_cell = cell;
+
+            if cell != Wall {
+                continue;
+            }
+            if pos.x + 1 == columns as isize {
+                vertical_wall_empty.push(pos.right());
+            }
+
+            let above = pos.above();
+            let below = pos.below();
+
+            if lvl.is_interior(above) {
+                horizontal_wall_floor.push(pos);
+            } else if lvl.is_outside(above) {
+                horizontal_wall_empty.push(pos);
+            }
+
+            if lvl.is_interior(below) {
+                horizontal_wall_floor.push(below);
+            } else if lvl.is_outside(below) {
+                horizontal_wall_empty.push(below);
+            }
+        }
+
+        // Create texture
         let target = glium::texture::Texture2d::empty(display, width * 2, height * 2).unwrap();
         target.as_surface().clear_color(0.0, 0.0, 0.0, 1.0);
 
@@ -179,6 +227,13 @@ impl Gui {
                                                   None)
                 .unwrap();
 
+        let params = glium::DrawParameters {
+            backface_culling: glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,
+            blend: glium::Blend::alpha_blending(),
+            ..Default::default()
+        };
+
+        // Render each of the (square) tiles
         for &value in &[Background::Floor, Background::Goal, Background::Wall] {
             let mut vertices = vec![];
             for (i, &cell) in lvl.background.iter().enumerate() {
@@ -202,12 +257,33 @@ impl Gui {
 
             target
                 .as_surface()
-                .draw(&vertex_buffer,
-                      &NO_INDICES,
-                      &program,
-                      &uniforms,
-                      &Default::default())
+                .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
                 .unwrap();
+        }
+
+        // Render the transitions
+        let mut vertices = vec![];
+        let tex = &self.textures;
+        for &(ref positions, orientation, texture) in
+            [(horizontal_wall_empty, Direction::Up, &tex.transition_wall_empty_horizontal),
+             (horizontal_wall_floor, Direction::Up, &tex.transition_wall_floor_horizontal),
+             (vertical_wall_empty, Direction::Left, &tex.transition_wall_empty_vertical),
+             (vertical_wall_floor, Direction::Left, &tex.transition_wall_floor_vertical)]
+                    .into_iter() {
+
+            for &pos in positions {
+                vertices.extend(texture::create_transition(pos, columns, rows, orientation));
+            }
+            let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
+            let uniforms = uniform!{
+                tex: texture
+            };
+            target
+                .as_surface()
+                .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
+                .unwrap();
+
+            vertices.clear();
         }
 
         target

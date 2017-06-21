@@ -17,6 +17,34 @@ impl Position {
         }
     }
 
+    pub fn above(&self) -> Self {
+        Position {
+            x: self.x,
+            y: self.y - 1,
+        }
+    }
+
+    pub fn below(&self) -> Self {
+        Position {
+            x: self.x,
+            y: self.y + 1,
+        }
+    }
+
+    pub fn left(&self) -> Self {
+        Position {
+            x: self.x - 1,
+            y: self.y,
+        }
+    }
+
+    pub fn right(&self) -> Self {
+        Position {
+            x: self.x + 1,
+            y: self.y,
+        }
+    }
+
     pub fn from_index(index: usize, columns: usize) -> Self {
         Position {
             x: (index % columns) as isize,
