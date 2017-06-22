@@ -610,7 +610,7 @@ mod test {
         }
     }
 
-    fn contains_error(responses: Vec<Response>) -> bool {
+    fn contains_error(responses: &[Response]) -> bool {
         responses.iter().any(is_error)
     }
 
@@ -633,11 +633,11 @@ mod test {
             }
         }
 
-        assert!(!contains_error(lvl.try_move(Right)));
-        assert!(!contains_error(lvl.try_move(Left)));
-        assert!(contains_error(lvl.try_move(Left)));
-        assert!(contains_error(lvl.try_move(Up)));
-        assert!(contains_error(lvl.try_move(Down)));
+        assert!(!contains_error(&lvl.try_move(Right)));
+        assert!(!contains_error(&lvl.try_move(Left)));
+        assert!(contains_error(&lvl.try_move(Left)));
+        assert!(contains_error(&lvl.try_move(Up)));
+        assert!(contains_error(&lvl.try_move(Down)));
     }
 
     #[test]
@@ -650,9 +650,9 @@ mod test {
                 .unwrap();
         assert_eq!(lvl.worker_position.x, 3);
         assert_eq!(lvl.worker_position.y, 1);
-        assert!(!contains_error(lvl.try_move(Right)));
-        assert!(!contains_error(lvl.try_move(Left)));
-        assert!(contains_error(lvl.try_move(Up)));
-        assert!(contains_error(lvl.try_move(Down)));
+        assert!(!contains_error(&lvl.try_move(Right)));
+        assert!(!contains_error(&lvl.try_move(Left)));
+        assert!(contains_error(&lvl.try_move(Up)));
+        assert!(contains_error(&lvl.try_move(Down)));
     }
 }
