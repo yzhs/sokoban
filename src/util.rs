@@ -19,6 +19,7 @@ pub enum SokobanError {
     NoWorker(usize),
     TwoWorkers(usize),
     CratesGoalsMismatch(usize, i32),
+    NoLevel(usize),
 }
 
 impl fmt::Display for SokobanError {
@@ -31,6 +32,7 @@ impl fmt::Display for SokobanError {
             CratesGoalsMismatch(lvl, goals_minus_crates) => {
                 write!(f, "CratesGoalsMismatch({}, {})", lvl, goals_minus_crates)
             }
+            NoLevel(lvl) => write!(f, "NoLevel({})", lvl),
         }
     }
 }
@@ -44,6 +46,7 @@ impl Error for SokobanError {
             TwoWorkers(_) => "More than one worker found.",
             NoWorker(_) => "No worker found.",
             CratesGoalsMismatch(_, _) => "The number of crates and goals does not match",
+            NoLevel(_) => "No level description found.",
         }
     }
 }

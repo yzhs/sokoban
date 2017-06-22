@@ -41,7 +41,11 @@ pub struct Level {
 impl Level {
     /// Parse the ASCII representation of a level.
     pub fn parse(num: usize, string: &str) -> Result<Level, SokobanError> {
-        let lines: Vec<_> = string.split('\n').filter(|x| !x.is_empty()).collect();
+        let lines: Vec<_> = string
+            .split('\n')
+            // Skip empty lines and comments
+            .filter(|x| !x.is_empty() && !x.trim().starts_with(';'))
+            .collect();
         let rows = lines.len();
         let columns = lines.iter().map(|x| x.len()).max().unwrap();
 
@@ -53,6 +57,7 @@ impl Level {
 
         let mut goals_minus_crates = 0_i32;
 
+        let mut found_level_description = false;
         for (i, line) in lines.iter().enumerate() {
             let mut inside = false;
             for (j, chr) in line.chars().enumerate() {
@@ -61,6 +66,7 @@ impl Level {
                                 .as_ref());
                 let index = i * columns + j;
                 background[index] = cell.background;
+                found_level_description = true;
 
                 // Count goals still to be filled and make sure that there are exactly as many
                 // goals as there are crates.
@@ -95,8 +101,9 @@ impl Level {
                 }
             }
         }
-
-        if !found_worker {
+        if !found_level_description {
+            return Err(SokobanError::NoLevel(num + 1));
+        } else if !found_worker {
             return Err(SokobanError::NoWorker(num + 1));
         } else if goals_minus_crates != 0 {
             return Err(SokobanError::CratesGoalsMismatch(num + 1, goals_minus_crates));
