@@ -3,8 +3,15 @@ use std::fmt;
 use std::io;
 use std::path::PathBuf;
 
+use app_dirs::{AppInfo, AppDataType, app_dir};
+
+const APP_INFO: AppInfo = AppInfo {
+    name: "sokoban",
+    author: "yzhs",
+};
+
 lazy_static!{
-    pub static ref BASE_DIR: ::xdg::BaseDirectories = ::xdg::BaseDirectories::new().unwrap();
+    pub static ref DATA_DIR: PathBuf = app_dir(AppDataType::UserData, &APP_INFO, "").unwrap();
 
     /// Path to the assets directory
     pub static ref ASSETS: PathBuf = ::find_folder::Search::ParentsThenKids(3, 3)

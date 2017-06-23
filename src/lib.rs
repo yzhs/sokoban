@@ -12,7 +12,7 @@ extern crate serde_json;
 extern crate find_folder;
 #[macro_use]
 extern crate lazy_static;
-extern crate xdg;
+extern crate app_dirs;
 
 
 mod cell;

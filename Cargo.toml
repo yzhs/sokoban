@@ -9,6 +9,7 @@ name = "sokoban"
 test = false
 
 [dependencies]
+app_dirs = "1.1.1"
 clap = "2.24.2"
 colog = "0.1.1"
 find_folder = "0.3.0"
@@ -20,7 +21,6 @@ log = "0.3.7"
 serde = "1.0.7"
 serde_derive = "1.0.7"
 serde_json = "1.0.2"
-xdg = "2.1.0"
 
 [lib]
 name = "sokoban_backend"

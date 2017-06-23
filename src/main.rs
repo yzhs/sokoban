@@ -19,13 +19,13 @@ use std::collections::VecDeque;
 use std::fs::File;
 use std::path::Path;
 
+use clap::{App, Arg};
 use glium::Surface;
 use glium::backend::Facade;
 use glium::backend::glutin_backend::GlutinFacade;
 use glium::glutin::{VirtualKeyCode, MouseButton};
 use glium::texture::Texture2d;
 use glium_text::{FontTexture, TextDisplay, TextSystem};
-use clap::{App, Arg};
 
 mod texture;
 mod sprite;

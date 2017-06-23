@@ -5,7 +5,7 @@ use std::fs::File;
 use std::cmp::Ordering;
 
 use level::*;
-use util::BASE_DIR;
+use util::DATA_DIR;
 
 #[derive(Debug, Clone, Copy)]
 pub enum UpdateResponse {
@@ -130,13 +130,11 @@ impl CollectionState {
     /// Try to load the `CollectionState` for the level set with the given name. If that fails,
     /// return a new empty `CollectionState`.
     pub fn load(name: &str) -> Self {
-        let mut path = "sokoban/".to_string();
-        path.push_str(name);
-        path.push_str(".json");
+        let mut path = DATA_DIR.join(name);
+        path.set_extension("json");
 
-        BASE_DIR
-            .find_data_file(path)
-            .and_then(|file| File::open(file).ok())
+        File::open(path)
+            .ok()
             .and_then(|file| ::serde_json::from_reader(file).ok())
             .unwrap_or_else(|| CollectionState::new(name))
     }

@@ -182,12 +182,9 @@ impl Collection {
         let response = self.saved.update(rank - 1, level_state);
 
         let mut path = PathBuf::new();
-        path.push("sokoban");
         path.push(&self.short_name);
         path.set_extension("json");
-        match BASE_DIR
-                  .place_data_file(path.as_path())
-                  .and_then(File::create) {
+        match File::create(DATA_DIR.join(path.as_path())) {
             Err(e) => Err(SaveError::from(e)),
             Ok(file) => {
                 ::serde_json::to_writer(file, &self.saved)
