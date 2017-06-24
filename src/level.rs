@@ -522,6 +522,18 @@ impl Level {
             vec![Response::NothingToRedo]
         }
     }
+
+    pub fn execute_moves(&mut self, number_of_moves: usize, moves: &[Move]) {
+        // TODO Error handling
+        for (i, move_) in moves.iter().enumerate() {
+            // Some moves might have been undone, so we do not redo them just now.
+            if i >= number_of_moves {
+                self.moves = moves.to_owned();
+                break;
+            }
+            self.try_move(move_.direction);
+        }
+    }
 }
 
 

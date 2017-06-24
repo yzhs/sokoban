@@ -9,6 +9,7 @@ use command::*;
 use direction::*;
 use level::*;
 use save::*;
+use move_::Moves;
 use util::*;
 
 /// A collection of levels.
@@ -63,7 +64,17 @@ impl Collection {
             info!("The collection has already been solved.");
             levels[0].clone()
         } else {
-            levels[state.levels_finished()].clone()
+            let n = state.levels_finished();
+            let mut lvl = levels[n].clone();
+            if n < state.levels.len() {
+                if let LevelState::Started {
+                           number_of_moves,
+                           moves: Moves(ref moves),
+                       } = state.levels[n] {
+                    lvl.execute_moves(number_of_moves, moves);
+                }
+            }
+            lvl
         };
 
         let result = Collection {
