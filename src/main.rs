@@ -88,7 +88,7 @@ impl Gui {
             level_solved: false,
             end_of_collection: false,
 
-            window_size: [640, 480],
+            window_size: [800, 600],
             textures,
             background: None,
 
