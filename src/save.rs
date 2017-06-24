@@ -5,6 +5,7 @@ use std::fs::File;
 use std::cmp::Ordering;
 
 use level::*;
+use move_::Moves;
 use util::DATA_DIR;
 
 #[derive(Debug, Clone, Copy)]
@@ -69,7 +70,10 @@ impl<'a> TryFrom<&'a Level> for Solution {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LevelState {
     /// The level has not been finished.
-    Started(Level),
+    Started {
+        number_of_moves: usize,
+        moves: Moves,
+    },
 
     /// The level has been finished.
     Finished {
@@ -89,9 +93,16 @@ impl LevelState {
         }
     }
 
+    pub fn new_unsolved(level: &Level) -> Self {
+        LevelState::Started {
+            number_of_moves: level.number_of_moves(),
+            moves: Moves(level.moves.clone()),
+        }
+    }
+
     /// Does this contain a complete solution?
     pub fn is_finished(&self) -> bool {
-        if let LevelState::Started(_) = *self {
+        if let LevelState::Started { .. } = *self {
             false
         } else {
             true
@@ -105,7 +116,7 @@ impl<'a> From<&'a Level> for LevelState {
             let soln = Solution::try_from(lvl).unwrap();
             LevelState::new_solved(soln)
         } else {
-            LevelState::Started(lvl.clone())
+            LevelState::new_unsolved(lvl)
         }
     }
 }
@@ -149,7 +160,7 @@ impl CollectionState {
             use self::LevelState::*;
             let ls_old = self.levels[index].clone();
             match ls_old {
-                Started(_) => {
+                Started { .. } => {
                     self.levels[index] = level_state;
                     UpdateResponse::FirstTimeSolved
                 }

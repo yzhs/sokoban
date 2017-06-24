@@ -177,7 +177,7 @@ impl Collection {
         let rank = self.current_level.rank;
         let level_state = match Solution::try_from(&self.current_level) {
             Ok(soln) => LevelState::new_solved(soln),
-            _ => LevelState::Started(self.current_level.clone()),
+            _ => LevelState::new_unsolved(&self.current_level),
         };
         let response = self.saved.update(rank - 1, level_state);
 

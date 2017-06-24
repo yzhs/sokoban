@@ -37,3 +37,6 @@ impl fmt::Display for Move {
         write!(f, "{}", self.to_char())
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Moves(pub Vec<Move>);

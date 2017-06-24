@@ -117,15 +117,13 @@ impl Gui {
             U | Z => return Undo,
 
             // Modifier keys
-            LControl | RControl => {
-                self.control_pressed = true;
-            }
-            LShift | RShift => {
-                self.shift_pressed = true;
-            }
+            LControl | RControl => self.control_pressed = true,
+            LShift | RShift => self.shift_pressed = true,
 
             P => return PreviousLevel,
             N => return NextLevel,
+
+            S if self.control_pressed => return Save,
 
             // Open the main menu
             Escape => return ResetLevel,

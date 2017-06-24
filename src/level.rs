@@ -10,7 +10,7 @@ use position::*;
 use util::*;
 
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct Level {
     pub rank: usize,
     columns: usize,
@@ -30,7 +30,7 @@ pub struct Level {
 
     /// The sequence of moves performed so far. Everything after the first number_of_moves moves is
     /// used to redo moves, i.e. undoing a previous undo operation.
-    moves: Vec<Move>,
+    pub moves: Vec<Move>,
 
     /// This describes how many moves have to be performed to arrive at the current state.
     number_of_moves: usize,
