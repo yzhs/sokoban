@@ -34,42 +34,54 @@ use backend::*;
 use texture::*;
 use sprite::*;
 
+
+/// All we ever do is draw rectangles created from two triangles each, so we don’t need any other
+/// `PrimitiveType`.
 const NO_INDICES: glium::index::NoIndices =
     glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
 
 pub struct Gui {
+    // Game state
+    /// The main back end data structure.
     game: Game,
 
+    /// Has the current level been solved, i.e. should the end-of-level overlay be rendered?
     level_solved: bool,
+
+    /// Is the current level the last of this collection.
     end_of_collection: bool,
 
-    window_size: [u32; 2],
-
-    textures: Textures,
-    background: Option<Texture2d>,
-
+    // Inputs
     /// Is the shift key currently pressed?
     shift_pressed: bool,
 
     /// Is the control key currently pressed?
     control_pressed: bool,
 
-    /// Current cursor position
+    /// The current mouse position
     cursor_pos: [f64; 2],
+
+    // Graphics
+    /// The size of the window in pixels as `[width, height]`.
+    window_size: [u32; 2],
+
+    /// Tile textures, i.e. wall, worker, crate, etc.
+    textures: Textures,
+
+    /// Pre-rendered static part of the current level, i.e. walls, floors and goals.
+    background: Option<Texture2d>,
 
     worker: Sprite,
     crates: Vec<Sprite>,
 }
 
 impl Gui {
+    /// Initialize the `Gui` struct by setting default values, and loading a collection and
+    /// textures.
     pub fn new(collection_name: &str, textures: Textures) -> Self {
-        let game = Game::new(collection_name);
-        if game.is_err() {
-            panic!("Failed to load level set: {:?}", game.unwrap_err());
-        }
-        let game = game.unwrap();
-        let mut worker = Sprite::new(game.worker_position(), texture::TileKind::Worker);
-        worker.set_direction(game.worker_direction());
+        let game = Game::new(collection_name).expect("Failed to load level set");
+        let worker = Sprite::new(game.worker_position(), texture::TileKind::Worker);
+        // FIXME code duplicated from Gui::update_sprites()
 
         let mut gui = Gui {
             game,
@@ -95,7 +107,7 @@ impl Gui {
         self.game.current_level()
     }
 
-    /// Handle press event.
+    /// Handle key press events.
     fn press_to_command(&mut self, key: VirtualKeyCode) -> Command {
         use Command::*;
         use VirtualKeyCode::*;
@@ -133,6 +145,8 @@ impl Gui {
         }
         Nothing
     }
+
+    /// Compute the tile size.
     fn tile_size(&self) -> f64 {
         let columns = self.game.columns() as u32;
         let rows = self.game.rows() as u32;
@@ -295,6 +309,7 @@ impl Gui {
     /// Create sprites for movable entities of the current level.
     fn update_sprites(&mut self) {
         self.worker = Sprite::new(self.game.worker_position(), texture::TileKind::Worker);
+        self.worker.set_direction(self.game.worker_direction());
         self.crates = self.game
             .crate_positions()
             .iter()
@@ -326,6 +341,10 @@ impl Gui {
         }
         let bg = self.background.as_ref().unwrap();
 
+        let lvl = self.current_level();
+        let columns = lvl.columns() as u32;
+        let rows = lvl.rows() as u32;
+
         // Draw background
         let vertices = texture::create_background_quad(self.aspect_ratio(),
                                                        self.game.columns(),
@@ -336,10 +355,6 @@ impl Gui {
                                                   texture::FRAGMENT_SHADER,
                                                   None)
                 .unwrap();
-
-        let lvl = self.current_level();
-        let columns = lvl.columns() as u32;
-        let rows = lvl.rows() as u32;
 
         let uniforms = uniform!{
             tex: bg,
@@ -368,6 +383,7 @@ impl Gui {
         let uniforms = uniform!{
             tex: &self.textures.combined,
         };
+
         target
             .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
             .unwrap();
@@ -469,8 +485,9 @@ impl Gui {
         target.finish().unwrap();
     }
 
+    /// Handle the queue of responses from the back end, updating the gui status and logging
+    /// messages.
     pub fn handle_responses(&mut self, queue: &mut VecDeque<Response>) {
-        // Handle responses from the backend.
         while let Some(response) = queue.pop_front() {
             use Response::*;
             match response {
@@ -508,6 +525,9 @@ impl Gui {
                 MoveWorkerTo(pos, dir) => {
                     self.worker.move_to(pos);
                     self.worker.set_direction(dir);
+                    // Only move worker by one tile, so we can do nice animations.  If a crate is
+                    // moved, MoveCrateTo is always *before* the corresponding MoveWorkerTo, so
+                    // breaking here is enough.
                     break;
                 }
                 MoveCrateTo(id, pos) => self.crates[id].move_to(pos),
@@ -538,6 +558,7 @@ fn key_to_direction(key: VirtualKeyCode) -> Direction {
     }
 }
 
+/// Collection of glyph textures.
 struct FontData {
     system: TextSystem,
     text_font: FontTexture,
@@ -545,6 +566,7 @@ struct FontData {
 }
 
 impl FontData {
+    /// Load font from disk and create a glyph texture at two different font sizes.
     pub fn new<P: AsRef<Path>>(display: &GlutinFacade, font_path: P) -> Self {
         let system = TextSystem::new(display);
         let text_font = FontTexture::new(display, File::open(&font_path).unwrap(), 24).unwrap();
@@ -557,10 +579,12 @@ impl FontData {
         }
     }
 
+    /// Prepare a given texst to be rendered as normal text.
     pub fn text(&self, content: &str) -> TextDisplay<&FontTexture> {
         TextDisplay::new(&self.system, &self.text_font, content)
     }
 
+    /// Prepare a given texst to be rendered as a heading.
     pub fn heading(&self, content: &str) -> TextDisplay<&FontTexture> {
         TextDisplay::new(&self.system, &self.heading_font, content)
     }
@@ -573,7 +597,6 @@ fn main() {
     /*
      * Initialization
      */
-
     let matches = App::new(TITLE)
         .author(env!("CARGO_PKG_AUTHORS"))
         .version(env!("CARGO_PKG_VERSION"))
@@ -618,17 +641,17 @@ fn main() {
         }
         Some(c) => c.to_string(),
     };
-    info!("Loading collection {}", collection);
 
     let mut gui = Gui::new(&collection, Textures::new(&display));
-    info!("Loading level #{}", gui.game.rank());
+    info!("Loading level #{} of collection {}",
+          gui.game.rank(),
+          gui.game.name());
 
     let mut queue = VecDeque::new();
 
     /*
      * Main loop
      */
-
     loop {
         gui.render_level(&display, &font_data);
 

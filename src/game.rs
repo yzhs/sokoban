@@ -38,6 +38,7 @@ impl Game {
         }
     }
 
+    // Access data concerning the current level
     /// The current level
     pub fn current_level(&self) -> &Level {
         &self.collection.current_level
@@ -91,5 +92,11 @@ impl Game {
     /// The number of pushes performed since starting to solve this level.
     pub fn number_of_pushes(&self) -> usize {
         self.collection.current_level.number_of_pushes()
+    }
+
+
+    /// The collections full name
+    pub fn name(&self) -> &str {
+        self.collection.name.as_ref()
     }
 }
