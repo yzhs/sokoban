@@ -70,12 +70,16 @@ impl<'a> TryFrom<&'a Level> for Solution {
 pub enum LevelState {
     /// The level has not been finished.
     Started {
+        #[serde(default)]
+        rank: usize,
         number_of_moves: usize,
         moves: String,
     },
 
     /// The level has been finished.
     Finished {
+        #[serde(default)]
+        rank: usize,
         /// The solution using the least number of moves.
         least_moves: Solution,
 
@@ -85,8 +89,9 @@ pub enum LevelState {
 }
 
 impl LevelState {
-    pub fn new_solved(solution: Solution) -> Self {
+    pub fn new_solved(rank: usize, solution: Solution) -> Self {
         LevelState::Finished {
+            rank,
             least_moves: solution.clone(),
             least_pushes: solution,
         }
@@ -94,6 +99,7 @@ impl LevelState {
 
     pub fn new_unsolved(level: &Level) -> Self {
         LevelState::Started {
+            rank: level.rank,
             number_of_moves: level.number_of_moves(),
             moves: level.all_moves_to_string(),
         }
@@ -107,13 +113,27 @@ impl LevelState {
             true
         }
     }
+
+    pub fn rank(&self) -> usize {
+        match *self {
+            LevelState::Started { rank, .. } |
+            LevelState::Finished { rank, .. } => rank,
+        }
+    }
+
+    pub fn set_rank(&mut self, new_rank: usize) {
+        match *self {
+            LevelState::Started { ref mut rank, .. } |
+            LevelState::Finished { ref mut rank, .. } => *rank = new_rank,
+        }
+    }
 }
 
 impl<'a> From<&'a Level> for LevelState {
     fn from(lvl: &'a Level) -> Self {
         if lvl.is_finished() {
             let soln = Solution::try_from(lvl).unwrap();
-            LevelState::new_solved(soln)
+            LevelState::new_solved(lvl.rank, soln)
         } else {
             LevelState::new_unsolved(lvl)
         }
@@ -164,14 +184,17 @@ impl CollectionState {
                     UpdateResponse::FirstTimeSolved
                 }
                 Finished {
+                    rank,
                     least_moves: ref lm_old,
                     least_pushes: ref lp_old,
                 } => {
                     if let Finished {
                                least_moves: ref lm,
                                least_pushes: ref lp,
+                               ..
                            } = level_state {
                         self.levels[index] = Finished {
+                            rank,
                             least_moves: lm_old.min_moves(lm),
                             least_pushes: lp_old.min_pushes(lp),
                         };

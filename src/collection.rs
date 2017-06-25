@@ -69,6 +69,7 @@ impl Collection {
                 if let LevelState::Started {
                            number_of_moves,
                            ref moves,
+                           ..
                        } = state.levels[n] {
                     lvl.execute_moves(number_of_moves, moves);
                 }
@@ -186,10 +187,17 @@ impl Collection {
         // TODO self should not be mut
         let rank = self.current_level.rank;
         let level_state = match Solution::try_from(&self.current_level) {
-            Ok(soln) => LevelState::new_solved(soln),
+            Ok(soln) => LevelState::new_solved(self.current_level.rank, soln),
             _ => LevelState::new_unsolved(&self.current_level),
         };
         let response = self.saved.update(rank - 1, level_state);
+
+        // If no rank was given in the JSON file, set it.
+        if self.saved.levels[0].rank() == 0 {
+            for (i, lvl) in self.saved.levels.iter_mut().enumerate() {
+                lvl.set_rank(i + 1);
+            }
+        }
 
         let mut path = PathBuf::new();
         path.push(&self.short_name);
