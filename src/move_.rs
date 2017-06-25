@@ -21,6 +21,8 @@ impl Move {
         }
     }
 
+    /// Describe a move using one character signifying its direction. The character is upper case
+    /// if and only if `self.moves_crate` is true.
     pub fn to_char(&self) -> char {
         if self.moves_crate {
             match self.direction {
@@ -40,6 +42,7 @@ impl Move {
     }
 }
 
+/// Parse a string representation of moves.
 pub fn parse(s: &str) -> Result<Vec<Move>, char> {
     s.chars()
         .map(Move::try_from)
