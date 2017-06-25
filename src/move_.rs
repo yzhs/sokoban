@@ -40,6 +40,12 @@ impl Move {
     }
 }
 
+pub fn parse(s: &str) -> Result<Vec<Move>, char> {
+    s.chars()
+        .map(Move::try_from)
+        .collect::<Result<Vec<_>, _>>()
+}
+
 impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_char())
@@ -64,9 +70,6 @@ impl TryFrom<char> for Move {
            })
     }
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Moves(pub Vec<Move>);
 
 #[cfg(test)]
 mod test {

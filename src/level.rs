@@ -5,7 +5,7 @@ use std::collections::{VecDeque, HashMap};
 use cell::*;
 use command::{Response, Obstacle, WithCrate};
 use direction::*;
-use move_::*;
+use move_::Move;
 use position::*;
 use util::*;
 
@@ -523,7 +523,8 @@ impl Level {
         }
     }
 
-    pub fn execute_moves(&mut self, number_of_moves: usize, moves: &[Move]) {
+    pub fn execute_moves(&mut self, number_of_moves: usize, moves: &str) {
+        let moves = ::move_::parse(moves).unwrap();
         // TODO Error handling
         for (i, move_) in moves.iter().enumerate() {
             // Some moves might have been undone, so we do not redo them just now.
@@ -533,6 +534,14 @@ impl Level {
             }
             self.try_move(move_.direction);
         }
+    }
+
+    pub fn all_moves_to_string(&self) -> String {
+        let mut result = String::with_capacity(self.moves.len());
+        for mv in &self.moves {
+            result.push(mv.to_char());
+        }
+        result
     }
 }
 

@@ -5,7 +5,6 @@ use std::fs::File;
 use std::cmp::Ordering;
 
 use level::*;
-use move_::Moves;
 use util::DATA_DIR;
 
 #[derive(Debug, Clone, Copy)]
@@ -72,7 +71,7 @@ pub enum LevelState {
     /// The level has not been finished.
     Started {
         number_of_moves: usize,
-        moves: Moves,
+        moves: String,
     },
 
     /// The level has been finished.
@@ -96,7 +95,7 @@ impl LevelState {
     pub fn new_unsolved(level: &Level) -> Self {
         LevelState::Started {
             number_of_moves: level.number_of_moves(),
-            moves: Moves(level.moves.clone()),
+            moves: level.all_moves_to_string(),
         }
     }
 

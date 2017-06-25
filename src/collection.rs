@@ -9,7 +9,6 @@ use command::*;
 use direction::*;
 use level::*;
 use save::*;
-use move_::Moves;
 use util::*;
 
 /// A collection of levels.
@@ -69,7 +68,7 @@ impl Collection {
             if n < state.levels.len() {
                 if let LevelState::Started {
                            number_of_moves,
-                           moves: Moves(ref moves),
+                           ref moves,
                        } = state.levels[n] {
                     lvl.execute_moves(number_of_moves, moves);
                 }
