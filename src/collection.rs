@@ -34,18 +34,24 @@ pub struct Collection {
 impl Collection {
     /// Load a file containing a bunch of levels separated by an empty line.
     pub fn load(short_name: &str) -> Result<Collection, SokobanError> {
+        #[cfg(unix)]
+        const EMPTY_LINE: &str = "\n\n";
+        #[cfg(windows)]
+        const EMPTY_LINE: &str = "\r\n\r\n";
+        
         let mut level_path = ASSETS.clone();
         level_path.push("levels");
         level_path.push(short_name);
         level_path.set_extension("lvl");
 
         // Read the collection’s file
+        let eol = |c| c == '\n' || c == '\r';
         let mut level_file = File::open(level_path)?;
         let mut content = "".to_string();
         level_file.read_to_string(&mut content)?;
         let level_strings: Vec<_> = content
-            .split("\n\n")
-            .map(|x| x.trim_matches('\n'))
+            .split(EMPTY_LINE)
+            .map(|x| x.trim_matches(&eol))
             .filter(|x| !x.is_empty())
             .collect();
         let name = level_strings[0];
@@ -54,7 +60,7 @@ impl Collection {
         let levels = level_strings[1..]
             .iter()
             .enumerate()
-            .map(|(i, l)| Level::parse(i, l))
+            .map(|(i, l)| Level::parse(i, l.trim_matches(&eol)))
             .collect::<Result<Vec<_>, _>>()?;
 
         // Try to load the collection’s status

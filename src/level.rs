@@ -41,8 +41,7 @@ pub struct Level {
 impl Level {
     /// Parse the ASCII representation of a level.
     pub fn parse(num: usize, string: &str) -> Result<Level, SokobanError> {
-        let lines: Vec<_> = string
-            .split('\n')
+        let lines: Vec<_> = string.lines()
             // Skip empty lines and comments
             .filter(|x| !x.is_empty() && !x.trim().starts_with(';'))
             .collect();
