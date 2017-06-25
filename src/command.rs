@@ -83,6 +83,19 @@ pub enum Response {
     NoPathfindingWhilePushing,
 }
 
+impl Response {
+    pub fn is_error(&self) -> bool {
+        use Response::*;
+        match *self {
+            LevelFinished(_) | NewLevel(_) | ResetLevel | MoveWorkerTo(..) | MoveCrateTo(..) => {
+                false
+            }
+            _ => true,
+        }
+    }
+}
+
+
 /// Did the player try to move a crate?
 #[derive(Debug)]
 pub struct WithCrate(pub bool);

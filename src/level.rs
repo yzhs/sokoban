@@ -532,7 +532,10 @@ impl Level {
                 self.moves = moves.to_owned();
                 break;
             }
-            self.try_move(move_.direction);
+            let res = self.try_move(move_.direction);
+            if res.len() == 1 && res[0].is_error() {
+                error!("{:?}", res[0]);
+            }
         }
     }
 
@@ -621,18 +624,8 @@ mod test {
         assert_eq!(res.unwrap_err().to_string(), "NoWorker(1)");
     }
 
-    fn is_error(r: &Response) -> bool {
-        use Response::*;
-        match *r {
-            LevelFinished(_) | NewLevel(_) | ResetLevel | MoveWorkerTo(..) | MoveCrateTo(..) => {
-                false
-            }
-            _ => true,
-        }
-    }
-
     fn contains_error(responses: &[Response]) -> bool {
-        responses.iter().any(is_error)
+        responses.iter().any(|x| x.is_error())
     }
 
     #[test]

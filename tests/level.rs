@@ -16,16 +16,8 @@ const ORIGINAL_LEVEL_1: &str = r#"
     #######
 "#;
 
-fn is_error(r: &Response) -> bool {
-    use Response::*;
-    match *r {
-        LevelFinished(_) | NewLevel(_) | ResetLevel | MoveWorkerTo(..) | MoveCrateTo(..) => false,
-        _ => true,
-    }
-}
-
 fn contains_error(responses: &[Response]) -> bool {
-    responses.iter().any(is_error)
+    responses.iter().any(|x| x.is_error())
 }
 
 
