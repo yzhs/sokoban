@@ -1,7 +1,7 @@
 // GUI
 #[macro_use]
 extern crate glium;
-extern crate glium_text;
+extern crate glium_text_rusttype as glium_text;
 extern crate image;
 
 // Logging
@@ -569,8 +569,8 @@ impl FontData {
     /// Load font from disk and create a glyph texture at two different font sizes.
     pub fn new<P: AsRef<Path>>(display: &GlutinFacade, font_path: P) -> Self {
         let system = TextSystem::new(display);
-        let text_font = FontTexture::new(display, File::open(&font_path).unwrap(), 24).unwrap();
-        let heading_font = FontTexture::new(display, File::open(&font_path).unwrap(), 48).unwrap();
+        let text_font = FontTexture::new(display, File::open(&font_path).unwrap(), 24, glium_text::FontTexture::ascii_character_list()).unwrap();
+        let heading_font = FontTexture::new(display, File::open(&font_path).unwrap(), 48, glium_text::FontTexture::ascii_character_list()).unwrap();
 
         FontData {
             system,
