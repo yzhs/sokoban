@@ -208,6 +208,7 @@ impl Gui {
 
                 match (previous_cell, cell) {
                     (Empty, Wall) | (Wall, Empty) => vertical_wall_empty.push(pos),
+                    (Wall, Wall) => (),
                     (_, Wall) | (Wall, _) => vertical_wall_floor.push(pos),
                     _ => (),
                 }
