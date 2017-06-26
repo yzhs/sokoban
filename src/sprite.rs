@@ -65,15 +65,6 @@ impl Sprite {
         }
         let new = self.position;
 
-        let texture_offset = match self.tile_kind {
-            TileKind::Empty => 0.0,
-            TileKind::Wall => 1.0,
-            TileKind::Floor => 2.0,
-            TileKind::Goal => 3.0,
-            TileKind::Crate => 4.0,
-            TileKind::Worker => 5.0,
-        } / 6.0;
-
         let (left, right, top, bottom) = {
             let old_left = 2.0 * old.x as f32 / columns as f32 - 1.0;
             let old_right = old_left + 2.0 / columns as f32;
@@ -91,69 +82,6 @@ impl Sprite {
              lambda * new_bottom + (1.0 - lambda) * old_bottom)
         };
 
-        lrtp_to_vertices_texture(left,
-                                 right,
-                                 top,
-                                 bottom,
-                                 texture_offset,
-                                 self.direction,
-                                 aspect_ratio)
+        lrtp_to_vertices(left, right, top, bottom, self.direction, aspect_ratio)
     }
-}
-
-/// All tiles face left by default, so the worker has to turned by 90 degrees (clockwise) to face
-/// up instead of left, etc.
-fn direction_to_index(dir: Direction) -> usize {
-    match dir {
-        Direction::Left => 0,
-        Direction::Down => 1,
-        Direction::Right => 2,
-        Direction::Up => 3,
-    }
-}
-
-
-/// Create a vector of vertices consisting of two triangles which together form a square with the
-/// given coordinates, together with texture coordinates to fill that square with a texture.
-fn lrtp_to_vertices_texture(mut left: f32,
-                            mut right: f32,
-                            mut top: f32,
-                            mut bottom: f32,
-                            texture_offset: f32,
-                            dir: Direction,
-                            aspect_ratio: f32)
-                            -> Vec<Vertex> {
-
-    if aspect_ratio < 1.0 {
-        top *= aspect_ratio;
-        bottom *= aspect_ratio;
-    } else {
-        left /= aspect_ratio;
-        right /= aspect_ratio;
-    }
-
-    let tex = [[texture_offset, 0.0],
-               [texture_offset, 1.0],
-               [texture_offset + 1.0 / 6.0, 1.0],
-               [texture_offset + 1.0 / 6.0, 0.0]];
-
-    let rot = direction_to_index(dir);
-
-    let a = Vertex {
-        position: [left, top],
-        tex_coords: tex[rot],
-    };
-    let b = Vertex {
-        position: [left, bottom],
-        tex_coords: tex[(rot + 1) % 4],
-    };
-    let c = Vertex {
-        position: [right, bottom],
-        tex_coords: tex[(rot + 2) % 4],
-    };
-    let d = Vertex {
-        position: [right, top],
-        tex_coords: tex[(rot + 3) % 4],
-    };
-    vec![a, b, c, c, d, a]
 }

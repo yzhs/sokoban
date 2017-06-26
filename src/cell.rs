@@ -10,6 +10,15 @@ pub enum Background {
     Goal,
 }
 
+impl Background {
+    pub fn is_wall(self) -> bool {
+        match self {
+            Background::Wall => true,
+            _ => false,
+        }
+    }
+}
+
 /// Dynamic part of a cell.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Foreground {

@@ -40,6 +40,9 @@ use sprite::*;
 const NO_INDICES: glium::index::NoIndices =
     glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
 
+const WHITE: (f32, f32, f32, f32) = (1.0, 1.0, 1.0, 1.0);
+
+
 pub struct Gui {
     // Game state
     /// The main back end data structure.
@@ -268,9 +271,7 @@ impl Gui {
                     Background::Goal => &self.textures.goal,
                     Background::Wall => &self.textures.wall,
                 };
-                let uniforms = uniform!{
-                tex: texture,
-            };
+                let uniforms = uniform!{tex: texture};
 
                 target
                     .as_surface()
@@ -291,9 +292,7 @@ impl Gui {
                     vertices.extend(texture::create_transition(pos, columns, rows, orientation));
                 }
                 let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
-                let uniforms = uniform!{
-                tex: texture
-            };
+                let uniforms = uniform!{tex: texture};
                 target
                     .as_surface()
                     .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
@@ -327,6 +326,78 @@ impl Gui {
         height as f32 / width as f32
     }
 
+    /// Given a vector of vertices describing a list of quads, draw them onto `target`.
+    fn draw_quads(&self,
+                  display: &GlutinFacade,
+                  target: &mut glium::Frame,
+                  vertices: Vec<Vertex>,
+                  tex: &Texture2d,
+                  params: &glium::DrawParameters,
+                  program: &glium::Program)
+                  -> Result<(), glium::DrawError> {
+        let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
+        let uniforms = uniform!{tex: tex};
+        target.draw(&vertex_buffer, &NO_INDICES, program, &uniforms, params)
+    }
+
+    /// Draw an overlay with some statistics.
+    fn draw_end_of_level_overlay(&self,
+                                 font_data: &FontData,
+                                 target: &mut glium::Frame,
+                                 display: &GlutinFacade,
+                                 params: &glium::DrawParameters) {
+
+        // Darken background
+        const DARKEN_SHADER: &str = r#"
+            #version 140
+
+            in vec2 v_tex_coords;
+            out vec4 color;
+
+            void main() {
+                color = vec4(0.0, 0.0, 0.0, 0.7);
+            }
+            "#;
+
+        let program =
+            glium::Program::from_source(display, texture::VERTEX_SHADER, DARKEN_SHADER, None)
+                .unwrap();
+
+        self.draw_quads(display,
+                   target,
+                   texture::create_full_screen_quad(),
+                   // The texture is ignored by the given fragment shader, so we can take any here
+                   &self.textures.worker, // FIXME find a cleaner solution
+                   &params,
+                   &program)
+                .unwrap();
+
+        let aspect_ratio = self.aspect_ratio();
+
+        // Text
+        font_data.draw(target,
+                       "Congratulations!",
+                       Font::Heading,
+                       WHITE,
+                       0.1,
+                       [-0.5, 0.2],
+                       aspect_ratio);
+
+        let stats_text = format!("You have finished the level {} using {} moves, \
+                                      {} of which moved a crate.",
+                                 self.game.rank(),
+                                 self.game.number_of_moves(),
+                                 self.game.number_of_pushes());
+
+        font_data.draw(target,
+                       &stats_text,
+                       Font::Text,
+                       WHITE,
+                       0.05,
+                       [-0.5, -0.2],
+                       aspect_ratio);
+    }
+
     /// Render the current level.
     fn render_level(&mut self, display: &GlutinFacade, font_data: &FontData) {
         let params = glium::DrawParameters {
@@ -349,22 +420,20 @@ impl Gui {
         let vertices = texture::create_background_quad(self.aspect_ratio(),
                                                        self.game.columns(),
                                                        self.game.rows());
-        let vertex_buffer_bg = glium::VertexBuffer::new(display, &vertices).unwrap();
+        let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
         let program = glium::Program::from_source(display,
                                                   texture::VERTEX_SHADER,
                                                   texture::FRAGMENT_SHADER,
                                                   None)
                 .unwrap();
 
-        let uniforms = uniform!{
-            tex: bg,
-        };
+        let uniforms = uniform!{tex: bg};
 
         let mut target = display.draw();
         target.clear_color(0.0, 0.0, 0.0, 1.0);
 
         target
-            .draw(&vertex_buffer_bg, &NO_INDICES, &program, &uniforms, &params)
+            .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
             .unwrap();
 
         // Draw foreground
@@ -378,108 +447,42 @@ impl Gui {
         for sprite in &self.crates {
             vertices.extend(sprite.quad(columns, rows, aspect_ratio));
         }
-        let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
-
-        let uniforms = uniform!{
-            tex: &self.textures.combined,
-        };
-
-        target
-            .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
+        self.draw_quads(display,
+                        &mut target,
+                        vertices,
+                        &self.textures.crate_,
+                        &params,
+                        &program)
             .unwrap();
 
         // Draw the worker
-        let vertices = self.worker.quad(columns, rows, aspect_ratio);
-        let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
-
-        target
-            .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
+        self.draw_quads(display,
+                        &mut target,
+                        self.worker.quad(columns, rows, aspect_ratio),
+                        &self.textures.worker,
+                        &params,
+                        &program)
             .unwrap();
 
         // Display text overlay
-        let aspect_ratio = self.aspect_ratio();
         if self.level_solved {
-            // Draw an overlay with some statistics.
-            // Darken background
-            const DARKEN_SHADER: &str = r#"
-            #version 140
-
-            in vec2 v_tex_coords;
-            out vec4 color;
-
-            void main() {
-                color = vec4(0.0, 0.0, 0.0, 0.6);
-            }
-            "#;
-
-            let vertices = texture::create_full_screen_quad();
-            let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
-
-            let program =
-                glium::Program::from_source(display, texture::VERTEX_SHADER, DARKEN_SHADER, None)
-                    .unwrap();
-
-            target
-                .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
-                .unwrap();
-
-            // Text
-            let text = font_data.heading("Congratulations!");
-            let text_width = text.get_width();
-
-            let matrix = [[0.6 / text_width, 0.0, 0.0, 0.0],
-                          [0.0, 0.6 / aspect_ratio / text_width, 0.0, 0.0],
-                          [0.0, 0.0, 1.0, 0.0],
-                          [-0.3, 0.3, 0.0, 1.0_f32]];
-
-            glium_text::draw(&text,
-                             &font_data.system,
-                             &mut target,
-                             matrix,
-                             (1.0, 1.0, 1.0, 1.0));
-
-            let stats_text = format!("You have finished the level {} using {} moves, \
-                                      {} of which moved a crate.",
-                                     self.game.rank(),
-                                     self.game.number_of_moves(),
-                                     self.game.number_of_pushes());
-            let text = font_data.text(&stats_text);
-            let text_width = text.get_width();
-
-            let matrix = [[1.0 / text_width, 0.0, 0.0, 0.0],
-                          [0.0, 1.0 / aspect_ratio / text_width, 0.0, 0.0],
-                          [0.0, 0.0, 1.0, 0.0],
-                          [-0.5, -0.2, 0.0, 1.0_f32]];
-
-
-            glium_text::draw(&text,
-                             &font_data.system,
-                             &mut target,
-                             matrix,
-                             (1.0, 1.0, 1.0, 1.0));
+            self.draw_end_of_level_overlay(font_data, &mut target, display, &params);
         } else {
+            let aspect_ratio = self.aspect_ratio();
             // TODO show collection name
             // Show some statistics
-            let text = font_data.text(&format!("Level: {}, Steps: {}, Pushes: {}",
-                                               self.game.rank(),
-                                               self.game.number_of_moves(),
-                                               self.game.number_of_pushes()));
+            let text = format!("Level: {}, Steps: {}, Pushes: {}",
+                               self.game.rank(),
+                               self.game.number_of_moves(),
+                               self.game.number_of_pushes());
 
-            let matrix = [[0.02, 0.0, 0.0, 0.0],
-                          [0.0, 0.02 / aspect_ratio, 0.0, 0.0],
-                          [0.0, 0.0, 1.0, 0.0],
-                          [0.5, -0.9, 0.0, 1.0_f32]];
-
-
-            glium_text::draw(&text,
-                             &font_data.system,
-                             &mut target,
-                             matrix,
-                             (1.0, 1.0, 1.0, 1.0));
-            target
-                .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
-                .unwrap();
-
+            font_data.draw(&mut target,
+                           &text,
+                           Font::Mono,
+                           WHITE,
+                           0.05,
+                           [0.5, -0.9],
+                           aspect_ratio);
         }
 
         target.finish().unwrap();
@@ -558,35 +561,76 @@ fn key_to_direction(key: VirtualKeyCode) -> Direction {
     }
 }
 
+enum Font {
+    Heading,
+    Text,
+    Mono,
+}
+
 /// Collection of glyph textures.
 struct FontData {
     system: TextSystem,
-    text_font: FontTexture,
     heading_font: FontTexture,
+    text_font: FontTexture,
+    mono_font: FontTexture,
 }
 
 impl FontData {
     /// Load font from disk and create a glyph texture at two different font sizes.
-    pub fn new<P: AsRef<Path>>(display: &GlutinFacade, font_path: P) -> Self {
+    pub fn new<P: AsRef<Path>, Q: AsRef<Path>>(display: &GlutinFacade,
+                                               font_path: P,
+                                               mono_path: Q)
+                                               -> Self {
         let system = TextSystem::new(display);
-        let text_font = FontTexture::new(display, File::open(&font_path).unwrap(), 24, glium_text::FontTexture::ascii_character_list()).unwrap();
-        let heading_font = FontTexture::new(display, File::open(&font_path).unwrap(), 48, glium_text::FontTexture::ascii_character_list()).unwrap();
+        let text_font = FontTexture::new(display,
+                                         File::open(&font_path).unwrap(),
+                                         32,
+                                         glium_text::FontTexture::ascii_character_list())
+                .unwrap();
+        let heading_font = FontTexture::new(display,
+                                            File::open(&font_path).unwrap(),
+                                            64,
+                                            glium_text::FontTexture::ascii_character_list())
+                .unwrap();
+
+        let mono_font = FontTexture::new(display,
+                                         File::open(&mono_path).unwrap(),
+                                         32,
+                                         glium_text::FontTexture::ascii_character_list())
+                .unwrap();
 
         FontData {
             system,
-            text_font,
             heading_font,
+            text_font,
+            mono_font,
         }
     }
 
-    /// Prepare a given texst to be rendered as normal text.
-    pub fn text(&self, content: &str) -> TextDisplay<&FontTexture> {
-        TextDisplay::new(&self.system, &self.text_font, content)
-    }
+    pub fn draw(&self,
+                target: &mut glium::Frame,
+                text: &str,
+                font_type: Font,
+                color: (f32, f32, f32, f32),
+                scale: f32,
+                offset: [f32; 2],
+                aspect_ratio: f32) {
 
-    /// Prepare a given texst to be rendered as a heading.
-    pub fn heading(&self, content: &str) -> TextDisplay<&FontTexture> {
-        TextDisplay::new(&self.system, &self.heading_font, content)
+        let font = match font_type {
+            Font::Heading => &self.heading_font,
+            Font::Text => &self.text_font,
+            Font::Mono => &self.mono_font,
+        };
+        let text_display = TextDisplay::new(&self.system, font, text);
+        let matrix = [[scale, 0.0, 0.0, 0.0],
+                      [0.0, scale / aspect_ratio, 0.0, 0.0],
+                      [0.0, 0.0, 1.0, 0.0],
+                      [offset[0] * scale * text_display.get_width(),
+                       offset[1],
+                       0.0,
+                       1.0_f32]];
+
+        let _ = glium_text::draw(&text_display, &self.system, target, matrix, color);
     }
 }
 
@@ -633,7 +677,9 @@ fn main() {
     // Initialize colog after window to suppress some log output.
     colog::init();
 
-    let font_data = FontData::new(&display, ASSETS.join("FiraSans-Regular.ttf"));
+    let font_data = FontData::new(&display,
+                                  ASSETS.join("FiraSans-Regular.ttf"),
+                                  ASSETS.join("FiraMono-Regular.ttf"));
 
     let collection = match matches.value_of("collection") {
         None | Some("") => {

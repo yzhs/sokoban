@@ -7,10 +7,11 @@ use image;
 use backend::{ASSETS, Direction, Position};
 
 pub struct Textures {
-    pub combined: Texture2d,
-    pub wall: Texture2d,
+    pub crate_: Texture2d,
     pub floor: Texture2d,
     pub goal: Texture2d,
+    pub wall: Texture2d,
+    pub worker: Texture2d,
     pub transition_wall_empty_vertical: Texture2d,
     pub transition_wall_floor_vertical: Texture2d,
     pub transition_wall_empty_horizontal: Texture2d,
@@ -20,20 +21,22 @@ pub struct Textures {
 impl Textures {
     /// Load all textures.
     pub fn new(factory: &Facade) -> Self {
-        let combined = load(factory, "combined");
-        let wall = load(factory, "wall");
+        let crate_ = load(factory, "crate");
         let floor = load(factory, "floor");
         let goal = load(factory, "goal");
+        let wall = load(factory, "wall");
+        let worker = load(factory, "worker");
         let transition_wall_empty_vertical = load(factory, "transition_wall_empty_vertical");
         let transition_wall_floor_vertical = load(factory, "transition_wall_floor_vertical");
         let transition_wall_empty_horizontal = load(factory, "transition_wall_empty_horizontal");
         let transition_wall_floor_horizontal = load(factory, "transition_wall_floor_horizontal");
 
         Textures {
-            combined,
-            wall,
+            crate_,
             floor,
             goal,
+            wall,
+            worker,
             transition_wall_empty_vertical,
             transition_wall_floor_vertical,
             transition_wall_empty_horizontal,
@@ -94,47 +97,62 @@ void main() {
 
 #[derive(Clone, Copy, Debug)]
 pub enum TileKind {
-    Empty,
-    Wall,
-    Floor,
-    Goal,
     Crate,
     Worker,
 }
 
-fn lrtp_to_vertices(mut left: f32,
-                    mut right: f32,
-                    mut top: f32,
-                    mut bottom: f32,
-                    aspect_ratio: f32)
-                    -> Vec<Vertex> {
+
+/// All tiles face left by default, so the worker has to turned by 90 degrees (clockwise) to face
+/// up instead of left, etc.
+fn direction_to_index(dir: Direction) -> usize {
+    match dir {
+        Direction::Left => 0,
+        Direction::Down => 1,
+        Direction::Right => 2,
+        Direction::Up => 3,
+    }
+}
+
+/// Create a vector of vertices consisting of two triangles which together form a square with the
+/// given coordinates, together with texture coordinates to fill that square with a texture.
+pub fn lrtp_to_vertices(mut left: f32,
+                        mut right: f32,
+                        mut top: f32,
+                        mut bottom: f32,
+                        dir: Direction,
+                        aspect_ratio: f32)
+                        -> Vec<Vertex> {
+
     if aspect_ratio < 1.0 {
         top *= aspect_ratio;
         bottom *= aspect_ratio;
-    } else if aspect_ratio > 1.0 {
+    } else {
         left /= aspect_ratio;
         right /= aspect_ratio;
     }
 
+    let tex = [[0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, 0.0]];
+
+    let rot = direction_to_index(dir);
+
     let a = Vertex {
         position: [left, top],
-        tex_coords: [0.0, 0.0],
+        tex_coords: tex[rot],
     };
     let b = Vertex {
         position: [left, bottom],
-        tex_coords: [0.0, 1.0],
+        tex_coords: tex[(rot + 1) % 4],
     };
     let c = Vertex {
         position: [right, bottom],
-        tex_coords: [1.0, 1.0],
+        tex_coords: tex[(rot + 2) % 4],
     };
     let d = Vertex {
         position: [right, top],
-        tex_coords: [1.0, 0.0],
+        tex_coords: tex[(rot + 3) % 4],
     };
     vec![a, b, c, c, d, a]
 }
-
 
 /// Create a bunch of vertices for rendering a textured square.
 pub fn create_quad_vertices(pos: Position,
@@ -147,13 +165,13 @@ pub fn create_quad_vertices(pos: Position,
     let bottom = -2.0 * pos.y as f32 / rows as f32 + 1.0;
     let top = bottom - 2.0 / rows as f32;
 
-    lrtp_to_vertices(left, right, top, bottom, aspect_ratio)
+    lrtp_to_vertices(left, right, top, bottom, Direction::Left, aspect_ratio)
 }
 
 
 /// Create a rectangle covering the entire viewport.
 pub fn create_full_screen_quad() -> Vec<Vertex> {
-    lrtp_to_vertices(-1.0, 1.0, -1.0, 1.0, 1.0)
+    lrtp_to_vertices(-1.0, 1.0, -1.0, 1.0, Direction::Left, 1.0)
 }
 
 /// Create a centered rectangle with the right size to display the static parts of a level with
@@ -164,9 +182,14 @@ pub fn create_background_quad(window_aspect_ratio: f32,
                               -> Vec<Vertex> {
     let aspect_ratio = columns as f32 / rows as f32 * window_aspect_ratio;
     if aspect_ratio < 1.0 {
-        lrtp_to_vertices(-aspect_ratio, aspect_ratio, -1.0, 1.0, 1.0)
+        lrtp_to_vertices(-aspect_ratio, aspect_ratio, -1.0, 1.0, Direction::Left, 1.0)
     } else {
-        lrtp_to_vertices(-1.0, 1.0, -1.0 / aspect_ratio, 1.0 / aspect_ratio, 1.0)
+        lrtp_to_vertices(-1.0,
+                         1.0,
+                         -1.0 / aspect_ratio,
+                         1.0 / aspect_ratio,
+                         Direction::Left,
+                         1.0)
     }
 }
 
@@ -193,6 +216,6 @@ pub fn create_transition(pos: Position,
             top = bottom - 0.5 / rows as f32;
         }
     }
-    lrtp_to_vertices(left, right, top, bottom, 1.0)
+    lrtp_to_vertices(left, right, top, bottom, Direction::Left, 1.0)
 
 }

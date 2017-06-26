@@ -81,7 +81,7 @@ impl Level {
                 }
 
                 // Try to figure out whether a given cell is inside the walls.
-                if !inside && cell.background == Background::Wall {
+                if !inside && cell.background.is_wall() {
                     inside = true;
                 }
 
