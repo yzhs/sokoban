@@ -9,6 +9,9 @@ extern crate image;
 extern crate log;
 extern crate colog;
 
+// Colored output
+extern crate ansi_term;
+
 // Argument handling
 extern crate clap;
 
@@ -708,6 +711,44 @@ impl FontData {
     }
 }
 
+fn print_collections_table() {
+    use ansi_term::Colour::{Blue, Green, White};
+
+    #[cfg(windows)]
+    ansi_term::enable_ansi_support();
+
+    println!(" {}               {}",
+             White.bold().paint("File name"),
+             White.bold().paint("Collection name"));
+    println!("{0}{0}{0}{0}{0}", "----------------");
+
+    for file in std::fs::read_dir(ASSETS.join("levels")).unwrap() {
+        let path = file.unwrap().path();
+        if let Some(ext) = path.extension() {
+            if ext == std::ffi::OsStr::new("lvl") {
+                let name = path.file_stem().and_then(|x| x.to_str()).unwrap();
+                let collection = Collection::load(name).unwrap();
+
+                if collection.is_solved() {
+                    println!(" {:<24}{:<36}{:>10} {}",
+                             name,
+                             collection.name,
+                             "",
+                             Green.paint("done"));
+                } else {
+                    println!(" {:<24}{:<36}{:>10} {}",
+                             name,
+                             collection.name,
+                             format!("{}/{}",
+                                     collection.number_of_solved_levels(),
+                                     collection.number_of_levels()),
+                             Blue.paint("solved"));
+                }
+            }
+        }
+    }
+}
+
 fn main() {
     // Initialize colog after window to suppress some log output.
     colog::init();
@@ -726,30 +767,7 @@ fn main() {
 
     // Print a list of available collections
     if matches.is_present("list") {
-        println!("{:<16}\tCollection name", "File name");
-        println!("{0}{0}{0}{0}{0}", "----------------");
-
-        for file in std::fs::read_dir(ASSETS.join("levels")).unwrap() {
-            let path = file.unwrap().path();
-            if let Some(ext) = path.extension() {
-                if ext == std::ffi::OsStr::new("lvl") {
-                    let name = path.file_stem().and_then(|x| x.to_str()).unwrap();
-                    let collection = Collection::load(name).unwrap();
-
-                    println!("{:<24}{:<36}{:>16}",
-                             name,
-                             collection.name,
-                             if !collection.is_solved() {
-                                 format!("{}/{} solved",
-                                         collection.number_of_solved_levels(),
-                                         collection.number_of_levels())
-                             } else {
-                                 "done  ".to_string()
-                             });
-                }
-            }
-        }
-
+        print_collections_table();
         return;
     }
 
