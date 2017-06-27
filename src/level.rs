@@ -134,7 +134,7 @@ impl Level {
             }
         }
 
-        // Flood fill from all positions adde above
+        // Flood fill from all positions added above
         while let Some(pos) = queue.pop_front() {
             use Direction::*;
             let i = pos.to_index(columns);

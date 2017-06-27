@@ -72,7 +72,6 @@ impl Collection {
         // Try to load the collection’s status
         let state = CollectionState::load(short_name);
         let current_level = if state.collection_solved {
-            info!("The collection has already been solved.");
             levels[0].clone()
         } else {
             let n = state.levels_finished();
@@ -105,6 +104,18 @@ impl Collection {
     /// Is the current level the last one in this collection?
     pub fn end_of_collection(&self) -> bool {
         self.current_level.rank == self.levels.len()
+    }
+
+    pub fn number_of_levels(&self) -> usize {
+        self.levels.len()
+    }
+
+    pub fn number_of_solved_levels(&self) -> usize {
+        self.saved.levels_finished()
+    }
+
+    pub fn is_solved(&self) -> bool {
+        self.saved.collection_solved
     }
 
     /// Find out which direction the worker is currently facing.

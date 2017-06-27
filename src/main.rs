@@ -88,9 +88,6 @@ impl Gui {
     /// textures.
     pub fn new(collection_name: &str) -> Self {
         use glium::DisplayBuild;
-
-        // Initialize colog after window to suppress some log output.
-        colog::init();
         let game = Game::new(collection_name).expect("Failed to load level set");
 
         let display = glium::glutin::WindowBuilder::new()
@@ -712,6 +709,9 @@ impl FontData {
 }
 
 fn main() {
+    // Initialize colog after window to suppress some log output.
+    colog::init();
+
     let matches = App::new(TITLE)
         .author(env!("CARGO_PKG_AUTHORS"))
         .version(env!("CARGO_PKG_VERSION"))
@@ -726,12 +726,26 @@ fn main() {
 
     // Print a list of available collections
     if matches.is_present("list") {
+        println!("{:<16}\tCollection name", "File name");
+        println!("{0}{0}{0}{0}{0}", "----------------");
+
         for file in std::fs::read_dir(ASSETS.join("levels")).unwrap() {
             let path = file.unwrap().path();
             if let Some(ext) = path.extension() {
                 if ext == std::ffi::OsStr::new("lvl") {
-                    // TODO show full name and number of levels
-                    println!("{}: {}", path.file_stem().unwrap().to_str().unwrap(), "");
+                    let name = path.file_stem().and_then(|x| x.to_str()).unwrap();
+                    let collection = Collection::load(name).unwrap();
+
+                    println!("{:<24}{:<36}{:>16}",
+                             name,
+                             collection.name,
+                             if !collection.is_solved() {
+                                 format!("{}/{} solved",
+                                         collection.number_of_solved_levels(),
+                                         collection.number_of_levels())
+                             } else {
+                                 "done  ".to_string()
+                             });
                 }
             }
         }
