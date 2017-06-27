@@ -21,7 +21,6 @@ use std::path::Path;
 
 use clap::{App, Arg};
 use glium::Surface;
-use glium::backend::Facade;
 use glium::backend::glutin_backend::GlutinFacade;
 use glium::glutin::{VirtualKeyCode, MouseButton};
 use glium::texture::Texture2d;
@@ -34,6 +33,8 @@ use backend::*;
 use texture::*;
 use sprite::*;
 
+
+const TITLE: &'static str = "Sokoban";
 
 /// All we ever do is draw rectangles created from two triangles each, so we don’t need any other
 /// `PrimitiveType`.
@@ -65,6 +66,9 @@ pub struct Gui {
     cursor_pos: [f64; 2],
 
     // Graphics
+    display: GlutinFacade,
+    font_data: FontData,
+
     /// The size of the window in pixels as `[width, height]`.
     window_size: [u32; 2],
 
@@ -78,19 +82,42 @@ pub struct Gui {
     crates: Vec<Sprite>,
 }
 
+
 impl Gui {
     /// Initialize the `Gui` struct by setting default values, and loading a collection and
     /// textures.
-    pub fn new(collection_name: &str, textures: Textures) -> Self {
+    pub fn new(collection_name: &str) -> Self {
+        use glium::DisplayBuild;
+
+        // Initialize colog after window to suppress some log output.
+        colog::init();
         let game = Game::new(collection_name).expect("Failed to load level set");
+
+        let display = glium::glutin::WindowBuilder::new()
+            .with_dimensions(800, 600)
+            .with_title(TITLE.to_string() + " - " + game.name())
+            .build_glium()
+            .unwrap_or_else(|e| panic!("Failed to build window: {}", e));
+
+        let textures = Textures::new(&display);
+        let font_data = FontData::new(&display,
+                                      ASSETS.join("FiraSans-Regular.ttf"),
+                                      ASSETS.join("FiraMono-Regular.ttf"));
+
         let worker = Sprite::new(game.worker_position(), texture::TileKind::Worker);
         // FIXME code duplicated from Gui::update_sprites()
+
+        info!("Loading level #{} of collection {}",
+              game.rank(),
+              game.name());
 
         let mut gui = Gui {
             game,
             level_solved: false,
             end_of_collection: false,
 
+            display,
+            font_data,
             window_size: [800, 600],
             textures,
             background: None,
@@ -142,9 +169,7 @@ impl Gui {
 
             // Open the main menu
             Escape => return ResetLevel,
-            _ => {
-                error!("Unkown key: {:?}", key);
-            }
+            _ => error!("Unkown key: {:?}", key),
         }
         Nothing
     }
@@ -180,7 +205,7 @@ impl Gui {
 
 
     /// Render the static tiles of the current level onto a texture.
-    fn generate_background(&mut self, display: &Facade) {
+    fn generate_background(&mut self) {
         let target;
 
         {
@@ -239,10 +264,11 @@ impl Gui {
             }
 
             // Create texture
-            target = glium::texture::Texture2d::empty(display, width * 2, height * 2).unwrap();
+            target = glium::texture::Texture2d::empty(&self.display, width * 2, height * 2)
+                .unwrap();
             target.as_surface().clear_color(0.0, 0.0, 0.0, 1.0);
 
-            let program = glium::Program::from_source(display,
+            let program = glium::Program::from_source(&self.display,
                                                       texture::VERTEX_SHADER,
                                                       texture::FRAGMENT_SHADER,
                                                       None)
@@ -264,7 +290,7 @@ impl Gui {
                     let pos = lvl.position(i);
                     vertices.extend(texture::create_quad_vertices(pos, columns, rows, 1.0));
                 }
-                let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
+                let vertex_buffer = glium::VertexBuffer::new(&self.display, &vertices).unwrap();
 
                 let texture = match value {
                     Background::Empty => continue,
@@ -292,7 +318,7 @@ impl Gui {
                 for &pos in positions {
                     vertices.extend(texture::create_transition(pos, columns, rows, orientation));
                 }
-                let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
+                let vertex_buffer = glium::VertexBuffer::new(&self.display, &vertices).unwrap();
                 let uniforms = uniform!{tex: texture};
                 target
                     .as_surface()
@@ -329,24 +355,22 @@ impl Gui {
 
     /// Given a vector of vertices describing a list of quads, draw them onto `target`.
     fn draw_quads(&self,
-                  display: &GlutinFacade,
                   target: &mut glium::Frame,
                   vertices: Vec<Vertex>,
                   tex: &Texture2d,
                   params: &glium::DrawParameters,
                   program: &glium::Program)
                   -> Result<(), glium::DrawError> {
-        let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
+        let vertex_buffer = glium::VertexBuffer::new(&self.display, &vertices).unwrap();
         let uniforms = uniform!{tex: tex};
         target.draw(&vertex_buffer, &NO_INDICES, program, &uniforms, params)
     }
 
     /// Draw an overlay with some statistics.
     fn draw_end_of_level_overlay(&self,
-                                 font_data: &FontData,
                                  target: &mut glium::Frame,
-                                 display: &GlutinFacade,
                                  params: &glium::DrawParameters) {
+        let font_data = &self.font_data;
 
         // Darken background
         const DARKEN_SHADER: &str = r#"
@@ -361,15 +385,14 @@ impl Gui {
             "#;
 
         let program =
-            glium::Program::from_source(display, texture::VERTEX_SHADER, DARKEN_SHADER, None)
+            glium::Program::from_source(&self.display, texture::VERTEX_SHADER, DARKEN_SHADER, None)
                 .unwrap();
 
-        self.draw_quads(display,
-                   target,
+        self.draw_quads(target,
                    texture::create_full_screen_quad(),
                    // The texture is ignored by the given fragment shader, so we can take any here
                    &self.textures.worker, // FIXME find a cleaner solution
-                   &params,
+                   params,
                    &program)
                 .unwrap();
 
@@ -379,7 +402,6 @@ impl Gui {
         font_data.draw(target,
                        "Congratulations!",
                        Font::Heading,
-                       WHITE,
                        0.1,
                        [-0.5, 0.2],
                        aspect_ratio);
@@ -393,14 +415,13 @@ impl Gui {
         font_data.draw(target,
                        &stats_text,
                        Font::Text,
-                       WHITE,
                        0.05,
                        [-0.5, -0.2],
                        aspect_ratio);
     }
 
     /// Render the current level.
-    fn render_level(&mut self, display: &GlutinFacade, font_data: &FontData) {
+    fn render_level(&mut self) {
         let params = glium::DrawParameters {
             backface_culling: glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,
             blend: glium::Blend::alpha_blending(),
@@ -409,7 +430,7 @@ impl Gui {
 
         // Do we have to update the cache?
         if self.background.is_none() {
-            self.generate_background(display);
+            self.generate_background();
         }
         let bg = self.background.as_ref().unwrap();
 
@@ -421,8 +442,8 @@ impl Gui {
         let vertices = texture::create_background_quad(self.aspect_ratio(),
                                                        self.game.columns(),
                                                        self.game.rows());
-        let vertex_buffer = glium::VertexBuffer::new(display, &vertices).unwrap();
-        let program = glium::Program::from_source(display,
+        let vertex_buffer = glium::VertexBuffer::new(&self.display, &vertices).unwrap();
+        let program = glium::Program::from_source(&self.display,
                                                   texture::VERTEX_SHADER,
                                                   texture::FRAGMENT_SHADER,
                                                   None)
@@ -430,7 +451,7 @@ impl Gui {
 
         let uniforms = uniform!{tex: bg};
 
-        let mut target = display.draw();
+        let mut target = self.display.draw();
         target.clear_color(0.0, 0.0, 0.0, 1.0);
 
         target
@@ -448,8 +469,7 @@ impl Gui {
         for sprite in &self.crates {
             vertices.extend(sprite.quad(columns, rows, aspect_ratio));
         }
-        self.draw_quads(display,
-                        &mut target,
+        self.draw_quads(&mut target,
                         vertices,
                         &self.textures.crate_,
                         &params,
@@ -457,8 +477,7 @@ impl Gui {
             .unwrap();
 
         // Draw the worker
-        self.draw_quads(display,
-                        &mut target,
+        self.draw_quads(&mut target,
                         self.worker.quad(columns, rows, aspect_ratio),
                         &self.textures.worker,
                         &params,
@@ -467,7 +486,7 @@ impl Gui {
 
         // Display text overlay
         if self.level_solved {
-            self.draw_end_of_level_overlay(font_data, &mut target, display, &params);
+            self.draw_end_of_level_overlay(&mut target, &params);
         } else {
             let aspect_ratio = self.aspect_ratio();
             // TODO show collection name
@@ -477,13 +496,13 @@ impl Gui {
                                self.game.number_of_moves(),
                                self.game.number_of_pushes());
 
-            font_data.draw(&mut target,
-                           &text,
-                           Font::Mono,
-                           WHITE,
-                           0.05,
-                           [0.5, -0.9],
-                           aspect_ratio);
+            self.font_data
+                .draw(&mut target,
+                      &text,
+                      Font::Mono,
+                      0.04,
+                      [0.5, -0.9],
+                      aspect_ratio);
         }
 
         target.finish().unwrap();
@@ -546,6 +565,64 @@ impl Gui {
                 NoPreviousLevel => warn!("Cannot go backwards past level 1"),
                 EndOfCollection => self.end_of_collection = true,
             }
+        }
+    }
+
+    fn main_loop(&mut self) {
+        let mut queue = VecDeque::new();
+        let mut events: Vec<_>;
+
+        loop {
+            self.render_level();
+            events = self.display.poll_events().collect();
+
+            for ev in events {
+                use glium::glutin::Event;
+                use glium::glutin::ElementState::*;
+
+                // Draw the current level
+                let mut cmd = Command::Nothing;
+
+                match ev {
+                    Event::Closed |
+                    Event::KeyboardInput(Pressed, _, Some(VirtualKeyCode::Q)) => return,
+
+                    Event::KeyboardInput(Pressed, _, _) |
+                    Event::MouseInput(..) if self.level_solved => {
+                        cmd = Command::NextLevel;
+                    }
+                    Event::KeyboardInput(state, _, Some(key)) => {
+                        use glium::glutin::VirtualKeyCode::*;
+                        match key {
+                            LControl | RControl => self.control_pressed = state == Pressed,
+                            LShift | RShift => self.shift_pressed = state == Pressed,
+                            _ if state == Pressed => cmd = self.press_to_command(key),
+                            _ => (),
+                        }
+                    }
+
+                    Event::MouseMoved(x, y) => self.cursor_pos = [x as f64, y as f64],
+                    Event::MouseInput(Released, btn) => cmd = self.click_to_command(btn),
+
+                    Event::Resized(w, h) => {
+                        self.window_size = [w, h];
+                        self.background = None;
+                    }
+
+                    /*
+                       Event::KeyboardInput(_, _, None) | Event::MouseInput(Pressed, _) |
+                       Event::MouseEntered | Event::MouseLeft | Event::MouseWheel(..) |
+                       Event::TouchpadPressure(..) | Event::Awakened | Event::Refresh |
+                       Event::Suspended(_) | Event::Touch(_) | Event::Moved(..) |
+                       Event::ReceivedCharacter(_) | Event::Focused(_) | Event::DroppedFile(_) => (),
+                       */
+                    _ => (),
+                }
+
+                queue.extend(self.game.execute(cmd));
+            }
+
+            self.handle_responses(&mut queue);
         }
     }
 }
@@ -612,7 +689,6 @@ impl FontData {
                 target: &mut glium::Frame,
                 text: &str,
                 font_type: Font,
-                color: (f32, f32, f32, f32),
                 scale: f32,
                 offset: [f32; 2],
                 aspect_ratio: f32) {
@@ -631,17 +707,11 @@ impl FontData {
                        0.0,
                        1.0_f32]];
 
-        let _ = glium_text::draw(&text_display, &self.system, target, matrix, color);
+        let _ = glium_text::draw(&text_display, &self.system, target, matrix, WHITE);
     }
 }
 
 fn main() {
-    use glium::DisplayBuild;
-    const TITLE: &'static str = "Sokoban";
-
-    /*
-     * Initialization
-     */
     let matches = App::new(TITLE)
         .author(env!("CARGO_PKG_AUTHORS"))
         .version(env!("CARGO_PKG_VERSION"))
@@ -669,19 +739,6 @@ fn main() {
         return;
     }
 
-    let display = glium::glutin::WindowBuilder::new()
-        .with_dimensions(640, 480)
-        .with_title(TITLE)
-        .build_glium()
-        .unwrap_or_else(|e| panic!("Failed to build window: {}", e));
-
-    // Initialize colog after window to suppress some log output.
-    colog::init();
-
-    let font_data = FontData::new(&display,
-                                  ASSETS.join("FiraSans-Regular.ttf"),
-                                  ASSETS.join("FiraMono-Regular.ttf"));
-
     let collection = match matches.value_of("collection") {
         None | Some("") => {
             std::env::var("SOKOBAN_COLLECTION").unwrap_or_else(|_| "original".to_string())
@@ -689,64 +746,7 @@ fn main() {
         Some(c) => c.to_string(),
     };
 
-    let mut gui = Gui::new(&collection, Textures::new(&display));
-    info!("Loading level #{} of collection {}",
-          gui.game.rank(),
-          gui.game.name());
+    let mut gui = Gui::new(&collection);
 
-    let mut queue = VecDeque::new();
-
-    /*
-     * Main loop
-     */
-    loop {
-        gui.render_level(&display, &font_data);
-
-        for ev in display.poll_events() {
-            use glium::glutin::Event;
-            use glium::glutin::ElementState::*;
-            // Draw the current level
-            let mut cmd = Command::Nothing;
-
-            match ev {
-                Event::Closed |
-                Event::KeyboardInput(Pressed, _, Some(VirtualKeyCode::Q)) => return,
-
-                Event::KeyboardInput(Pressed, _, _) |
-                Event::MouseInput(..) if gui.level_solved => {
-                    cmd = Command::NextLevel;
-                }
-                Event::KeyboardInput(state, _, Some(key)) => {
-                    use glium::glutin::VirtualKeyCode::*;
-                    match key {
-                        LControl | RControl => gui.control_pressed = state == Pressed,
-                        LShift | RShift => gui.shift_pressed = state == Pressed,
-                        _ if state == Pressed => cmd = gui.press_to_command(key),
-                        _ => (),
-                    }
-                }
-
-                Event::MouseMoved(x, y) => gui.cursor_pos = [x as f64, y as f64],
-                Event::MouseInput(Released, btn) => cmd = gui.click_to_command(btn),
-
-                Event::Resized(w, h) => {
-                    gui.window_size = [w, h];
-                    gui.background = None;
-                }
-
-                /*
-                Event::KeyboardInput(_, _, None) | Event::MouseInput(Pressed, _) |
-                Event::MouseEntered | Event::MouseLeft | Event::MouseWheel(..) |
-                Event::TouchpadPressure(..) | Event::Awakened | Event::Refresh |
-                Event::Suspended(_) | Event::Touch(_) | Event::Moved(..) |
-                Event::ReceivedCharacter(_) | Event::Focused(_) | Event::DroppedFile(_) => (),
-                */
-                _ => (),
-            }
-
-            queue.extend(gui.game.execute(cmd));
-        }
-
-        gui.handle_responses(&mut queue);
-    }
+    gui.main_loop();
 }
