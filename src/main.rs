@@ -370,8 +370,6 @@ impl Gui {
     fn draw_end_of_level_overlay(&self,
                                  target: &mut glium::Frame,
                                  params: &glium::DrawParameters) {
-        let font_data = &self.font_data;
-
         // Darken background
         const DARKEN_SHADER: &str = r#"
             #version 140
@@ -383,6 +381,8 @@ impl Gui {
                 color = vec4(0.0, 0.0, 0.0, 0.7);
             }
             "#;
+
+        let font_data = &self.font_data;
 
         let program =
             glium::Program::from_source(&self.display, texture::VERTEX_SHADER, DARKEN_SHADER, None)
@@ -398,7 +398,7 @@ impl Gui {
 
         let aspect_ratio = self.aspect_ratio();
 
-        // Text
+        // Print text
         font_data.draw(target,
                        "Congratulations!",
                        Font::Heading,
@@ -750,7 +750,6 @@ fn print_collections_table() {
 }
 
 fn main() {
-    // Initialize colog after window to suppress some log output.
     colog::init();
 
     let matches = App::new(TITLE)
