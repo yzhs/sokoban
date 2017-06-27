@@ -20,6 +20,8 @@ pub struct Collection {
     /// The name of the file containing the level collection.
     pub short_name: String,
 
+    pub description: Option<String>,
+
     /// A copy of one of the levels.
     pub current_level: Level,
 
@@ -38,7 +40,7 @@ impl Collection {
         const EMPTY_LINE: &str = "\n\n";
         #[cfg(windows)]
         const EMPTY_LINE: &str = "\r\n\r\n";
-        
+
         let mut level_path = ASSETS.clone();
         level_path.push("levels");
         level_path.push(short_name);
@@ -54,7 +56,11 @@ impl Collection {
             .map(|x| x.trim_matches(&eol))
             .filter(|x| !x.is_empty())
             .collect();
-        let name = level_strings[0];
+        let name = level_strings[0].lines().next().unwrap();
+        let description = level_strings[0]
+            .splitn(1, |c| c == '\n' || c == '\r')
+            .last()
+            .map(|x| x.trim().to_owned());
 
         // Parse the individual levels
         let levels = level_strings[1..]
@@ -86,6 +92,7 @@ impl Collection {
         let result = Collection {
             name: name.to_string(),
             short_name: short_name.to_string(),
+            description,
             current_level,
             levels,
             saved: state,
