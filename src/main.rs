@@ -15,6 +15,8 @@ extern crate ansi_term;
 // Argument handling
 extern crate clap;
 
+extern crate natord;
+
 extern crate sokoban_backend as backend;
 
 use std::cmp::min;
@@ -713,33 +715,41 @@ impl FontData {
 }
 
 fn print_collections_table() {
-    use ansi_term::Colour::{Blue, Green, White};
+    use ansi_term::Colour::{Blue, Green, White, Yellow};
 
     #[cfg(windows)]
     ansi_term::enable_ansi_support();
 
     println!(" {}               {}",
-             White.bold().paint("File name"),
-             White.bold().paint("Collection name"));
+             Yellow.bold().paint("File name"),
+             Yellow.bold().paint("Collection name"));
     println!("{0}{0}{0}{0}{0}", "----------------");
 
-    for file in std::fs::read_dir(ASSETS.join("levels")).unwrap() {
-        let path = file.unwrap().path();
+    let mut paths: Vec<std::path::PathBuf> = std::fs::read_dir(ASSETS.join("levels"))
+        .unwrap()
+        .map(|x| x.unwrap().path().to_owned())
+        .collect();
+    paths.sort_by(|x, y| {
+                      natord::compare(x.file_stem().unwrap().to_str().unwrap(),
+                                      y.file_stem().unwrap().to_str().unwrap())
+                  });
+
+    for path in paths.into_iter() {
         if let Some(ext) = path.extension() {
             if ext == std::ffi::OsStr::new("lvl") {
                 let name = path.file_stem().and_then(|x| x.to_str()).unwrap();
                 let collection = Collection::load(name).unwrap();
 
                 if collection.is_solved() {
-                    println!(" {:<24}{:<36}{:>10} {}",
+                    println!(" {:<24}{}{:>10} {}",
                              name,
-                             collection.name,
+                             White.bold().paint(format!("{:<36}", collection.name)),
                              "",
                              Green.paint("done"));
                 } else {
-                    println!(" {:<24}{:<36}{:>10} {}",
+                    println!(" {:<24}{}{:>10} {}",
                              name,
-                             collection.name,
+                             White.bold().paint(format!("{:<36}", collection.name)),
                              format!("{}/{}",
                                      collection.number_of_solved_levels(),
                                      collection.number_of_levels()),
