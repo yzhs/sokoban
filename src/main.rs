@@ -734,22 +734,25 @@ fn print_collections_table() {
                                       y.file_stem().unwrap().to_str().unwrap())
                   });
 
-    for path in paths.into_iter() {
+    for path in paths {
         if let Some(ext) = path.extension() {
             if ext == std::ffi::OsStr::new("lvl") {
                 let name = path.file_stem().and_then(|x| x.to_str()).unwrap();
                 let collection = Collection::load(name).unwrap();
 
+                let padded_short_name = format!("{:<24}", name);
+                let padded_full_name = format!("{:<36}", collection.name);
+
                 if collection.is_solved() {
-                    println!(" {:<24}{}{:>10} {}",
-                             name,
-                             White.bold().paint(format!("{:<36}", collection.name)),
+                    println!(" {}{}{:>10} {}",
+                             Green.paint(padded_short_name),
+                             Green.bold().paint(padded_full_name),
                              "",
                              Green.paint("done"));
                 } else {
-                    println!(" {:<24}{}{:>10} {}",
-                             name,
-                             White.bold().paint(format!("{:<36}", collection.name)),
+                    println!(" {}{}{:>10} {}",
+                             padded_short_name,
+                             White.bold().paint(padded_full_name),
                              format!("{}/{}",
                                      collection.number_of_solved_levels(),
                                      collection.number_of_levels()),
