@@ -561,7 +561,8 @@ impl Gui {
                 CannotMove(WithCrate(true), Obstacle::Crate) => info!("Two crates collided"),
                 CannotMove(WithCrate(false), Obstacle::Crate) => info!("The worker ran into a crate"),
                 NoPathfindingWhilePushing => error!("Path finding when moving crates is not implemented"),
-                NothingToUndo | Response::NothingToRedo => warn!("Cannot undo/redo move"),
+                NothingToUndo => info!("Cannot undo move"),
+                NothingToRedo => info!("Cannot redo move"),
                 NoPreviousLevel => warn!("Cannot go backwards past level 1"),
                 EndOfCollection => self.end_of_collection = true,
             }

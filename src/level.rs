@@ -491,8 +491,7 @@ impl Level {
     /// Undo the most recent move.
     pub fn undo(&mut self) -> Vec<Response> {
         if self.number_of_moves == 0 {
-            warn!("Nothing to undo!");
-            return vec![Response::NothingToRedo];
+            return vec![Response::NothingToUndo];
         } else {
             self.number_of_moves -= 1;
         }
