@@ -558,15 +558,16 @@ impl Gui {
                 MoveCrateTo(id, pos) => self.crates[id].move_to(pos),
 
                 // Errors
-                CannotMove(WithCrate(true), Obstacle::Wall) => info!("A crate hit a wall"),
-                CannotMove(WithCrate(false), Obstacle::Wall) => info!("The worker hit a wall"),
-                CannotMove(WithCrate(true), Obstacle::Crate) => info!("Two crates collided"),
-                CannotMove(WithCrate(false), Obstacle::Crate) => info!("The worker ran into a crate"),
+                // CannotMove(WithCrate(true), Obstacle::Wall) => info!("A crate hit a wall"),
+                // CannotMove(WithCrate(false), Obstacle::Wall) => info!("The worker hit a wall"),
+                // CannotMove(WithCrate(true), Obstacle::Crate) => info!("Two crates collided"),
+                // CannotMove(WithCrate(false), Obstacle::Crate) => info!("The worker ran into a crate"),
+                // NothingToUndo => info!("Cannot undo move"),
+                // NothingToRedo => info!("Cannot redo move"),
+                // NoPreviousLevel => warn!("Cannot go backwards past level 1"),
                 NoPathfindingWhilePushing => error!("Path finding when moving crates is not implemented"),
-                NothingToUndo => info!("Cannot undo move"),
-                NothingToRedo => info!("Cannot redo move"),
-                NoPreviousLevel => warn!("Cannot go backwards past level 1"),
                 EndOfCollection => self.end_of_collection = true,
+                _ => {}
             }
         }
     }
