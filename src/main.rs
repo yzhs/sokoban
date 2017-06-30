@@ -171,7 +171,7 @@ impl Gui {
 
             // Open the main menu
             Escape => return ResetLevel,
-            _ => error!("Unkown key: {:?}", key),
+            _ => error!("Unknown key: {:?}", key),
         }
         Nothing
     }
