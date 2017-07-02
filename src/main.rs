@@ -761,13 +761,18 @@ fn print_collections_table() {
                              "",
                              Green.paint("done"));
                 } else {
+                    let solved = if collection.number_of_solved_levels() == 0 {
+                        White.paint("solved")
+                    } else {
+                        Blue.paint("solved")
+                    };
                     println!(" {}{}{:>10} {}",
                              padded_short_name,
                              White.bold().paint(padded_full_name),
                              format!("{}/{}",
                                      collection.number_of_solved_levels(),
                                      collection.number_of_levels()),
-                             Blue.paint("solved"));
+                             solved);
                 }
             }
         }
