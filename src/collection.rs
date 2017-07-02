@@ -67,7 +67,7 @@ impl Collection {
 
     /// Load a file containing a bunch of levels separated by an empty line, i.e. the usual ASCII
     /// format.
-    pub fn load_lvl(short_name: &str, file: File) -> Result<Collection, SokobanError> {
+    fn load_lvl(short_name: &str, file: File) -> Result<Collection, SokobanError> {
         #[cfg(unix)]
         const EMPTY_LINE: &str = "\n\n";
         #[cfg(windows)]
@@ -128,7 +128,7 @@ impl Collection {
     }
 
     /// Load a level set in the XML-based .slc format.
-    pub fn load_xml(short_name: &str, file: File) -> Result<Collection, SokobanError> {
+    fn load_xml(short_name: &str, file: File) -> Result<Collection, SokobanError> {
         use xml::reader::{EventReader, XmlEvent};
 
         enum State {
