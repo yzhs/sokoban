@@ -157,8 +157,8 @@ impl Collection {
         let mut level_lines = String::new();
 
         for e in parser {
-            match e {
-                Ok(XmlEvent::StartElement { ref name, .. }) => {
+            match e? {
+                XmlEvent::StartElement { ref name, .. } => {
                     match name.local_name.as_ref() {
                         "Title" => {
                             state = State::Title;
@@ -173,7 +173,7 @@ impl Collection {
                     }
                 }
 
-                Ok(XmlEvent::EndElement { ref name }) => {
+                XmlEvent::EndElement { ref name } => {
                     match name.local_name.as_ref() {
                         "Title" | "Description" | "Email" | "Url" => state = State::Nothing,
                         "Level" => {
@@ -187,7 +187,7 @@ impl Collection {
                         _ => {}
                     }
                 }
-                Ok(XmlEvent::Characters(s)) => {
+                XmlEvent::Characters(s) => {
                     match state {
                         State::Nothing => {}
                         State::Title => title.push_str(&s),
@@ -198,17 +198,12 @@ impl Collection {
                     }
                 }
 
-                Err(e) => {
-                    println!("Error: {}", e);
-                    break;
-                }
-
-                Ok(XmlEvent::StartDocument { .. }) |
-                Ok(XmlEvent::EndDocument { .. }) |
-                Ok(XmlEvent::ProcessingInstruction { .. }) |
-                Ok(XmlEvent::CData(_)) |
-                Ok(XmlEvent::Comment(_)) |
-                Ok(XmlEvent::Whitespace(_)) => {}
+                XmlEvent::StartDocument { .. } |
+                XmlEvent::EndDocument { .. } |
+                XmlEvent::ProcessingInstruction { .. } |
+                XmlEvent::CData(_) |
+                XmlEvent::Comment(_) |
+                XmlEvent::Whitespace(_) => {}
             }
         }
 
