@@ -421,6 +421,14 @@ impl Gui {
                        0.05,
                        [-0.5, -0.2],
                        aspect_ratio);
+
+        let txt = if self.game.end_of_collection() {
+            "This was the last level in this colletion. Press Q to quit."
+        } else {
+            "Press any key to go to the next level."
+        };
+
+        font_data.draw(target, txt, Font::Text, 0.05, [-0.5, -0.4], aspect_ratio);
     }
 
     /// Render the current level.
