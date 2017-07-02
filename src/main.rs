@@ -19,6 +19,7 @@ extern crate natord;
 
 extern crate sokoban_backend as backend;
 
+
 use std::cmp::min;
 use std::collections::VecDeque;
 use std::fs::File;
@@ -737,7 +738,8 @@ fn print_collections_table() {
 
     for path in paths {
         if let Some(ext) = path.extension() {
-            if ext == std::ffi::OsStr::new("lvl") {
+            use std::ffi::OsStr;
+            if ext == OsStr::new("lvl") || ext == OsStr::new("slc") {
                 let name = path.file_stem().and_then(|x| x.to_str()).unwrap();
                 let collection = Collection::load(name).unwrap();
 

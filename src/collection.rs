@@ -11,6 +11,12 @@ use level::*;
 use save::*;
 use util::*;
 
+
+enum FileFormat {
+    Ascii,
+    Xml,
+}
+
 /// A collection of levels.
 #[derive(Debug)]
 pub struct Collection {
@@ -34,23 +40,45 @@ pub struct Collection {
 }
 
 impl Collection {
-    /// Load a file containing a bunch of levels separated by an empty line.
+    /// Load a level set with the given name, whatever the format might be.
     pub fn load(short_name: &str) -> Result<Collection, SokobanError> {
-        #[cfg(unix)]
-        const EMPTY_LINE: &str = "\n\n";
-        #[cfg(windows)]
-        const EMPTY_LINE: &str = "\r\n\r\n";
-
         let mut level_path = ASSETS.clone();
         level_path.push("levels");
         level_path.push(short_name);
         level_path.set_extension("lvl");
 
-        // Read the collection’s file
+        let (level_file, file_format) = {
+            if let Ok(f) = File::open(&level_path) {
+                (f, FileFormat::Ascii)
+            } else {
+                level_path.set_extension("slc");
+                match File::open(level_path) {
+                    Ok(f) => (f, FileFormat::Xml),
+                    Err(e) => return Err(SokobanError::from(e)),
+                }
+            }
+        };
+
+        match file_format {
+            FileFormat::Ascii => Collection::load_lvl(short_name, level_file),
+            FileFormat::Xml => Collection::load_xml(short_name, level_file),
+        }
+    }
+
+    /// Load a file containing a bunch of levels separated by an empty line, i.e. the usual ASCII
+    /// format.
+    pub fn load_lvl(short_name: &str, file: File) -> Result<Collection, SokobanError> {
+        #[cfg(unix)]
+        const EMPTY_LINE: &str = "\n\n";
+        #[cfg(windows)]
+        const EMPTY_LINE: &str = "\r\n\r\n";
         let eol = |c| c == '\n' || c == '\r';
-        let mut level_file = File::open(level_path)?;
+        let mut file = file;
+
+        // Read the collection’s file
         let mut content = "".to_string();
-        level_file.read_to_string(&mut content)?;
+        file.read_to_string(&mut content)?;
+
         let level_strings: Vec<_> = content
             .split(EMPTY_LINE)
             .map(|x| x.trim_matches(&eol))
@@ -97,6 +125,124 @@ impl Collection {
             saved: state,
         };
         Ok(result)
+    }
+
+    /// Load a level set in the XML-based .slc format.
+    pub fn load_xml(short_name: &str, file: File) -> Result<Collection, SokobanError> {
+        use xml::reader::{EventReader, XmlEvent};
+
+        enum State {
+            Nothing,
+            Title,
+            Description,
+            Email,
+            Url,
+            Line,
+        }
+
+        let file = ::std::io::BufReader::new(file);
+        let parser = EventReader::new(file);
+
+        let mut state = State::Nothing;
+
+        // Collection attributes
+        let mut title = String::new();
+        let mut description = String::new();
+        let mut email = String::new();
+        let mut url = String::new();
+        let mut levels = vec![];
+
+        // Level attributes
+        let mut num = 0;
+        let mut level_lines = String::new();
+
+        for e in parser {
+            match e {
+                Ok(XmlEvent::StartElement { ref name, .. }) => {
+                    match name.local_name.as_ref() {
+                        "Title" => {
+                            state = State::Title;
+                            title.clear();
+                        }
+                        "Description" => state = State::Description,
+                        "Email" => state = State::Email,
+                        "Url" => state = State::Url,
+                        "Level" => level_lines.clear(),
+                        "L" => state = State::Line,
+                        _ => {}
+                    }
+                }
+
+                Ok(XmlEvent::EndElement { ref name }) => {
+                    match name.local_name.as_ref() {
+                        "Title" | "Description" | "Email" | "Url" => state = State::Nothing,
+                        "Level" => {
+                            levels.push(Level::parse(num, &level_lines)?);
+                            num += 1;
+                        }
+                        "L" => {
+                            state = State::Nothing;
+                            level_lines.push('\n');
+                        }
+                        _ => {}
+                    }
+                }
+                Ok(XmlEvent::Characters(s)) => {
+                    match state {
+                        State::Nothing => {}
+                        State::Title => title.push_str(&s),
+                        State::Description => description.push_str(&s),
+                        State::Email => email.push_str(&s),
+                        State::Url => url.push_str(&s),
+                        State::Line => level_lines.push_str(&s),
+                    }
+                }
+
+                Err(e) => {
+                    println!("Error: {}", e);
+                    break;
+                }
+
+                Ok(XmlEvent::StartDocument { .. }) |
+                Ok(XmlEvent::EndDocument { .. }) |
+                Ok(XmlEvent::ProcessingInstruction { .. }) |
+                Ok(XmlEvent::CData(_)) |
+                Ok(XmlEvent::Comment(_)) |
+                Ok(XmlEvent::Whitespace(_)) => {}
+            }
+        }
+
+        let state = CollectionState::load(short_name);
+        let current_level = if state.collection_solved {
+            levels[0].clone()
+        } else {
+            let n = state.levels_finished();
+            let mut lvl = levels[n].clone();
+            if n < state.levels.len() {
+                if let LevelState::Started {
+                           number_of_moves,
+                           ref moves,
+                           ..
+                       } = state.levels[n] {
+                    lvl.execute_moves(number_of_moves, moves);
+                }
+            }
+            lvl
+        };
+
+
+        Ok(Collection {
+               name: title,
+               short_name: short_name.to_string(),
+               description: if description.is_empty() {
+                   Option::None
+               } else {
+                   Option::Some(description)
+               },
+               current_level,
+               levels,
+               saved: state,
+           })
     }
 
     // Accessor methods

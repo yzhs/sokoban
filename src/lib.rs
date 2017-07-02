@@ -14,6 +14,7 @@ extern crate find_folder;
 extern crate lazy_static;
 extern crate app_dirs;
 
+extern crate xml;
 
 mod cell;
 mod collection;
