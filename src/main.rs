@@ -190,7 +190,7 @@ impl Gui {
         let rows = self.game.rows() as isize;
         let tile_size = self.tile_size();
 
-        let (offset_x, offset_y) = if self.aspect_ratio() < 1.0 {
+        let (offset_x, offset_y) = if self.aspect_ratio() < rows as f32 / columns as f32 {
             ((self.window_size[0] as f64 - columns as f64 * tile_size) / 2.0, 0.0)
         } else {
             (0.0, (self.window_size[1] as f64 - rows as f64 * tile_size) / 2.0)
