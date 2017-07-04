@@ -49,8 +49,42 @@ const NO_INDICES: glium::index::NoIndices =
 
 const WHITE: (f32, f32, f32, f32) = (1.0, 1.0, 1.0, 1.0);
 
+struct Macros {
+    tmp: Vec<Command>,
+    slots: [Option<Vec<Command>>; 12],
+}
 
-pub struct Gui {
+impl Macros {
+    pub fn new() -> Self {
+        Macros {
+            tmp: vec![],
+            slots: [None, None, None, None, None, None, None, None, None, None, None, None],
+        }
+    }
+
+    pub fn push_temp(&mut self, cmd: Command) {
+        self.tmp.push(cmd);
+    }
+
+    pub fn store_temp(&mut self, slot: u8) {
+        info!("Storing macro {} consisting of {} commands",
+              slot,
+              self.tmp.len());
+        let tmp = self.tmp.clone();
+        self.tmp.clear();
+        self.slots[slot as usize] = Some(tmp);
+    }
+
+    pub fn get(&self, slot: u8) -> Vec<Command> {
+        match self.slots[slot as usize] {
+            Some(ref cmds) => cmds.to_owned(),
+            None => vec![],
+        }
+    }
+}
+
+
+struct Gui {
     // Game state
     /// The main back end data structure.
     game: Game,
@@ -61,12 +95,20 @@ pub struct Gui {
     /// Is the current level the last of this collection.
     end_of_collection: bool,
 
+    /// Macros
+    macros: Macros,
+
+    command_queue: VecDeque<Command>,
+
     // Inputs
     /// Is the shift key currently pressed?
     shift_pressed: bool,
 
     /// Is the control key currently pressed?
     control_pressed: bool,
+
+    /// Is a macro currently being recorded and if so, which?
+    recording_macro: Option<u8>,
 
     /// The current mouse position
     cursor_pos: [f64; 2],
@@ -118,6 +160,8 @@ impl Gui {
             game,
             level_solved: false,
             end_of_collection: false,
+            macros: Macros::new(),
+            command_queue: VecDeque::new(),
 
             display,
             font_data,
@@ -127,6 +171,7 @@ impl Gui {
 
             shift_pressed: false,
             control_pressed: false,
+            recording_macro: None,
             cursor_pos: [0.0, 0.0],
 
             worker,
@@ -138,6 +183,13 @@ impl Gui {
 
     fn current_level(&self) -> &Level {
         self.game.current_level()
+    }
+
+    fn push_command(&mut self, cmd: Command) {
+        if self.recording_macro.is_some() {
+            self.macros.push_temp(cmd.clone());
+        }
+        self.command_queue.push_back(cmd);
     }
 
     /// Handle key press events.
@@ -160,6 +212,32 @@ impl Gui {
             U if self.control_pressed => {}
             U | Z if self.shift_pressed => return Redo,
             U | Z => return Undo,
+
+            // Record or execute macro
+            F1 | F2 | F3 | F4 | F5 | F6 | F7 | F8 | F9 | F10 | F11 | F12 => {
+                let n = key_to_num(key);
+                if let Some(k) = self.recording_macro {
+                    if self.control_pressed {
+                        // Finish recording
+                        self.macros.store_temp(k);
+                        if k == n {
+                            self.recording_macro = None;
+                        } else {
+                            self.recording_macro = Some(n);
+                        }
+                        return Nothing;
+                    }
+                }
+                if self.control_pressed {
+                    // Start recording
+                    self.recording_macro = Some(n);
+                } else {
+                    // Execute
+                    for cmd in self.macros.get(key_to_num(key)) {
+                        self.push_command(cmd);
+                    }
+                }
+            }
 
             // Modifier keys
             LControl | RControl => self.control_pressed = true,
@@ -185,7 +263,7 @@ impl Gui {
     }
 
     /// Handle a mouse click.
-    fn click_to_command(&mut self, mouse_button: MouseButton) -> Command {
+    fn click_to_command(&self, mouse_button: MouseButton) -> Command {
         let columns = self.game.columns() as isize;
         let rows = self.game.rows() as isize;
         let tile_size = self.tile_size();
@@ -589,6 +667,13 @@ impl Gui {
             self.render_level();
             events = self.display.poll_events().collect();
 
+            if self.level_solved {
+                if let Some(n) = self.recording_macro {
+                    self.recording_macro = None;
+                    self.macros.store_temp(n);
+                }
+            }
+
             for ev in events {
                 use glium::glutin::Event;
                 use glium::glutin::ElementState::*;
@@ -631,12 +716,32 @@ impl Gui {
                        */
                     _ => (),
                 }
-
-                queue.extend(self.game.execute(cmd));
+                self.push_command(cmd);
+                while let Some(cmd) = self.command_queue.pop_front() {
+                    queue.extend(self.game.execute(cmd));
+                }
             }
 
             self.handle_responses(&mut queue);
         }
+    }
+}
+
+fn key_to_num(key: VirtualKeyCode) -> u8 {
+    match key {
+        VirtualKeyCode::F1 => 1,
+        VirtualKeyCode::F2 => 2,
+        VirtualKeyCode::F3 => 3,
+        VirtualKeyCode::F4 => 4,
+        VirtualKeyCode::F5 => 5,
+        VirtualKeyCode::F6 => 6,
+        VirtualKeyCode::F7 => 7,
+        VirtualKeyCode::F8 => 8,
+        VirtualKeyCode::F9 => 9,
+        VirtualKeyCode::F10 => 10,
+        VirtualKeyCode::F11 => 11,
+        VirtualKeyCode::F12 => 12,
+        _ => unreachable!(),
     }
 }
 
@@ -648,7 +753,7 @@ fn key_to_direction(key: VirtualKeyCode) -> Direction {
         VirtualKeyCode::Right => Right,
         VirtualKeyCode::Up => Up,
         VirtualKeyCode::Down => Down,
-        _ => panic!("Invalid direction key"),
+        _ => unreachable!(),
     }
 }
 

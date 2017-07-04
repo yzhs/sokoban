@@ -3,10 +3,12 @@ use position::*;
 use save::UpdateResponse;
 
 
+#[derive(Clone)]
 pub struct MayPushCrate(pub bool);
 
 
 /// Anything the user can ask the back end to do.
+#[derive(Clone)]
 pub enum Command {
     /// Do not do anything. This exists solely to eliminate the need of using Option<Command>.
     Nothing,
