@@ -49,40 +49,6 @@ const NO_INDICES: glium::index::NoIndices =
 
 const WHITE: (f32, f32, f32, f32) = (1.0, 1.0, 1.0, 1.0);
 
-struct Macros {
-    tmp: Vec<Command>,
-    slots: [Option<Vec<Command>>; 12],
-}
-
-impl Macros {
-    pub fn new() -> Self {
-        Macros {
-            tmp: vec![],
-            slots: [None, None, None, None, None, None, None, None, None, None, None, None],
-        }
-    }
-
-    pub fn push_temp(&mut self, cmd: Command) {
-        self.tmp.push(cmd);
-    }
-
-    pub fn store_temp(&mut self, slot: u8) {
-        info!("Storing macro {} consisting of {} commands",
-              slot,
-              self.tmp.len());
-        let tmp = self.tmp.clone();
-        self.tmp.clear();
-        self.slots[slot as usize] = Some(tmp);
-    }
-
-    pub fn get(&self, slot: u8) -> Vec<Command> {
-        match self.slots[slot as usize] {
-            Some(ref cmds) => cmds.to_owned(),
-            None => vec![],
-        }
-    }
-}
-
 
 struct Gui {
     // Game state
@@ -95,9 +61,6 @@ struct Gui {
     /// Is the current level the last of this collection.
     end_of_collection: bool,
 
-    /// Macros
-    macros: Macros,
-
     command_queue: VecDeque<Command>,
 
     // Inputs
@@ -108,7 +71,7 @@ struct Gui {
     control_pressed: bool,
 
     /// Is a macro currently being recorded and if so, which?
-    recording_macro: Option<u8>,
+    recording_macro: bool,
 
     /// The current mouse position
     cursor_pos: [f64; 2],
@@ -164,7 +127,6 @@ impl Gui {
             game,
             level_solved: false,
             end_of_collection: false,
-            macros: Macros::new(),
             command_queue: VecDeque::new(),
 
             display,
@@ -175,7 +137,7 @@ impl Gui {
 
             shift_pressed: false,
             control_pressed: false,
-            recording_macro: None,
+            recording_macro: false,
             cursor_pos: [0.0, 0.0],
 
             worker,
@@ -190,9 +152,6 @@ impl Gui {
     }
 
     fn push_command(&mut self, cmd: Command) {
-        if self.recording_macro.is_some() {
-            self.macros.push_temp(cmd.clone());
-        }
         self.command_queue.push_back(cmd);
     }
 
@@ -220,27 +179,18 @@ impl Gui {
             // Record or execute macro
             F1 | F2 | F3 | F4 | F5 | F6 | F7 | F8 | F9 | F10 | F11 | F12 => {
                 let n = key_to_num(key);
-                if let Some(k) = self.recording_macro {
-                    if self.control_pressed {
-                        // Finish recording
-                        self.macros.store_temp(k);
-                        if k == n {
-                            self.recording_macro = None;
-                        } else {
-                            self.recording_macro = Some(n);
-                        }
-                        return Nothing;
-                    }
-                }
-                if self.control_pressed {
+                return if self.recording_macro && self.control_pressed {
+                           // Finish recording
+                           self.recording_macro = false;
+                           StoreMacro
+                       } else if self.control_pressed {
                     // Start recording
-                    self.recording_macro = Some(n);
+                    self.recording_macro = true;
+                    RecordMacro(n)
                 } else {
                     // Execute
-                    for cmd in self.macros.get(key_to_num(key)) {
-                        self.push_command(cmd);
-                    }
-                }
+                    ExecuteMacro(n)
+                };
             }
 
             // Modifier keys
@@ -670,13 +620,6 @@ impl Gui {
         loop {
             self.render_level();
             events = self.display.poll_events().collect();
-
-            if self.level_solved {
-                if let Some(n) = self.recording_macro {
-                    self.recording_macro = None;
-                    self.macros.store_temp(n);
-                }
-            }
 
             for ev in events {
                 use glium::glutin::Event;

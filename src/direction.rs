@@ -1,3 +1,5 @@
+use std::fmt;
+
 use position::Position;
 
 /// Any of the directions needed for Sokoban.
@@ -43,5 +45,19 @@ pub fn direction(from: Position, to: Position) -> Result<Direction, Option<Posit
         Ok(if dx < 0 { Left } else { Right })
     } else {
         Err(Some(to))
+    }
+}
+
+impl fmt::Display for Direction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::Direction::*;
+        write!(f,
+               "{}",
+               match *self {
+                   Left => 'l',
+                   Right => 'r',
+                   Up => 'u',
+                   Down => 'd',
+               })
     }
 }

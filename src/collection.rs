@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use command::*;
 use direction::*;
 use level::*;
+use macros::Macros;
 use save::*;
 use util::*;
 
@@ -37,6 +38,9 @@ pub struct Collection {
 
     /// What levels have been solved and with how many moves/pushes.
     saved: CollectionState,
+
+    /// Macros
+    macros: Macros,
 }
 
 impl Collection {
@@ -123,6 +127,7 @@ impl Collection {
             current_level,
             levels,
             saved: state,
+            macros: Macros::new(),
         };
         Ok(result)
     }
@@ -237,6 +242,7 @@ impl Collection {
                current_level,
                levels,
                saved: state,
+               macros: Macros::new(),
            })
     }
 
@@ -269,9 +275,21 @@ impl Collection {
 impl Collection {
     /// Execute whatever command we get from the frontend.
     pub fn execute(&mut self, command: Command) -> Vec<Response> {
+        self.execute_helper(command, false)
+    }
+
+    fn execute_helper(&mut self, command: Command, executing_macro: bool) -> Vec<Response> {
         use Command::*;
+
+        // Record everything while recording a macro. If no macro is currently being recorded,
+        // Macros::push will just do nothing.
+        if !executing_macro && !command.changes_macros() && !command.is_empty() {
+            self.macros.push(&command);
+        }
+
         let mut result = match command {
             Command::Nothing => vec![],
+
             Move(dir) => self.current_level.try_move(dir),
             MoveAsFarAsPossible(dir, MayPushCrate(b)) => {
                 self.current_level
@@ -279,16 +297,42 @@ impl Collection {
                     .unwrap_or_default()
             }
             MoveToPosition(pos, MayPushCrate(b)) => self.current_level.move_to(pos, b),
+
             Undo => self.current_level.undo(),
             Redo => self.current_level.redo(),
             ResetLevel => vec![self.reset_level()],
+
             NextLevel => self.next_level().unwrap_or_default(),
             PreviousLevel => self.previous_level().unwrap_or_default(),
-            LoadCollection(_) => unreachable!(),
+
             Save => {
                 let _ = self.save().unwrap();
                 vec![]
             }
+
+            RecordMacro(slot) => {
+                self.macros.record(slot);
+                vec![]
+            }
+            StoreMacro => {
+                let len = self.macros.store();
+                if len != 0 {
+                    vec![Response::MacroDefined(self.macros.store())]
+                } else {
+                    vec![]
+                }
+            }
+            ExecuteMacro(slot) => {
+                let cmds = self.macros.get(slot).to_owned();
+                let mut result = vec![];
+                for cmd in &cmds {
+                    result.extend(self.execute_helper(cmd.clone(), true));
+                }
+                result
+            }
+
+            // This is handled inside Game and never passed to this method.
+            LoadCollection(_) => unreachable!(),
         };
         if self.current_level.is_finished() {
             if self.current_level.rank == self.levels.len() {

@@ -3,12 +3,15 @@ use position::*;
 use save::UpdateResponse;
 
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct MayPushCrate(pub bool);
+
+type Slot = u8;
+type Steps = usize;
 
 
 /// Anything the user can ask the back end to do.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Command {
     /// Do not do anything. This exists solely to eliminate the need of using Option<Command>.
     Nothing,
@@ -43,8 +46,50 @@ pub enum Command {
 
     /// Switch to the level collection with the given name.
     LoadCollection(String),
+
+    /// Start recording a macro to the given slot.
+    RecordMacro(Slot),
+
+    /// Stop recording a macro and store the result.
+    StoreMacro,
+
+    /// Execute the macro stored in the given slon.
+    ExecuteMacro(Slot),
 }
 
+impl Command {
+    /// Does this command change the collection of macros, i.e. cannot be safely recorded in a
+    /// macro?
+    pub fn changes_macros(&self) -> bool {
+        match *self {
+            Command::RecordMacro(_) |
+            Command::StoreMacro => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        match *self {
+            Command::Nothing => true,
+            _ => false,
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        use Command::*;
+        match *self {
+            Move(dir) => dir.to_string(),
+            MoveAsFarAsPossible(dir, MayPushCrate(true)) => format!("_{}", dir),
+            MoveAsFarAsPossible(dir, MayPushCrate(false)) => format!("_{}", dir),
+            MoveToPosition(pos, MayPushCrate(true)) => format!("[{}, {}]", pos.x, pos.y),
+            MoveToPosition(pos, MayPushCrate(false)) => format!("({}, {})", pos.x, pos.y),
+            Undo => "<".to_string(),
+            Redo => ">".to_string(),
+            ExecuteMacro(slot) => format!("@{}", slot),
+            _ => "".to_string(),
+        }
+    }
+}
 
 /// This encodes whatever the GUI needs to update according to the command just executed.
 #[derive(Debug)]
@@ -64,6 +109,9 @@ pub enum Response {
 
     /// The crate with the given index was pushed from to this new position.
     MoveCrateTo(usize, Position),
+
+    /// A macro consisting of the given number of commands has just been defined.
+    MacroDefined(Steps),
 
     // Errors
     /// Tried to move but hit an obstacle
