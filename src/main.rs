@@ -144,6 +144,10 @@ impl Gui {
             .build_glium()
             .unwrap_or_else(|e| panic!("Failed to build window: {}", e));
 
+        display
+            .get_window()
+            .map(|x| x.set_cursor(glium::glutin::MouseCursor::Default));
+
         let textures = Textures::new(&display);
         let font_data = FontData::new(&display,
                                       ASSETS.join("FiraSans-Regular.ttf"),
