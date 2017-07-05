@@ -16,6 +16,8 @@ extern crate ansi_term;
 extern crate clap;
 
 extern crate natord;
+#[macro_use]
+extern crate lazy_static;
 
 extern crate sokoban_backend as backend;
 
@@ -556,6 +558,13 @@ impl Gui {
     pub fn handle_responses(&mut self, queue: &mut VecDeque<Response>) {
         while let Some(response) = queue.pop_front() {
             use Response::*;
+
+            if queue.len() > 20 {
+                *sprite::ANIMATION_DURATION.lock().unwrap() = 0.02_f32;
+            } else {
+                *sprite::ANIMATION_DURATION.lock().unwrap() = 0.08_f32;
+            }
+
             match response {
                 LevelFinished(resp) => {
                     if !self.level_solved {

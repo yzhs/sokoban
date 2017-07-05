@@ -1,10 +1,13 @@
 use std::cell::Cell;
 use std::time::Instant;
+use std::sync::{Arc, Mutex};
 
 use backend::{Direction, Position};
 use texture::*;
 
-const ANIMATION_DURATION: f32 = 0.08;
+lazy_static! {
+    pub static ref ANIMATION_DURATION: Arc<Mutex<f32>> = Arc::new(Mutex::new(0.08_f32));
+}
 
 #[derive(Clone, Debug)]
 pub struct Sprite {
@@ -53,7 +56,7 @@ impl Sprite {
             let duration = Instant::now() - start;
             let duration_seconds = duration.as_secs() as f32 +
                                    duration.subsec_nanos() as f32 / 1.0e9;
-            lambda = duration_seconds / ANIMATION_DURATION;
+            lambda = duration_seconds / *ANIMATION_DURATION.lock().unwrap();
             if lambda >= 1.0 {
                 self.animation.set(None);
                 return self.quad(columns, rows, aspect_ratio);
