@@ -676,18 +676,18 @@ impl Gui {
 
 fn key_to_num(key: VirtualKeyCode) -> u8 {
     match key {
-        VirtualKeyCode::F1 => 1,
-        VirtualKeyCode::F2 => 2,
-        VirtualKeyCode::F3 => 3,
-        VirtualKeyCode::F4 => 4,
-        VirtualKeyCode::F5 => 5,
-        VirtualKeyCode::F6 => 6,
-        VirtualKeyCode::F7 => 7,
-        VirtualKeyCode::F8 => 8,
-        VirtualKeyCode::F9 => 9,
-        VirtualKeyCode::F10 => 10,
-        VirtualKeyCode::F11 => 11,
-        VirtualKeyCode::F12 => 12,
+        VirtualKeyCode::F1 => 0,
+        VirtualKeyCode::F2 => 1,
+        VirtualKeyCode::F3 => 2,
+        VirtualKeyCode::F4 => 3,
+        VirtualKeyCode::F5 => 4,
+        VirtualKeyCode::F6 => 5,
+        VirtualKeyCode::F7 => 6,
+        VirtualKeyCode::F8 => 7,
+        VirtualKeyCode::F9 => 8,
+        VirtualKeyCode::F10 => 9,
+        VirtualKeyCode::F11 => 10,
+        VirtualKeyCode::F12 => 11,
         _ => unreachable!(),
     }
 }
