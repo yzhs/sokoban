@@ -556,6 +556,7 @@ impl Gui {
     /// Handle the queue of responses from the back end, updating the gui status and logging
     /// messages.
     pub fn handle_responses(&mut self, queue: &mut VecDeque<Response>) {
+        let mut steps = 0;
         while let Some(response) = queue.pop_front() {
             use Response::*;
 
@@ -603,7 +604,12 @@ impl Gui {
                     // Only move worker by one tile, so we can do nice animations.  If a crate is
                     // moved, MoveCrateTo is always *before* the corresponding MoveWorkerTo, so
                     // breaking here is enough.
-                    break;
+                    // As this makes very large levels painfully slow, allow multiple steps if the
+                    // response queue is long.
+                    steps = (steps + 1) % 16;
+                    if steps == 0 || queue.len() < 100 {
+                        break;
+                    }
                 }
                 MoveCrateTo(id, pos) => self.crates[id].move_to(pos),
 
