@@ -153,10 +153,16 @@ impl Gui {
         self.game.current_level()
     }
 
-    fn push_command(&mut self, cmd: Command) {
-        self.command_queue.push_back(cmd);
+    /// Compute the tile size.
+    fn tile_size(&self) -> f64 {
+        let columns = self.game.columns() as u32;
+        let rows = self.game.rows() as u32;
+        min(self.window_size[0] / columns, self.window_size[1] / rows) as f64
     }
+}
 
+/// User input
+impl Gui {
     /// Handle key press events.
     fn press_to_command(&mut self, key: VirtualKeyCode) -> Command {
         use Command::*;
@@ -211,13 +217,6 @@ impl Gui {
         Nothing
     }
 
-    /// Compute the tile size.
-    fn tile_size(&self) -> f64 {
-        let columns = self.game.columns() as u32;
-        let rows = self.game.rows() as u32;
-        min(self.window_size[0] / columns, self.window_size[1] / rows) as f64
-    }
-
     /// Handle a mouse click.
     fn click_to_command(&self, mouse_button: MouseButton) -> Command {
         let columns = self.game.columns() as isize;
@@ -239,7 +238,16 @@ impl Gui {
             Command::Nothing
         }
     }
+}
 
+/// Rendering
+impl Gui {
+    /// Compute the window’s aspect ratio.
+    fn aspect_ratio(&self) -> f32 {
+        let width = self.window_size[0];
+        let height = self.window_size[1];
+        height as f32 / width as f32
+    }
 
     /// Render the static tiles of the current level onto a texture.
     fn generate_background(&mut self) {
@@ -381,13 +389,6 @@ impl Gui {
         // TODO simplify hashmap -> iter -> vec -> iter -> vec -> iter -> vec
 
         self.background = None;
-    }
-
-    /// Compute the window’s aspect ratio.
-    fn aspect_ratio(&self) -> f32 {
-        let width = self.window_size[0];
-        let height = self.window_size[1];
-        height as f32 / width as f32
     }
 
     /// Given a vector of vertices describing a list of quads, draw them onto `target`.
@@ -552,7 +553,9 @@ impl Gui {
 
         target.finish().unwrap();
     }
+}
 
+impl Gui {
     /// Handle the queue of responses from the back end, updating the gui status and logging
     /// messages.
     pub fn handle_responses(&mut self, queue: &mut VecDeque<Response>) {
@@ -680,7 +683,7 @@ impl Gui {
                        */
                     _ => (),
                 }
-                self.push_command(cmd);
+                self.command_queue.push_back(cmd);
                 while let Some(cmd) = self.command_queue.pop_front() {
                     queue.extend(self.game.execute(cmd));
                 }
