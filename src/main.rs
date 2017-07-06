@@ -560,8 +560,10 @@ impl Gui {
         while let Some(response) = queue.pop_front() {
             use Response::*;
 
-            if queue.len() > 20 {
+            if queue.len() > 60 {
                 *sprite::ANIMATION_DURATION.lock().unwrap() = 0.02_f32;
+            } else if queue.len() > 20 {
+                *sprite::ANIMATION_DURATION.lock().unwrap() = 0.05_f32;
             } else {
                 *sprite::ANIMATION_DURATION.lock().unwrap() = 0.08_f32;
             }
