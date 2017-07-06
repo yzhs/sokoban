@@ -3,7 +3,7 @@ use std::time::Instant;
 use std::sync::{Arc, Mutex};
 
 use backend::{Direction, Position};
-use texture::*;
+use gui::texture::*;
 
 lazy_static! {
     pub static ref ANIMATION_DURATION: Arc<Mutex<f32>> = Arc::new(Mutex::new(0.08_f32));
