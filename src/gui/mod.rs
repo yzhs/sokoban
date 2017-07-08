@@ -17,9 +17,6 @@ use gui::font::{Font, FontData};
 use gui::sprite::*;
 use gui::texture::*;
 
-
-pub const TITLE: &'static str = "Sokoban";
-
 /// All we ever do is draw rectangles created from two triangles each, so we don’t need any other
 /// `PrimitiveType`.
 const NO_INDICES: NoIndices = NoIndices(PrimitiveType::TrianglesList);
@@ -69,6 +66,7 @@ pub struct Gui {
 }
 
 
+/// Constructor and getters
 impl Gui {
     /// Initialize the `Gui` struct by setting default values, and loading a collection and
     /// textures.
@@ -122,6 +120,7 @@ impl Gui {
         gui
     }
 
+    /// Borrow the current level.
     fn current_level(&self) -> &Level {
         self.game.current_level()
     }
@@ -134,11 +133,43 @@ impl Gui {
     }
 }
 
-/// User input
+// Helper functions
+/// Map Fn key to their index in [F1, F2, ..., F12].
+fn key_to_num(key: VirtualKeyCode) -> u8 {
+    use self::VirtualKeyCode::*;
+    match key {
+        F1 => 0,
+        F2 => 1,
+        F3 => 2,
+        F4 => 3,
+        F5 => 4,
+        F6 => 5,
+        F7 => 6,
+        F8 => 7,
+        F9 => 8,
+        F10 => 9,
+        F11 => 10,
+        F12 => 11,
+        _ => unreachable!(),
+    }
+}
+
+/// Map arrow keys to the corresponding directions, panic on other keys.
+fn key_to_direction(key: VirtualKeyCode) -> Direction {
+    match key {
+        VirtualKeyCode::Left => Direction::Left,
+        VirtualKeyCode::Right => Direction::Right,
+        VirtualKeyCode::Up => Direction::Up,
+        VirtualKeyCode::Down => Direction::Down,
+        _ => unreachable!(),
+    }
+}
+
+/// Handle user input
 impl Gui {
     /// Handle key press events.
     fn press_to_command(&mut self, key: VirtualKeyCode) -> Command {
-        use Command::*;
+        use self::Command::*;
         use self::VirtualKeyCode::*;
         match key {
             // Move
@@ -213,6 +244,9 @@ impl Gui {
     }
 }
 
+const CULLING: ::glium::BackfaceCullingMode =
+    ::glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise;
+
 /// Rendering
 impl Gui {
     /// Compute the window’s aspect ratio.
@@ -245,10 +279,10 @@ impl Gui {
 
             let mut previous_cell = Background::Empty;
             for (i, &cell) in lvl.background.iter().enumerate() {
-                use Background::*;
+                use self::Background::*;
                 let pos = lvl.position(i);
                 if pos.x == 0 {
-                    previous_cell = Background::Empty;
+                    previous_cell = Empty;
                 }
 
                 match (previous_cell, cell) {
@@ -292,10 +326,8 @@ impl Gui {
                                                texture::FRAGMENT_SHADER,
                                                None)
                     .unwrap();
-
             let params = ::glium::DrawParameters {
-                backface_culling:
-                    ::glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,
+                backface_culling: CULLING,
                 blend: ::glium::Blend::alpha_blending(),
                 ..Default::default()
             };
@@ -308,7 +340,7 @@ impl Gui {
                         continue;
                     }
                     let pos = lvl.position(i);
-                    vertices.extend(texture::create_quad_vertices(pos, columns, rows, 1.0));
+                    vertices.extend(texture::quad(pos, columns, rows, 1.0));
                 }
                 let vertex_buffer = ::glium::VertexBuffer::new(&self.display, &vertices).unwrap();
 
@@ -336,7 +368,7 @@ impl Gui {
                   (vertical_wall_floor, Direction::Left, &tex.transition_wall_floor_vertical)] {
 
                 for &pos in positions {
-                    vertices.extend(texture::create_transition(pos, columns, rows, orientation));
+                    vertices.extend(texture::transition(pos, columns, rows, orientation));
                 }
                 let vertex_buffer = ::glium::VertexBuffer::new(&self.display, &vertices).unwrap();
                 let uniforms = uniform!{tex: texture};
@@ -383,28 +415,14 @@ impl Gui {
     fn draw_end_of_level_overlay(&self,
                                  target: &mut ::glium::Frame,
                                  params: &::glium::DrawParameters) {
-        // Darken background
-        const DARKEN_SHADER: &str = r#"
-            #version 140
+        use glium::Program;
+        use self::texture::{VERTEX_SHADER, DARKEN_SHADER};
 
-            in vec2 v_tex_coords;
-            out vec4 color;
-
-            void main() {
-                color = vec4(0.0, 0.0, 0.0, 0.7);
-            }
-            "#;
-
-        let font_data = &self.font_data;
-
-        let program = ::glium::Program::from_source(&self.display,
-                                                    texture::VERTEX_SHADER,
-                                                    DARKEN_SHADER,
-                                                    None)
-                .unwrap();
+        let program = Program::from_source(&self.display, VERTEX_SHADER, DARKEN_SHADER, None)
+            .unwrap();
 
         self.draw_quads(target,
-                   texture::create_full_screen_quad(),
+                   texture::full_screen(),
                    // The texture is ignored by the given fragment shader, so we can take any here
                    &self.textures.worker, // FIXME find a cleaner solution
                    params,
@@ -414,6 +432,7 @@ impl Gui {
         let aspect_ratio = self.aspect_ratio();
 
         // Print text
+        let font_data = &self.font_data;
         font_data.draw(target,
                        "Congratulations!",
                        Font::Heading,
@@ -446,7 +465,7 @@ impl Gui {
     /// Render the current level.
     fn render_level(&mut self) {
         let params = ::glium::DrawParameters {
-            backface_culling: ::glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise,
+            backface_culling: CULLING,
             blend: ::glium::Blend::alpha_blending(),
             ..Default::default()
         };
@@ -462,9 +481,8 @@ impl Gui {
         let rows = lvl.rows() as u32;
 
         // Draw background
-        let vertices = texture::create_background_quad(self.aspect_ratio(),
-                                                       self.game.columns(),
-                                                       self.game.rows());
+        let vertices =
+            texture::background(self.aspect_ratio(), self.game.columns(), self.game.rows());
         let vertex_buffer = ::glium::VertexBuffer::new(&self.display, &vertices).unwrap();
         let program = ::glium::Program::from_source(&self.display,
                                                     texture::VERTEX_SHADER,
@@ -482,30 +500,28 @@ impl Gui {
             .unwrap();
 
         // Draw foreground
-        let aspect_ratio = {
-            let (width, height) = target.get_dimensions();
-            width as f32 / height as f32 * rows as f32 / columns as f32
-        };
+        {
+            let aspect_ratio = {
+                let (width, height) = target.get_dimensions();
+                width as f32 / height as f32 * rows as f32 / columns as f32
+            };
 
-        // Draw the crates
-        let mut vertices = vec![];
-        for sprite in &self.crates {
-            vertices.extend(sprite.quad(columns, rows, aspect_ratio));
+            let mut draw = |vs, tex| {
+                self.draw_quads(&mut target, vs, tex, &params, &program)
+                    .unwrap()
+            };
+
+            // Draw the crates
+            let mut vertices = vec![];
+            for sprite in &self.crates {
+                vertices.extend(sprite.quad(columns, rows, aspect_ratio));
+            }
+            draw(vertices, &self.textures.crate_);
+
+            // Draw the worker
+            draw(self.worker.quad(columns, rows, aspect_ratio),
+                 &self.textures.worker);
         }
-        self.draw_quads(&mut target,
-                        vertices,
-                        &self.textures.crate_,
-                        &params,
-                        &program)
-            .unwrap();
-
-        // Draw the worker
-        self.draw_quads(&mut target,
-                        self.worker.quad(columns, rows, aspect_ratio),
-                        &self.textures.worker,
-                        &params,
-                        &program)
-            .unwrap();
 
         // Display text overlay
         if self.level_solved {
@@ -532,46 +548,13 @@ impl Gui {
     }
 }
 
-
-// Helper functions
-/// Map Fn key to their index in [F1, F2, ..., F12].
-fn key_to_num(key: VirtualKeyCode) -> u8 {
-    match key {
-        VirtualKeyCode::F1 => 0,
-        VirtualKeyCode::F2 => 1,
-        VirtualKeyCode::F3 => 2,
-        VirtualKeyCode::F4 => 3,
-        VirtualKeyCode::F5 => 4,
-        VirtualKeyCode::F6 => 5,
-        VirtualKeyCode::F7 => 6,
-        VirtualKeyCode::F8 => 7,
-        VirtualKeyCode::F9 => 8,
-        VirtualKeyCode::F10 => 9,
-        VirtualKeyCode::F11 => 10,
-        VirtualKeyCode::F12 => 11,
-        _ => unreachable!(),
-    }
-}
-
-/// Map arrow keys to the corresponding directions, panic on other keys.
-fn key_to_direction(key: VirtualKeyCode) -> Direction {
-    use self::Direction::*;
-    match key {
-        VirtualKeyCode::Left => Left,
-        VirtualKeyCode::Right => Right,
-        VirtualKeyCode::Up => Up,
-        VirtualKeyCode::Down => Down,
-        _ => unreachable!(),
-    }
-}
-
 impl Gui {
     /// Handle the queue of responses from the back end, updating the gui status and logging
     /// messages.
     pub fn handle_responses(&mut self, queue: &mut VecDeque<Response>) {
         let mut steps = 0;
         while let Some(response) = queue.pop_front() {
-            use Response::*;
+            use self::Response::*;
 
             if queue.len() > 60 {
                 *sprite::ANIMATION_DURATION.lock().unwrap() = 0.02_f32;
@@ -584,7 +567,7 @@ impl Gui {
             match response {
                 LevelFinished(resp) => {
                     if !self.level_solved {
-                        use save::UpdateResponse::*;
+                        use self::save::UpdateResponse::*;
                         self.level_solved = true;
                         match resp {
                             FirstTimeSolved => {
@@ -636,7 +619,7 @@ impl Gui {
                 // NothingToUndo => info!("Cannot undo move"),
                 // NothingToRedo => info!("Cannot redo move"),
                 // NoPreviousLevel => warn!("Cannot go backwards past level 1"),
-                NoPathfindingWhilePushing => error!("Path finding when moving crates is not implemented"),
+                // NoPathfindingWhilePushing => error!("Path finding when moving crates is not implemented"),
                 EndOfCollection => self.end_of_collection = true,
                 _ => {}
             }
@@ -646,26 +629,24 @@ impl Gui {
     pub fn main_loop(mut self) {
         let mut queue = VecDeque::new();
         let mut events: Vec<_>;
+        let mut cmd;
 
         loop {
             self.render_level();
-            events = self.display.poll_events().collect();
 
+            events = self.display.poll_events().collect();
             for ev in events {
                 use glium::glutin::Event;
                 use glium::glutin::ElementState::*;
 
-                // Draw the current level
-                let mut cmd = Command::Nothing;
+                cmd = Command::Nothing;
 
                 match ev {
                     Event::Closed |
                     Event::KeyboardInput(Pressed, _, Some(VirtualKeyCode::Q)) => return,
 
                     Event::KeyboardInput(Pressed, _, _) |
-                    Event::MouseInput(..) if self.level_solved => {
-                        cmd = Command::NextLevel;
-                    }
+                    Event::MouseInput(..) if self.level_solved => cmd = Command::NextLevel,
                     Event::KeyboardInput(state, _, Some(key)) => {
                         use glium::glutin::VirtualKeyCode::*;
                         match key {
@@ -684,19 +665,16 @@ impl Gui {
                         self.background = None;
                     }
 
-                    /*
-                       Event::KeyboardInput(_, _, None) | Event::MouseInput(Pressed, _) |
-                       Event::MouseEntered | Event::MouseLeft | Event::MouseWheel(..) |
-                       Event::TouchpadPressure(..) | Event::Awakened | Event::Refresh |
-                       Event::Suspended(_) | Event::Touch(_) | Event::Moved(..) |
-                       Event::ReceivedCharacter(_) | Event::Focused(_) | Event::DroppedFile(_) => (),
-                       */
+                    // Event::KeyboardInput(_, _, None) | Event::ReceivedCharacter(_) |
+                    // Event::MouseInput(Pressed, _) | Event::MouseWheel(..)
                     _ => (),
                 }
+
                 self.command_queue.push_back(cmd);
-                while let Some(cmd) = self.command_queue.pop_front() {
-                    queue.extend(self.game.execute(cmd));
-                }
+            }
+
+            while let Some(cmd) = self.command_queue.pop_front() {
+                queue.extend(self.game.execute(cmd));
             }
 
             self.handle_responses(&mut queue);

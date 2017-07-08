@@ -316,10 +316,10 @@ impl Collection {
             }
             StoreMacro => {
                 let len = self.macros.store();
-                if len != 0 {
-                    vec![Response::MacroDefined(self.macros.store())]
-                } else {
+                if len == 0 {
                     vec![]
+                } else {
+                    vec![Response::MacroDefined(self.macros.store())]
                 }
             }
             ExecuteMacro(slot) => {

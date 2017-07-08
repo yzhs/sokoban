@@ -28,23 +28,14 @@ impl FontData {
                                                font_path: P,
                                                mono_path: Q)
                                                -> Self {
+        let chars = FontTexture::ascii_character_list();
         let system = TextSystem::new(display);
-        let text_font = FontTexture::new(display,
-                                         File::open(&font_path).unwrap(),
-                                         32,
-                                         FontTexture::ascii_character_list())
-                .unwrap();
-        let heading_font = FontTexture::new(display,
-                                            File::open(&font_path).unwrap(),
-                                            64,
-                                            FontTexture::ascii_character_list())
-                .unwrap();
-
-        let mono_font = FontTexture::new(display,
-                                         File::open(&mono_path).unwrap(),
-                                         32,
-                                         FontTexture::ascii_character_list())
-                .unwrap();
+        let text_font =
+            FontTexture::new(display, File::open(&font_path).unwrap(), 32, chars.clone()).unwrap();
+        let heading_font =
+            FontTexture::new(display, File::open(&font_path).unwrap(), 64, chars.clone()).unwrap();
+        let mono_font =
+            FontTexture::new(display, File::open(&mono_path).unwrap(), 32, chars.clone()).unwrap();
 
         FontData {
             system,
@@ -54,6 +45,8 @@ impl FontData {
         }
     }
 
+    /// Draw text in the specified font. Scale by `scale` and move to a given position. Correct
+    /// for aspect ratio.
     pub fn draw(&self,
                 target: &mut Frame,
                 text: &str,

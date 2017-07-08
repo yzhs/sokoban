@@ -5,6 +5,8 @@ use std::path::PathBuf;
 
 use app_dirs::{AppInfo, AppDataType, app_dir};
 
+pub const TITLE: &'static str = "Sokoban";
+
 const APP_INFO: AppInfo = AppInfo {
     name: "sokoban",
     author: "yzhs",

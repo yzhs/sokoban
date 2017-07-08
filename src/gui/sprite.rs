@@ -6,6 +6,7 @@ use backend::{Direction, Position};
 use gui::texture::*;
 
 lazy_static! {
+    /// How long it should take to animate one step.
     pub static ref ANIMATION_DURATION: Arc<Mutex<f32>> = Arc::new(Mutex::new(0.08_f32));
 }
 
@@ -19,8 +20,11 @@ pub struct Sprite {
     /// animation was started and the position it started from.
     animation: Cell<Option<(Instant, Position)>>,
 
+    /// What sort of tile is this?
     tile_kind: TileKind,
 
+    /// If this is `Direction::Left`, just show the tile, otherwise rotate it until it points in
+    /// the right direction.
     direction: Direction,
 }
 
@@ -43,6 +47,7 @@ impl Sprite {
         // TODO What if self.animation.get() != None?
     }
 
+    /// Turn the sprite in a specific direction.
     pub fn set_direction(&mut self, dir: Direction) {
         self.direction = dir;
     }

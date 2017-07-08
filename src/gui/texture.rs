@@ -95,6 +95,19 @@ void main() {
 }
 "#;
 
+/// Darken the screen
+pub const DARKEN_SHADER: &str = r#"
+#version 140
+
+in vec2 v_tex_coords;
+out vec4 color;
+
+void main() {
+    color = vec4(0.0, 0.0, 0.0, 0.7);
+}
+"#;
+
+
 #[derive(Clone, Copy, Debug)]
 pub enum TileKind {
     Crate,
@@ -155,11 +168,7 @@ pub fn lrtp_to_vertices(mut left: f32,
 }
 
 /// Create a bunch of vertices for rendering a textured square.
-pub fn create_quad_vertices(pos: Position,
-                            columns: u32,
-                            rows: u32,
-                            aspect_ratio: f32)
-                            -> Vec<Vertex> {
+pub fn quad(pos: Position, columns: u32, rows: u32, aspect_ratio: f32) -> Vec<Vertex> {
     let left = 2.0 * pos.x as f32 / columns as f32 - 1.0;
     let right = left + 2.0 / columns as f32;
     let bottom = -2.0 * pos.y as f32 / rows as f32 + 1.0;
@@ -170,16 +179,13 @@ pub fn create_quad_vertices(pos: Position,
 
 
 /// Create a rectangle covering the entire viewport.
-pub fn create_full_screen_quad() -> Vec<Vertex> {
+pub fn full_screen() -> Vec<Vertex> {
     lrtp_to_vertices(-1.0, 1.0, -1.0, 1.0, Direction::Left, 1.0)
 }
 
 /// Create a centered rectangle with the right size to display the static parts of a level with
 /// the correct aspect ratio.
-pub fn create_background_quad(window_aspect_ratio: f32,
-                              columns: usize,
-                              rows: usize)
-                              -> Vec<Vertex> {
+pub fn background(window_aspect_ratio: f32, columns: usize, rows: usize) -> Vec<Vertex> {
     let aspect_ratio = columns as f32 / rows as f32 * window_aspect_ratio;
     if aspect_ratio < 1.0 {
         lrtp_to_vertices(-aspect_ratio, aspect_ratio, -1.0, 1.0, Direction::Left, 1.0)
@@ -193,11 +199,7 @@ pub fn create_background_quad(window_aspect_ratio: f32,
     }
 }
 
-pub fn create_transition(pos: Position,
-                         columns: u32,
-                         rows: u32,
-                         orientation: Direction)
-                         -> Vec<Vertex> {
+pub fn transition(pos: Position, columns: u32, rows: u32, orientation: Direction) -> Vec<Vertex> {
     let left;
     let right;
     let top;

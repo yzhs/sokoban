@@ -19,7 +19,7 @@ extern crate sokoban_backend as backend;
 
 mod gui;
 
-use backend::*;
+use backend::{ASSETS, TITLE, Collection};
 
 fn print_collections_table() {
     use ansi_term::Colour::{Blue, Green, White, Yellow};
@@ -32,6 +32,7 @@ fn print_collections_table() {
              Yellow.bold().paint("Collection name"));
     println!("{0}{0}{0}{0}{0}", "----------------");
 
+    // Find all level set files
     let mut paths: Vec<std::path::PathBuf> = std::fs::read_dir(ASSETS.join("levels"))
         .unwrap()
         .map(|x| x.unwrap().path().to_owned())
@@ -58,7 +59,8 @@ fn print_collections_table() {
                              "",
                              Green.paint("done"));
                 } else {
-                    let solved = if collection.number_of_solved_levels() == 0 {
+                    let num_solved = collection.number_of_solved_levels();
+                    let solved = if num_solved == 0 {
                         White.paint("solved")
                     } else {
                         Blue.paint("solved")
@@ -66,9 +68,7 @@ fn print_collections_table() {
                     println!(" {}{}{:>10} {}",
                              padded_short_name,
                              White.bold().paint(padded_full_name),
-                             format!("{}/{}",
-                                     collection.number_of_solved_levels(),
-                                     collection.number_of_levels()),
+                             format!("{}/{}", num_solved, collection.number_of_levels()),
                              solved);
                 }
             }
@@ -78,7 +78,7 @@ fn print_collections_table() {
 
 fn main() {
     use clap::{App, Arg};
-    use gui::{Gui, TITLE};
+    use gui::Gui;
     colog::init();
 
     let matches = App::new(TITLE)
@@ -93,7 +93,6 @@ fn main() {
                  .long("list"))
         .get_matches();
 
-    // Print a list of available collections
     if matches.is_present("list") {
         print_collections_table();
         return;
