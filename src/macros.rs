@@ -54,7 +54,7 @@ impl Macros {
             let len = tmp.len();
             self.slots[slot as usize] = tmp;
             self.target_slot = None;
-            info!("Storing macro {}: {}", slot, self.to_string(slot));
+            info!("Storing macro {}: {}", slot + 1, self.to_string(slot));
             len
         } else {
             0
