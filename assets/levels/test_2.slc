@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SokobanLevels xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="SokobanLev.xsd">
+  <Title>Simple collection for testing</Title>
+  <Description>
+  Nothing interesting.
+  </Description>
+  <Email>yoshio@asahi.email.ne.jp</Email>
+  <Url>http://www.ne.jp/asahi/ai/yoshio/sokoban/main.htm</Url>
+  <LevelCollection MaxWidth="8" MaxHeight="12">
+    <Level Id="Test1" Width="8" Height="12">
+      <L>########</L>
+      <L>#    . #</L>
+      <L>#  *   #</L>
+      <L>#  .$  #</L>
+      <L>#    $ #</L>
+      <L>### @ ##</L>
+      <L>  ######</L>
+      <L># ##  ##</L>
+      <L>###   ##</L>
+      <L>####  # </L>
+      <L># ##  ##</L>
+      <L>##### ##</L>
+    </Level>
+  </LevelCollection>
+</SokobanLevels>

@@ -475,3 +475,59 @@ impl fmt::Display for SaveError {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use command::contains_error;
+
+    fn exec_ok(col: &mut Collection, cmd: Command) -> bool {
+        !contains_error(&col.execute(cmd))
+    }
+
+    #[test]
+    fn load_test_collections() {
+        assert!(Collection::load("test_2").is_ok());
+        assert!(Collection::load("test3iuntrenutineaniutea").is_err());
+    }
+
+    #[test]
+    fn switch_levels() {
+        let mut col = Collection::load("test").unwrap();
+        assert!(exec_ok(&mut col, Command::Move(Direction::Right)));
+        assert!(exec_ok(&mut col, Command::PreviousLevel));
+        assert!(exec_ok(&mut col, Command::NextLevel));
+    }
+
+    #[test]
+    fn load_original() {
+        use Direction::*;
+        use position::Position;
+
+        let name = "original";
+        let mut col = Collection::load(name).unwrap();
+        assert_eq!(col.number_of_levels(), 50);
+        assert_eq!(col.short_name, name);
+
+        assert!(exec_ok(&mut col, Command::Move(Up)));
+        assert!(exec_ok(&mut col,
+                        Command::MoveAsFarAsPossible(Left, MayPushCrate(true))));
+        let res = col.execute(Command::Move(Left));
+        assert!(contains_error(&res));
+
+        assert!(exec_ok(&mut col, Command::ResetLevel));
+        assert!(exec_ok(&mut col,
+                        Command::MoveToPosition(Position::new(8, 4), MayPushCrate(false))));
+        assert_eq!(col.current_level.number_of_moves(), 7);
+        assert!(exec_ok(&mut col, Command::Move(Left)));
+        assert_eq!(col.current_level.number_of_pushes(), 1);
+
+        assert_eq!(col.current_level.moves_to_string(), "ullluuuL");
+        assert!(exec_ok(&mut col, Command::Undo));
+        assert_eq!(col.current_level.all_moves_to_string(), "ullluuuL");
+        assert_eq!(col.current_level.moves_to_string(), "ullluuu");
+        assert!(exec_ok(&mut col, Command::Redo));
+        assert_eq!(col.current_level.number_of_pushes(), 1);
+    }
+
+}

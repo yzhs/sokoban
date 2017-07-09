@@ -46,6 +46,9 @@ impl Level {
             .filter(|x| !x.is_empty() && !x.trim().starts_with(';'))
             .collect();
         let rows = lines.len();
+        if rows == 0 {
+            return Err(SokobanError::NoLevel(rank));
+        }
         let columns = lines.iter().map(|x| x.len()).max().unwrap();
 
         let mut found_worker = false;
@@ -579,6 +582,7 @@ impl fmt::Display for Level {
 #[cfg(test)]
 mod test {
     use super::*;
+    use command::contains_error;
 
     #[test]
     fn test_crate_missing() {
@@ -622,13 +626,10 @@ mod test {
         assert_eq!(res.unwrap_err().to_string(), "NoWorker(1)");
     }
 
-    fn contains_error(responses: &[Response]) -> bool {
-        responses.iter().any(|x| x.is_error())
-    }
-
     #[test]
     fn test_trivial_move_1() {
         use self::Direction::*;
+
         let mut lvl = Level::parse(0,
                                    "####\n\
                                     #@ #\n\
@@ -662,9 +663,42 @@ mod test {
                 .unwrap();
         assert_eq!(lvl.worker_position.x, 3);
         assert_eq!(lvl.worker_position.y, 1);
+        assert_eq!(lvl.worker_direction(), Left);
         assert!(!contains_error(&lvl.try_move(Right)));
+        assert!(!contains_error(&lvl.try_move(Left)));
         assert!(!contains_error(&lvl.try_move(Left)));
         assert!(contains_error(&lvl.try_move(Up)));
         assert!(contains_error(&lvl.try_move(Down)));
+        assert!(lvl.is_finished());
+        assert!(!contains_error(&lvl.undo()));
+        assert!(!lvl.is_finished());
+        assert!(!contains_error(&lvl.try_move(Right)));
+        assert_eq!(lvl.worker_direction(), Right);
+        assert!(contains_error(&lvl.redo()));
+        assert!(!contains_error(&lvl.try_move(Left)));
+        assert!(!contains_error(&lvl.try_move(Left)));
+        assert!(lvl.is_finished());
+        assert_eq!(lvl.worker_direction(), Left);
+    }
+
+    #[test]
+    fn test_empty_level() {
+        let lvl = Level::parse(0, "");
+        assert!(lvl.is_err());
+        if let Err(SokobanError::NoLevel(1)) = lvl {
+        } else {
+            unreachable!();
+        }
+    }
+
+    #[test]
+    fn out_of_bounds_not_interior() {
+        let lvl = Level::parse(0,
+                               "#######\n\
+                                    #.$@$.#\n\
+                                    #######\n")
+                .unwrap();
+        assert!(!lvl.is_interior(Position { x: -1, y: 0 }));
+        assert!(!lvl.is_interior(Position { x: 1, y: -3 }));
     }
 }

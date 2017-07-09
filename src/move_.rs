@@ -94,4 +94,12 @@ mod test {
             assert!(Move::try_from(chr).is_err());
         }
     }
+
+    #[test]
+    fn parse_str() {
+        let s = "UldrdddDddlLrrRRuLulLLUUdrdlduUDLR";
+        let moves = parse(s).unwrap();
+        let s2: String = moves.into_iter().map(|x| x.to_char()).collect();
+        assert_eq!(s, s2);
+    }
 }

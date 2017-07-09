@@ -61,3 +61,20 @@ impl fmt::Display for Direction {
                })
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn from_positions() {
+        let pos0 = Position::new(0, 42);
+        for &dir in DIRECTIONS.iter() {
+            let pos1 = pos0.neighbour(dir);
+            assert_eq!(direction(pos0, pos1), Ok(dir));
+            assert_eq!(pos1.neighbour(dir.reverse()), pos0);
+        }
+        assert_eq!(direction(pos0, pos0), Err(None));
+        assert_eq!(direction(pos0.left().above(), pos0), Err(Some(pos0)));
+    }
+}

@@ -157,3 +157,8 @@ pub enum Obstacle {
     Crate,
     // TODO multiple workers might block each other
 }
+
+#[cfg(test)]
+pub fn contains_error(responses: &[Response]) -> bool {
+    responses.iter().any(|x| x.is_error())
+}
