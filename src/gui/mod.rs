@@ -5,7 +5,6 @@ mod texture;
 use std::cmp::min;
 use std::collections::VecDeque;
 
-use clap::{App, Arg};
 use glium::Surface;
 use glium::backend::glutin_backend::GlutinFacade;
 use glium::glutin::{VirtualKeyCode, MouseButton};
