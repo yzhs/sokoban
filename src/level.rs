@@ -41,6 +41,7 @@ pub struct Level {
 impl Level {
     /// Parse the ASCII representation of a level.
     pub fn parse(num: usize, string: &str) -> Result<Level, SokobanError> {
+        let rank = num + 1;
         let lines: Vec<_> = string.lines()
             // Skip empty lines and comments
             .filter(|x| !x.is_empty() && !x.trim().starts_with(';'))
@@ -96,7 +97,7 @@ impl Level {
                 // Find the initial worker position.
                 if cell.foreground == Foreground::Worker {
                     if found_worker {
-                        return Err(SokobanError::TwoWorkers(num + 1));
+                        return Err(SokobanError::TwoWorkers(rank));
                     }
                     worker_position = Position::new(j, i);
                     found_worker = true;
@@ -104,11 +105,11 @@ impl Level {
             }
         }
         if !found_level_description {
-            return Err(SokobanError::NoLevel(num + 1));
+            return Err(SokobanError::NoLevel(rank));
         } else if !found_worker {
-            return Err(SokobanError::NoWorker(num + 1));
+            return Err(SokobanError::NoWorker(rank));
         } else if goals_minus_crates != 0 {
-            return Err(SokobanError::CratesGoalsMismatch(num + 1, goals_minus_crates));
+            return Err(SokobanError::CratesGoalsMismatch(rank, goals_minus_crates));
         }
 
         // Fix the mistakes of the above heuristic for detecting which cells are on the inside.
@@ -164,7 +165,7 @@ impl Level {
         }
 
         Ok(Level {
-               rank: num + 1, // The first level is level 1
+               rank: rank, // The first level is level 1
                columns,
                rows,
 

@@ -59,13 +59,12 @@ impl Position {
     /// Return the neighbouring Position in the given direction.
     pub fn neighbour(&self, direction: Direction) -> Self {
         use super::Direction::*;
-        let (x, y) = match direction {
-            Left => (self.x - 1, self.y),
-            Right => (self.x + 1, self.y),
-            Up => (self.x, self.y - 1),
-            Down => (self.x, self.y + 1),
-        };
-        Position { x, y }
+        match direction {
+            Left => self.left(),
+            Right => self.right(),
+            Up => self.above(),
+            Down => self.below(),
+        }
     }
 }
 
