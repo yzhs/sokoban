@@ -1,4 +1,4 @@
-#![feature(try_from)]
+#![feature(ascii_ctype, try_from)]
 
 #[macro_use]
 extern crate log;

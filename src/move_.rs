@@ -24,21 +24,17 @@ impl Move {
     /// Describe a move using one character signifying its direction. The character is upper case
     /// if and only if `self.moves_crate` is true.
     pub fn to_char(&self) -> char {
+        use std::ascii::AsciiExt;
+        let mut c = match self.direction {
+            Direction::Left => 'l',
+            Direction::Right => 'r',
+            Direction::Up => 'u',
+            Direction::Down => 'd',
+        };
         if self.moves_crate {
-            match self.direction {
-                Direction::Left => 'L',
-                Direction::Right => 'R',
-                Direction::Up => 'U',
-                Direction::Down => 'D',
-            }
-        } else {
-            match self.direction {
-                Direction::Left => 'l',
-                Direction::Right => 'r',
-                Direction::Up => 'u',
-                Direction::Down => 'd',
-            }
+            c.make_ascii_uppercase();
         }
+        c
     }
 }
 
@@ -59,18 +55,17 @@ impl TryFrom<char> for Move {
     type Error = char;
 
     fn try_from(c: char) -> Result<Move, char> {
+        use std::ascii::AsciiExt;
         use Direction::*;
-        Ok(match c {
-               'l' => Move::new(Left, false),
-               'L' => Move::new(Left, true),
-               'r' => Move::new(Right, false),
-               'R' => Move::new(Right, true),
-               'u' => Move::new(Up, false),
-               'U' => Move::new(Up, true),
-               'd' => Move::new(Down, false),
-               'D' => Move::new(Down, true),
-               _ => return Err(c),
-           })
+        let dir = match c {
+            'l' | 'L' => Left,
+            'r' | 'R' => Right,
+            'u' | 'U' => Up,
+            'd' | 'D' => Down,
+            _ => return Err(c),
+        };
+        let push = c.is_ascii_uppercase();
+        Ok(Move::new(dir, push))
     }
 }
 
