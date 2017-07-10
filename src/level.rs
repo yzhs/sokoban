@@ -603,13 +603,13 @@ impl fmt::Display for Level {
                     Foreground::None
                 };
                 let cell = match (background, foreground) {
+                    (Background::Wall, Foreground::None) => '#',
                     (Background::Empty, Foreground::None) |
                     (Background::Floor, Foreground::None) => ' ',
-                    (Background::Wall, Foreground::None) => '#',
-                    (Background::Goal, Foreground::None) => '.',
                     (Background::Floor, Foreground::Crate) => '$',
-                    (Background::Goal, Foreground::Crate) => '*',
                     (Background::Floor, Foreground::Worker) => '@',
+                    (Background::Goal, Foreground::None) => '.',
+                    (Background::Goal, Foreground::Crate) => '*',
                     (Background::Goal, Foreground::Worker) => '+',
                     _ => {
                         panic!("Invalid combination: {:?} on top of {:?}",
