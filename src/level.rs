@@ -8,7 +8,7 @@ use position::*;
 use util::*;
 
 /// Static part of a cell.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Background {
     Empty,
     Wall,
@@ -26,8 +26,8 @@ impl Background {
 }
 
 /// Dynamic part of a cell.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum Foreground {
+#[derive(Debug, Clone, Copy, PartialEq, Hash)]
+enum Foreground {
     None,
     Worker,
     Crate,
@@ -85,9 +85,9 @@ impl Level {
         let mut goals_minus_crates = 0_i32;
 
         let mut found_level_description = false;
-        for (i, line) in lines.iter().enumerate() {
+        for (y, line) in lines.iter().enumerate() {
             let mut inside = false;
-            for (j, chr) in line.chars().enumerate() {
+            for (x, chr) in line.chars().enumerate() {
                 let (bg, fg) = match chr {
                     '#' => (Background::Wall, Foreground::None),
                     ' ' => (Background::Empty, Foreground::None),
@@ -96,9 +96,9 @@ impl Level {
                     '.' => (Background::Goal, Foreground::None),
                     '*' => (Background::Goal, Foreground::Crate),
                     '+' => (Background::Goal, Foreground::Worker),
-                    _ => panic!("Invalid character '{}' in line {}, column {}.", chr, i, j),
+                    _ => panic!("Invalid character '{}' in line {}, column {}.", chr, y, x),
                 };
-                let index = i * columns + j;
+                let index = y * columns + x;
                 background[index] = bg;
                 found_level_description = true;
 
@@ -111,7 +111,7 @@ impl Level {
                     goals_minus_crates -= 1;
                 }
                 if fg == Foreground::Crate {
-                    crates.push(Position::new(j, i));
+                    crates.push(Position::new(x, y));
                 }
 
                 // Try to figure out whether a given cell is inside the walls.
@@ -129,7 +129,7 @@ impl Level {
                     if found_worker {
                         return Err(SokobanError::TwoWorkers(rank));
                     }
-                    worker_position = Position::new(j, i);
+                    worker_position = Position::new(x, y);
                     found_worker = true;
                 }
             }
@@ -555,6 +555,9 @@ impl Level {
         }
     }
 
+    /// Given a number of simple moves, i.e. up, down, left, right, as a strign, execute the first
+    /// `number_of_moves` of them. If there are more moves than that, they can be executed using
+    /// redo.
     pub fn execute_moves(&mut self, number_of_moves: usize, moves: &str) {
         let moves = ::move_::parse(moves).unwrap();
         // TODO Error handling
@@ -571,6 +574,7 @@ impl Level {
         }
     }
 
+    /// Convert moves to string, including moves that have been undone.
     pub fn all_moves_to_string(&self) -> String {
         let mut result = String::with_capacity(self.moves.len());
         for mv in &self.moves {
@@ -603,11 +607,15 @@ impl fmt::Display for Level {
                     (Background::Floor, Foreground::None) => ' ',
                     (Background::Wall, Foreground::None) => '#',
                     (Background::Goal, Foreground::None) => '.',
-                    (Background::Floor, Foreground::Worker) => '@',
-                    (Background::Goal, Foreground::Crate) => '*',
                     (Background::Floor, Foreground::Crate) => '$',
+                    (Background::Goal, Foreground::Crate) => '*',
+                    (Background::Floor, Foreground::Worker) => '@',
                     (Background::Goal, Foreground::Worker) => '+',
-                    _ => panic!("Invalid cell: {:?}", (background, foreground)),
+                    _ => {
+                        panic!("Invalid combination: {:?} on top of {:?}",
+                               foreground,
+                               background)
+                    }
                 };
                 write!(f, "{}", cell)?;
             }
