@@ -1,13 +1,37 @@
-use std::convert::TryFrom;
 use std::fmt;
 use std::collections::{VecDeque, HashMap};
 
-use cell::*;
 use command::{Response, Obstacle, WithCrate};
 use direction::*;
 use move_::Move;
 use position::*;
 use util::*;
+
+/// Static part of a cell.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Background {
+    Empty,
+    Wall,
+    Floor,
+    Goal,
+}
+
+impl Background {
+    pub fn is_wall(self) -> bool {
+        match self {
+            Background::Wall => true,
+            _ => false,
+        }
+    }
+}
+
+/// Dynamic part of a cell.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Foreground {
+    None,
+    Worker,
+    Crate,
+}
 
 
 #[derive(Debug, Clone)]
@@ -64,38 +88,44 @@ impl Level {
         for (i, line) in lines.iter().enumerate() {
             let mut inside = false;
             for (j, chr) in line.chars().enumerate() {
-                let cell = Cell::try_from(chr)
-                    .expect(format!("Invalid character '{}' in line {}, column {}.", chr, i, j)
-                                .as_ref());
+                let (bg, fg) = match chr {
+                    '#' => (Background::Wall, Foreground::None),
+                    ' ' => (Background::Empty, Foreground::None),
+                    '$' => (Background::Floor, Foreground::Crate),
+                    '@' => (Background::Floor, Foreground::Worker),
+                    '.' => (Background::Goal, Foreground::None),
+                    '*' => (Background::Goal, Foreground::Crate),
+                    '+' => (Background::Goal, Foreground::Worker),
+                    _ => panic!("Invalid character '{}' in line {}, column {}.", chr, i, j),
+                };
                 let index = i * columns + j;
-                background[index] = cell.background;
+                background[index] = bg;
                 found_level_description = true;
 
                 // Count goals still to be filled and make sure that there are exactly as many
                 // goals as there are crates.
-                if cell.background == Background::Goal && cell.foreground != Foreground::Crate {
+                if bg == Background::Goal && fg != Foreground::Crate {
                     empty_goals += 1;
                     goals_minus_crates += 1;
-                } else if cell.background != Background::Goal &&
-                          cell.foreground == Foreground::Crate {
+                } else if bg != Background::Goal && fg == Foreground::Crate {
                     goals_minus_crates -= 1;
                 }
-                if cell.foreground == Foreground::Crate {
+                if fg == Foreground::Crate {
                     crates.push(Position::new(j, i));
                 }
 
                 // Try to figure out whether a given cell is inside the walls.
-                if !inside && cell.background.is_wall() {
+                if !inside && bg.is_wall() {
                     inside = true;
                 }
 
-                if inside && cell.background == Background::Empty && index >= columns &&
+                if inside && bg == Background::Empty && index >= columns &&
                    background[index - columns] != Background::Empty {
                     background[index] = Background::Floor;
                 }
 
                 // Find the initial worker position.
-                if cell.foreground == Foreground::Worker {
+                if fg == Foreground::Worker {
                     if found_worker {
                         return Err(SokobanError::TwoWorkers(rank));
                     }
@@ -568,11 +598,18 @@ impl fmt::Display for Level {
                 } else {
                     Foreground::None
                 };
-                let cell = Cell {
-                    foreground,
-                    background,
+                let cell = match (background, foreground) {
+                    (Background::Empty, Foreground::None) |
+                    (Background::Floor, Foreground::None) => ' ',
+                    (Background::Wall, Foreground::None) => '#',
+                    (Background::Goal, Foreground::None) => '.',
+                    (Background::Floor, Foreground::Worker) => '@',
+                    (Background::Goal, Foreground::Crate) => '*',
+                    (Background::Floor, Foreground::Crate) => '$',
+                    (Background::Goal, Foreground::Worker) => '+',
+                    _ => panic!("Invalid cell: {:?}", (background, foreground)),
                 };
-                write!(f, "{}", cell.to_char())?;
+                write!(f, "{}", cell)?;
             }
         }
         Ok(())
@@ -696,10 +733,16 @@ mod test {
     fn out_of_bounds_not_interior() {
         let lvl = Level::parse(0,
                                "#######\n\
-                                    #.$@$.#\n\
-                                    #######\n")
+                                #.$@$.#\n\
+                                #######\n")
                 .unwrap();
         assert!(!lvl.is_interior(Position { x: -1, y: 0 }));
         assert!(!lvl.is_interior(Position { x: 1, y: -3 }));
+    }
+
+    #[test]
+    #[should_panic]
+    fn invalid_char() {
+        let _ = Level::parse(0, "#######\n#.$@a #\n#######\n");
     }
 }

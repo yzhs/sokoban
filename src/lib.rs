@@ -16,7 +16,6 @@ extern crate app_dirs;
 
 extern crate xml;
 
-mod cell;
 mod collection;
 mod command;
 mod direction;
@@ -28,7 +27,6 @@ mod position;
 pub mod save;
 mod util;
 
-pub use cell::*;
 pub use collection::*;
 pub use command::*;
 pub use game::*;
