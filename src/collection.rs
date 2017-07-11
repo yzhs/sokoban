@@ -63,10 +63,30 @@ impl Collection {
             }
         };
 
-        match file_format {
-            FileFormat::Ascii => Collection::load_lvl(short_name, level_file),
-            FileFormat::Xml => Collection::load_xml(short_name, level_file),
-        }
+        let mut collection = match file_format {
+            FileFormat::Ascii => Collection::load_lvl(short_name, level_file)?,
+            FileFormat::Xml => Collection::load_xml(short_name, level_file)?,
+        };
+
+        // Try to load the collection’s status
+        let state = CollectionState::load(short_name);
+        if !state.collection_solved {
+            let n = state.levels_finished();
+            let mut lvl = collection.levels[n].clone();
+            if n < state.levels.len() {
+                if let LevelState::Started {
+                           number_of_moves,
+                           ref moves,
+                           ..
+                       } = state.levels[n] {
+                    lvl.execute_moves(number_of_moves, moves);
+                }
+            }
+            collection.current_level = lvl;
+        };
+        collection.saved = state;
+
+        Ok(collection)
     }
 
     /// Load a file containing a bunch of levels separated by an empty line, i.e. the usual ASCII
@@ -90,7 +110,7 @@ impl Collection {
             .collect();
         let name = level_strings[0].lines().next().unwrap();
         let description = level_strings[0]
-            .splitn(1, |c| c == '\n' || c == '\r')
+            .splitn(1, &eol)
             .last()
             .map(|x| x.trim().to_owned());
 
@@ -101,35 +121,15 @@ impl Collection {
             .map(|(i, l)| Level::parse(i, l.trim_matches(&eol)))
             .collect::<Result<Vec<_>, _>>()?;
 
-        // Try to load the collection’s status
-        let state = CollectionState::load(short_name);
-        let current_level = if state.collection_solved {
-            levels[0].clone()
-        } else {
-            let n = state.levels_finished();
-            let mut lvl = levels[n].clone();
-            if n < state.levels.len() {
-                if let LevelState::Started {
-                           number_of_moves,
-                           ref moves,
-                           ..
-                       } = state.levels[n] {
-                    lvl.execute_moves(number_of_moves, moves);
-                }
-            }
-            lvl
-        };
-
-        let result = Collection {
-            name: name.to_string(),
-            short_name: short_name.to_string(),
-            description,
-            current_level,
-            levels,
-            saved: state,
-            macros: Macros::new(),
-        };
-        Ok(result)
+        Ok(Collection {
+               name: name.to_string(),
+               short_name: short_name.to_string(),
+               description,
+               current_level: levels[0].clone(),
+               levels,
+               saved: CollectionState::new(short_name),
+               macros: Macros::new(),
+           })
     }
 
     /// Load a level set in the XML-based .slc format.
@@ -192,6 +192,7 @@ impl Collection {
                         _ => {}
                     }
                 }
+
                 XmlEvent::Characters(s) => {
                     match state {
                         State::Nothing => {}
@@ -212,36 +213,17 @@ impl Collection {
             }
         }
 
-        let state = CollectionState::load(short_name);
-        let current_level = if state.collection_solved {
-            levels[0].clone()
-        } else {
-            let n = state.levels_finished();
-            let mut lvl = levels[n].clone();
-            if n < state.levels.len() {
-                if let LevelState::Started {
-                           number_of_moves,
-                           ref moves,
-                           ..
-                       } = state.levels[n] {
-                    lvl.execute_moves(number_of_moves, moves);
-                }
-            }
-            lvl
-        };
-
-
         Ok(Collection {
                name: title,
                short_name: short_name.to_string(),
                description: if description.is_empty() {
-                   Option::None
+                   None
                } else {
-                   Option::Some(description)
+                   Some(description)
                },
-               current_level,
+               current_level: levels[0].clone(),
                levels,
-               saved: state,
+               saved: CollectionState::new(short_name),
                macros: Macros::new(),
            })
     }
