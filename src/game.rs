@@ -15,14 +15,14 @@ impl Game {
     pub fn new(name: &str) -> Result<Self, SokobanError> {
         Ok(Game {
                name: name.into(),
-               collection: Collection::load(name)?,
+               collection: Collection::parse(name)?,
            })
     }
 
     /// Load a collection by name.
     pub fn set_collection(&mut self, name: &str) -> Result<(), SokobanError> {
         self.name = name.into();
-        self.collection = Collection::load(name)?;
+        self.collection = Collection::parse(name)?;
         Ok(())
     }
 

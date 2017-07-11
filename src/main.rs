@@ -47,7 +47,7 @@ fn print_collections_table() {
             use std::ffi::OsStr;
             if ext == OsStr::new("lvl") || ext == OsStr::new("slc") {
                 let name = path.file_stem().and_then(|x| x.to_str()).unwrap();
-                let collection = Collection::load(name).unwrap();
+                let collection = Collection::parse(name).unwrap();
 
                 let padded_short_name = format!("{:<24}", name);
                 let padded_full_name = format!("{:<36}", collection.name);

@@ -45,7 +45,7 @@ pub struct Collection {
 
 impl Collection {
     /// Load a level set with the given name, whatever the format might be.
-    pub fn load(short_name: &str) -> Result<Collection, SokobanError> {
+    pub fn parse(short_name: &str) -> Result<Collection, SokobanError> {
         let mut level_path = ASSETS.clone();
         level_path.push("levels");
         level_path.push(short_name);
@@ -64,8 +64,8 @@ impl Collection {
         };
 
         let mut collection = match file_format {
-            FileFormat::Ascii => Collection::load_lvl(short_name, level_file)?,
-            FileFormat::Xml => Collection::load_xml(short_name, level_file)?,
+            FileFormat::Ascii => Collection::parse_lvl(short_name, level_file)?,
+            FileFormat::Xml => Collection::parse_xml(short_name, level_file)?,
         };
 
         // Try to load the collection’s status
@@ -91,7 +91,7 @@ impl Collection {
 
     /// Load a file containing a bunch of levels separated by an empty line, i.e. the usual ASCII
     /// format.
-    fn load_lvl(short_name: &str, file: File) -> Result<Collection, SokobanError> {
+    fn parse_lvl(short_name: &str, file: File) -> Result<Collection, SokobanError> {
         #[cfg(unix)]
         const EMPTY_LINE: &str = "\n\n";
         #[cfg(windows)]
@@ -133,7 +133,7 @@ impl Collection {
     }
 
     /// Load a level set in the XML-based .slc format.
-    fn load_xml(short_name: &str, file: File) -> Result<Collection, SokobanError> {
+    fn parse_xml(short_name: &str, file: File) -> Result<Collection, SokobanError> {
         use xml::reader::{EventReader, XmlEvent};
 
         enum State {
@@ -469,13 +469,13 @@ mod test {
 
     #[test]
     fn load_test_collections() {
-        assert!(Collection::load("test_2").is_ok());
-        assert!(Collection::load("test3iuntrenutineaniutea").is_err());
+        assert!(Collection::parse("test_2").is_ok());
+        assert!(Collection::parse("test3iuntrenutineaniutea").is_err());
     }
 
     #[test]
     fn switch_levels() {
-        let mut col = Collection::load("test").unwrap();
+        let mut col = Collection::parse("test").unwrap();
         assert!(exec_ok(&mut col, Command::Move(Direction::Right)));
         assert!(exec_ok(&mut col, Command::PreviousLevel));
         assert!(exec_ok(&mut col, Command::NextLevel));
@@ -487,7 +487,7 @@ mod test {
         use position::Position;
 
         let name = "original";
-        let mut col = Collection::load(name).unwrap();
+        let mut col = Collection::parse(name).unwrap();
         assert_eq!(col.number_of_levels(), 50);
         assert_eq!(col.short_name, name);
 
