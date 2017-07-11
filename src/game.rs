@@ -1,9 +1,12 @@
+use std::fs;
+use std::path::PathBuf;
+
 use collection::*;
 use command::*;
 use direction::Direction;
 use level::Level;
 use position::Position;
-use util::SokobanError;
+use util::{ASSETS, SokobanError};
 
 #[derive(Debug)]
 pub struct Game {
@@ -98,5 +101,61 @@ impl Game {
     /// The collections full name
     pub fn name(&self) -> &str {
         self.collection.name.as_ref()
+    }
+}
+
+
+pub fn print_collections_table() {
+    use ansi_term::Colour::{Blue, Green, White, Yellow};
+
+    #[cfg(windows)]
+    ansi_term::enable_ansi_support();
+
+    println!(" {}               {}",
+             Yellow.bold().paint("File name"),
+             Yellow.bold().paint("Collection name"));
+    println!("{0}{0}{0}{0}{0}", "----------------");
+
+    // Find all level set files
+    let mut paths: Vec<PathBuf> = fs::read_dir(ASSETS.join("levels"))
+        .unwrap()
+        .map(|x| x.unwrap().path().to_owned())
+        .collect();
+    paths.sort_by(|x, y| {
+                      ::natord::compare(x.file_stem().unwrap().to_str().unwrap(),
+                                        y.file_stem().unwrap().to_str().unwrap())
+                  });
+
+    for path in paths {
+        if let Some(ext) = path.extension() {
+            use std::ffi::OsStr;
+            if ext == OsStr::new("lvl") || ext == OsStr::new("slc") {
+                let name = path.file_stem().and_then(|x| x.to_str()).unwrap();
+                let collection = Collection::parse(name).unwrap();
+
+                let padded_short_name = format!("{:<24}", name);
+                let padded_full_name = format!("{:<36}", collection.name);
+
+                if collection.is_solved() {
+                    println!(" {}{}{:>10} {}",
+                             Green.paint(padded_short_name),
+                             Green.bold().paint(padded_full_name),
+                             "",
+                             Green.paint("done"));
+                } else {
+                    let num_solved = collection.number_of_solved_levels();
+                    let solved = if num_solved == 0 {
+                        White.paint("solved")
+                    } else {
+                        Blue.paint("solved")
+                    };
+                    println!(" {}{}{:>10} {}",
+                             padded_short_name,
+                             White.bold().paint(padded_full_name),
+                             format!("{}/{}", num_solved, collection.number_of_levels()),
+                             solved);
+                }
+            }
+        }
     }
 }
