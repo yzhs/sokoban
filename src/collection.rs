@@ -68,23 +68,7 @@ impl Collection {
             FileFormat::Xml => Collection::parse_xml(short_name, level_file)?,
         };
 
-        // Try to load the collection’s status
-        let state = CollectionState::load(short_name);
-        if !state.collection_solved {
-            let n = state.levels_finished();
-            let mut lvl = collection.levels[n].clone();
-            if n < state.levels.len() {
-                if let LevelState::Started {
-                           number_of_moves,
-                           ref moves,
-                           ..
-                       } = state.levels[n] {
-                    lvl.execute_moves(number_of_moves, moves);
-                }
-            }
-            collection.current_level = lvl;
-        };
-        collection.saved = state;
+        collection.load();
 
         Ok(collection)
     }
@@ -371,6 +355,26 @@ impl Collection {
             self.current_level = self.levels[n - 2].clone();
             Ok(vec![Response::NewLevel(n - 1)])
         }
+    }
+
+    /// Load state stored on disc.
+    fn load(&mut self) {
+        let state = CollectionState::load(&self.short_name);
+        if !state.collection_solved {
+            let n = state.levels_finished();
+            let mut lvl = self.levels[n].clone();
+            if n < state.levels.len() {
+                if let LevelState::Started {
+                           number_of_moves,
+                           ref moves,
+                           ..
+                       } = state.levels[n] {
+                    lvl.execute_moves(number_of_moves, moves);
+                }
+            }
+            self.current_level = lvl;
+        };
+        self.saved = state;
     }
 
     /// Save the state of this collection including the state of the current level.
