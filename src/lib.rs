@@ -8,6 +8,7 @@ extern crate colog;
 extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
+extern crate rmp_serde; // MessagePack
 
 extern crate find_folder;
 #[macro_use]
