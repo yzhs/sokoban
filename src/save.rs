@@ -1,8 +1,11 @@
 //! On-disc structures for storing which levels have been solved and the best solutions so far.
 
+use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fs::File;
-use std::cmp::Ordering;
+use std::path::Path;
+use rmp_serde::Deserializer;
+use serde::Deserialize;
 
 use level::*;
 use util::DATA_DIR;
@@ -160,13 +163,29 @@ impl CollectionState {
     /// Try to load the `CollectionState` for the level set with the given name. If that fails,
     /// return a new empty `CollectionState`.
     pub fn load(name: &str) -> Self {
-        let mut path = DATA_DIR.join(name);
-        path.set_extension("json");
+        let path = DATA_DIR.join(name);
 
-        File::open(path)
+        Self::load_messagepack(&path)
+            .or_else(|| Self::load_json(&path))
+            .unwrap_or_else(|| Self::new(name))
+    }
+
+    fn load_json(path: &Path) -> Option<Self> {
+        info!("Trying to load JSON");
+        File::open(path.with_extension("json"))
             .ok()
             .and_then(|file| ::serde_json::from_reader(file).ok())
-            .unwrap_or_else(|| CollectionState::new(name))
+    }
+
+    fn load_messagepack(path: &Path) -> Option<Self> {
+        use std::io::BufReader;
+        info!("Trying to load MessagePack");
+        File::open(path.with_extension("mp"))
+            .ok()
+            .and_then(|file| {
+                          let mut de = Deserializer::new(BufReader::new(file));
+                          Deserialize::deserialize(&mut de).ok()
+                      })
     }
 
     /// If a better or more complete solution for the current level is available, replace the old
