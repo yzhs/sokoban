@@ -2,8 +2,12 @@
 
 use std::cmp::Ordering;
 use std::convert::TryFrom;
+use std::error;
+use std::fmt;
 use std::fs::File;
+use std::io;
 use std::path::Path;
+
 use rmp_serde::Deserializer;
 use serde::Deserialize;
 
@@ -188,6 +192,23 @@ impl CollectionState {
                       })
     }
 
+    /// Save the current state to disc.
+    pub fn save(&mut self, name: &str) -> Result<(), SaveError> {
+        // If no rank was given in the JSON file, set it.
+        if self.levels[0].rank() == 0 {
+            for (i, lvl) in self.levels.iter_mut().enumerate() {
+                lvl.set_rank(i + 1);
+            }
+        }
+
+        let mut path = DATA_DIR.join(name);
+        path.set_extension("json");
+        File::create(path)
+            .map_err(SaveError::from)
+            .and_then(|file| ::serde_json::to_writer(file, &self).map_err(SaveError::from))
+            .map(|_| ())
+    }
+
     /// If a better or more complete solution for the current level is available, replace the old
     /// one with it.
     pub fn update(&mut self, index: usize, level_state: LevelState) -> UpdateResponse {
@@ -243,6 +264,51 @@ impl CollectionState {
             n
         } else {
             n - 1
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum SaveError {
+    FailedToCreateFile(io::Error),
+    FailedToWriteFile(::serde_json::Error),
+}
+
+impl error::Error for SaveError {
+    fn description(&self) -> &str {
+        use self::SaveError::*;
+        match *self {
+            FailedToCreateFile(_) => "Failed to create file",
+            FailedToWriteFile(_) => "Failed to serialize to file",
+        }
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        use self::SaveError::*;
+        match *self {
+            FailedToCreateFile(ref e) => e.cause(),
+            FailedToWriteFile(ref e) => e.cause(),
+        }
+    }
+}
+
+impl From<io::Error> for SaveError {
+    fn from(e: io::Error) -> Self {
+        self::SaveError::FailedToCreateFile(e)
+    }
+}
+impl From<::serde_json::Error> for SaveError {
+    fn from(e: ::serde_json::Error) -> Self {
+        self::SaveError::FailedToWriteFile(e)
+    }
+}
+
+impl fmt::Display for SaveError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use self::SaveError::*;
+        match *self {
+            FailedToCreateFile(ref e) => write!(fmt, "Failed to create file: {}", e),
+            FailedToWriteFile(ref e) => write!(fmt, "Failed to write file: {}", e),
         }
     }
 }

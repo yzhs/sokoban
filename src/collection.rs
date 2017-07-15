@@ -1,9 +1,6 @@
 use std::convert::TryFrom;
-use std::io::{self, Read};
-use std::fmt;
-use std::error;
+use std::io::Read;
 use std::fs::File;
-use std::path::PathBuf;
 
 use command::*;
 use direction::*;
@@ -39,7 +36,7 @@ pub struct Collection {
     levels: Vec<Level>,
 
     /// What levels have been solved and with how many moves/pushes.
-    saved: CollectionState,
+    state: CollectionState,
 
     /// Macros
     macros: Macros,
@@ -251,11 +248,11 @@ impl Collection {
     }
 
     pub fn number_of_solved_levels(&self) -> usize {
-        self.saved.levels_finished()
+        self.state.levels_finished()
     }
 
     pub fn is_solved(&self) -> bool {
-        self.saved.collection_solved
+        self.state.collection_solved
     }
 
     /// Find out which direction the worker is currently facing.
@@ -329,7 +326,7 @@ impl Collection {
         };
         if self.current_level.is_finished() {
             if self.current_level.rank == self.levels.len() {
-                self.saved.collection_solved = true;
+                self.state.collection_solved = true;
             }
 
             // Save information on old level
@@ -365,7 +362,7 @@ impl Collection {
             } else {
                 Err(NextLevelError::EndOfCollection)
             }
-        } else if self.saved.levels.len() >= n && n < self.levels.len() {
+        } else if self.state.levels.len() >= n && n < self.levels.len() {
             self.current_level = self.levels[n].clone();
             Ok(vec![Response::NewLevel(n + 1)])
         } else {
@@ -401,7 +398,7 @@ impl Collection {
             }
             self.current_level = lvl;
         };
-        self.saved = state;
+        self.state = state;
     }
 
     /// Save the state of this collection including the state of the current level.
@@ -412,26 +409,10 @@ impl Collection {
             Ok(soln) => LevelState::new_solved(self.current_level.rank, soln),
             _ => LevelState::new_unsolved(&self.current_level),
         };
-        let response = self.saved.update(rank - 1, level_state);
+        let response = self.state.update(rank - 1, level_state);
 
-        // If no rank was given in the JSON file, set it.
-        if self.saved.levels[0].rank() == 0 {
-            for (i, lvl) in self.saved.levels.iter_mut().enumerate() {
-                lvl.set_rank(i + 1);
-            }
-        }
-
-        let mut path = PathBuf::new();
-        path.push(&self.short_name);
-        path.set_extension("json");
-        match File::create(DATA_DIR.join(path.as_path())) {
-            Err(e) => Err(SaveError::from(e)),
-            Ok(file) => {
-                ::serde_json::to_writer(file, &self.saved)
-                    .map_err(SaveError::from)?;
-                Ok(response)
-            }
-        }
+        self.state.save(&self.short_name)?;
+        Ok(response)
     }
 }
 
@@ -444,50 +425,6 @@ pub enum NextLevelError {
     EndOfCollection,
 }
 
-#[derive(Debug)]
-pub enum SaveError {
-    FailedToCreateFile(io::Error),
-    FailedToWriteFile(::serde_json::Error),
-}
-
-impl error::Error for SaveError {
-    fn description(&self) -> &str {
-        use SaveError::*;
-        match *self {
-            FailedToCreateFile(_) => "Failed to create file",
-            FailedToWriteFile(_) => "Failed to serialize to file",
-        }
-    }
-
-    fn cause(&self) -> Option<&error::Error> {
-        use SaveError::*;
-        match *self {
-            FailedToCreateFile(ref e) => e.cause(),
-            FailedToWriteFile(ref e) => e.cause(),
-        }
-    }
-}
-
-impl From<io::Error> for SaveError {
-    fn from(e: io::Error) -> Self {
-        SaveError::FailedToCreateFile(e)
-    }
-}
-impl From<::serde_json::Error> for SaveError {
-    fn from(e: ::serde_json::Error) -> Self {
-        SaveError::FailedToWriteFile(e)
-    }
-}
-
-impl fmt::Display for SaveError {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        use SaveError::*;
-        match *self {
-            FailedToCreateFile(ref e) => write!(fmt, "Failed to create file: {}", e),
-            FailedToWriteFile(ref e) => write!(fmt, "Failed to write file: {}", e),
-        }
-    }
-}
 
 #[cfg(test)]
 mod test {
