@@ -18,14 +18,14 @@ impl Game {
     pub fn new(name: &str) -> Result<Self, SokobanError> {
         Ok(Game {
                name: name.into(),
-               collection: Collection::parse(name)?,
+               collection: Collection::parse(name, true)?,
            })
     }
 
     /// Load a collection by name.
     pub fn set_collection(&mut self, name: &str) -> Result<(), SokobanError> {
         self.name = name.into();
-        self.collection = Collection::parse(name)?;
+        self.collection = Collection::parse(name, true)?;
         Ok(())
     }
 
@@ -132,7 +132,7 @@ pub fn print_collections_table() {
             use std::ffi::OsStr;
             if ext == OsStr::new("lvl") || ext == OsStr::new("slc") {
                 let name = path.file_stem().and_then(|x| x.to_str()).unwrap();
-                let collection = Collection::parse(name).unwrap();
+                let collection = Collection::parse(name, false).unwrap();
 
                 let padded_short_name = format!("{:<24}", name);
                 let padded_full_name = format!("{:<36}", collection.name);

@@ -29,6 +29,8 @@ pub struct Collection {
 
     pub description: Option<String>,
 
+    number_of_levels: usize,
+
     /// A copy of one of the levels.
     pub current_level: Level,
 
@@ -45,7 +47,7 @@ pub struct Collection {
 
 impl Collection {
     /// Load a level set with the given name, whatever the format might be.
-    pub fn parse(short_name: &str) -> Result<Collection, SokobanError> {
+    pub fn parse(short_name: &str, parse_levels: bool) -> Result<Collection, SokobanError> {
         let mut level_path = ASSETS.clone();
         level_path.push("levels");
         level_path.push(short_name);
@@ -64,18 +66,21 @@ impl Collection {
         };
 
         let mut collection = match file_format {
-            FileFormat::Ascii => Collection::parse_lvl(short_name, level_file)?,
-            FileFormat::Xml => Collection::parse_xml(short_name, level_file)?,
+            FileFormat::Ascii => Collection::parse_lvl(short_name, level_file, parse_levels)?,
+            FileFormat::Xml => Collection::parse_xml(short_name, level_file, parse_levels)?,
         };
 
-        collection.load();
+        collection.load(parse_levels);
 
         Ok(collection)
     }
 
     /// Load a file containing a bunch of levels separated by an empty line, i.e. the usual ASCII
     /// format.
-    fn parse_lvl(short_name: &str, file: File) -> Result<Collection, SokobanError> {
+    fn parse_lvl(short_name: &str,
+                 file: File,
+                 parse_levels: bool)
+                 -> Result<Collection, SokobanError> {
         #[cfg(unix)]
         const EMPTY_LINE: &str = "\n\n";
         #[cfg(windows)]
@@ -99,25 +104,40 @@ impl Collection {
             .map(|x| x.trim().to_owned());
 
         // Parse the individual levels
-        let levels = level_strings[1..]
-            .iter()
-            .enumerate()
-            .map(|(i, l)| Level::parse(i, l.trim_matches(&eol)))
-            .collect::<Result<Vec<_>, _>>()?;
+        let (num, levels) = {
+            if parse_levels {
+                let lvls = level_strings[1..]
+                    .iter()
+                    .enumerate()
+                    .map(|(i, l)| Level::parse(i, l.trim_matches(&eol)))
+                    .collect::<Result<Vec<_>, _>>()?;
+                (lvls.len(), lvls)
+            } else {
+                (level_strings.len() - 1, vec![])
+            }
+        };
 
         Ok(Collection {
                name: name.to_string(),
                short_name: short_name.to_string(),
                description,
-               current_level: levels[0].clone(),
+               number_of_levels: num,
+               current_level: if parse_levels {
+                   levels[0].clone()
+               } else {
+                   Level::parse(0, "###\n#@#\n###").unwrap()
+               },
                levels,
-               saved: CollectionState::new(short_name),
+               state: CollectionState::new(short_name),
                macros: Macros::new(),
            })
     }
 
     /// Load a level set in the XML-based .slc format.
-    fn parse_xml(short_name: &str, file: File) -> Result<Collection, SokobanError> {
+    fn parse_xml(short_name: &str,
+                 file: File,
+                 parse_levels: bool)
+                 -> Result<Collection, SokobanError> {
         use xml::reader::{EventReader, XmlEvent};
 
         enum State {
@@ -166,7 +186,9 @@ impl Collection {
                     match name.local_name.as_ref() {
                         "Title" | "Description" | "Email" | "Url" => state = State::Nothing,
                         "Level" => {
-                            levels.push(Level::parse(num, &level_lines)?);
+                            if parse_levels {
+                                levels.push(Level::parse(num, &level_lines)?);
+                            }
                             num += 1;
                         }
                         "L" => {
@@ -205,9 +227,14 @@ impl Collection {
                } else {
                    Some(description)
                },
-               current_level: levels[0].clone(),
+               number_of_levels: num,
+               current_level: if parse_levels {
+                   levels[0].clone()
+               } else {
+                   Level::parse(0, "###\n#@#\n###").unwrap()
+               },
                levels,
-               saved: CollectionState::new(short_name),
+               state: CollectionState::new(short_name),
                macros: Macros::new(),
            })
     }
@@ -220,7 +247,7 @@ impl Collection {
     }
 
     pub fn number_of_levels(&self) -> usize {
-        self.levels.len()
+        self.number_of_levels
     }
 
     pub fn number_of_solved_levels(&self) -> usize {
@@ -358,9 +385,9 @@ impl Collection {
     }
 
     /// Load state stored on disc.
-    fn load(&mut self) {
+    fn load(&mut self, parse_levels: bool) {
         let state = CollectionState::load(&self.short_name);
-        if !state.collection_solved {
+        if parse_levels && !state.collection_solved {
             let n = state.levels_finished();
             let mut lvl = self.levels[n].clone();
             if n < state.levels.len() {
@@ -473,13 +500,15 @@ mod test {
 
     #[test]
     fn load_test_collections() {
-        assert!(Collection::parse("test_2").is_ok());
-        assert!(Collection::parse("test3iuntrenutineaniutea").is_err());
+        assert!(Collection::parse("test_2", true).is_ok());
+        assert!(Collection::parse("test_2", false).is_ok());
+        assert!(Collection::parse("test3iuntrenutineaniutea", true).is_err());
+        assert!(Collection::parse("test3iuntrenutineaniutea", false).is_err());
     }
 
     #[test]
     fn switch_levels() {
-        let mut col = Collection::parse("test").unwrap();
+        let mut col = Collection::parse("test", true).unwrap();
         assert!(exec_ok(&mut col, Command::Move(Direction::Right)));
         assert!(exec_ok(&mut col, Command::PreviousLevel));
         assert!(exec_ok(&mut col, Command::NextLevel));
@@ -491,7 +520,7 @@ mod test {
         use position::Position;
 
         let name = "original";
-        let mut col = Collection::parse(name).unwrap();
+        let mut col = Collection::parse(name, true).unwrap();
         assert_eq!(col.number_of_levels(), 50);
         assert_eq!(col.short_name, name);
 
