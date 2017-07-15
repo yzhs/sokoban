@@ -105,6 +105,10 @@ impl Game {
 }
 
 
+fn file_stem(p: &::std::path::PathBuf) -> &str {
+    p.file_stem().unwrap().to_str().unwrap()
+}
+
 pub fn print_collections_table() {
     use ansi_term::Colour::{Blue, Green, White, Yellow};
 
@@ -121,10 +125,7 @@ pub fn print_collections_table() {
         .unwrap()
         .map(|x| x.unwrap().path().to_owned())
         .collect();
-    paths.sort_by(|x, y| {
-                      ::natord::compare(x.file_stem().unwrap().to_str().unwrap(),
-                                        y.file_stem().unwrap().to_str().unwrap())
-                  });
+    paths.sort_by(|x, y| ::natord::compare(file_stem(x), file_stem(y)));
 
     for path in paths {
         if let Some(ext) = path.extension() {
