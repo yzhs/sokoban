@@ -32,10 +32,16 @@ impl FontData {
         let system = TextSystem::new(display);
         let text_font =
             FontTexture::new(display, File::open(&font_path).unwrap(), 32, chars.clone()).unwrap();
-        let heading_font =
-            FontTexture::new(display, File::open(&font_path).unwrap(), 64, chars.clone()).unwrap();
-        let mono_font =
-            FontTexture::new(display, File::open(&mono_path).unwrap(), 32, chars.clone()).unwrap();
+        let heading_font = FontTexture::new(display,
+                                            File::open(&font_path).unwrap(),
+                                            64,
+                                            "Congratulis!".chars())
+                .unwrap();
+        let mono_font = FontTexture::new(display,
+                                         File::open(&mono_path).unwrap(),
+                                         32,
+                                         "Levl: ,StpsPuh0123456789".chars())
+                .unwrap();
 
         FontData {
             system,
