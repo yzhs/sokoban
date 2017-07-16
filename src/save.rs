@@ -175,7 +175,6 @@ impl CollectionState {
     }
 
     fn load_json(path: &Path) -> Option<Self> {
-        info!("Trying to load JSON");
         File::open(path.with_extension("json"))
             .ok()
             .and_then(|file| ::serde_json::from_reader(file).ok())
@@ -183,7 +182,6 @@ impl CollectionState {
 
     fn load_messagepack(path: &Path) -> Option<Self> {
         use std::io::BufReader;
-        info!("Trying to load MessagePack");
         File::open(path.with_extension("mp"))
             .ok()
             .and_then(|file| {
