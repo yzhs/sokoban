@@ -5,7 +5,7 @@ mod texture;
 use std::cmp::min;
 use std::collections::VecDeque;
 
-use glium::Surface;
+use glium::{Program, Surface};
 use glium::backend::glutin_backend::GlutinFacade;
 use glium::glutin::{VirtualKeyCode, MouseButton};
 use glium::index::{NoIndices, PrimitiveType};
@@ -51,6 +51,8 @@ pub struct Gui {
     display: GlutinFacade,
     font_data: FontData,
 
+    program: Program,
+
     /// The size of the window in pixels as `[width, height]`.
     window_size: [u32; 2],
 
@@ -87,6 +89,11 @@ impl Gui {
         let font_data = FontData::new(&display,
                                       ASSETS.join("FiraSans-Regular.ttf"),
                                       ASSETS.join("FiraMono-Regular.ttf"));
+        let program = Program::from_source(&display,
+                                           texture::VERTEX_SHADER,
+                                           texture::FRAGMENT_SHADER,
+                                           None)
+                .unwrap();
 
         let worker = Sprite::new(game.worker_position(), texture::TileKind::Worker);
         // FIXME code duplicated from Gui::update_sprites()
@@ -103,6 +110,7 @@ impl Gui {
 
             display,
             font_data,
+            program,
             window_size: [800, 600],
             textures,
             background: None,
@@ -257,7 +265,6 @@ impl Gui {
 
     /// Render the static tiles of the current level onto a texture.
     fn generate_background(&mut self) {
-        use glium::Program;
         use glium::texture::Texture2d;
         let target;
 
@@ -320,11 +327,7 @@ impl Gui {
             target = Texture2d::empty(&self.display, width * 2, height * 2).unwrap();
             target.as_surface().clear_color(0.0, 0.0, 0.0, 1.0);
 
-            let program = Program::from_source(&self.display,
-                                               texture::VERTEX_SHADER,
-                                               texture::FRAGMENT_SHADER,
-                                               None)
-                    .unwrap();
+            let program = &self.program;
             let params = ::glium::DrawParameters {
                 backface_culling: CULLING,
                 blend: ::glium::Blend::alpha_blending(),
@@ -353,7 +356,7 @@ impl Gui {
 
                 target
                     .as_surface()
-                    .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
+                    .draw(&vertex_buffer, &NO_INDICES, program, &uniforms, &params)
                     .unwrap();
             }
 
@@ -483,11 +486,7 @@ impl Gui {
         let vertices =
             texture::background(self.aspect_ratio(), self.game.columns(), self.game.rows());
         let vertex_buffer = ::glium::VertexBuffer::new(&self.display, &vertices).unwrap();
-        let program = ::glium::Program::from_source(&self.display,
-                                                    texture::VERTEX_SHADER,
-                                                    texture::FRAGMENT_SHADER,
-                                                    None)
-                .unwrap();
+        let program = &self.program;
 
         let uniforms = uniform!{tex: bg};
 
@@ -506,7 +505,7 @@ impl Gui {
             };
 
             let mut draw = |vs, tex| {
-                self.draw_quads(&mut target, vs, tex, &params, &program)
+                self.draw_quads(&mut target, vs, tex, &params, program)
                     .unwrap()
             };
 
