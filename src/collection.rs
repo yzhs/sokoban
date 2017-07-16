@@ -135,7 +135,8 @@ impl Collection {
                  file: File,
                  parse_levels: bool)
                  -> Result<Collection, SokobanError> {
-        use xml::reader::{EventReader, XmlEvent};
+        use quick_xml::reader::Reader;
+        use quick_xml::events::Event;
 
         enum State {
             Nothing,
@@ -147,7 +148,7 @@ impl Collection {
         }
 
         let file = ::std::io::BufReader::new(file);
-        let parser = EventReader::new(file);
+        let mut reader = Reader::from_reader(file);
 
         let mut state = State::Nothing;
 
@@ -162,33 +163,34 @@ impl Collection {
         let mut num = 0;
         let mut level_lines = String::new();
 
-        for e in parser {
-            match e? {
-                XmlEvent::StartElement { ref name, .. } => {
-                    match name.local_name.as_ref() {
-                        "Title" => {
+        let mut buf = Vec::new();
+        loop {
+            match reader.read_event(&mut buf) {
+                Ok(Event::Start(ref e)) => {
+                    match e.name() {
+                        b"Title" => {
                             state = State::Title;
                             title.clear();
                         }
-                        "Description" => state = State::Description,
-                        "Email" => state = State::Email,
-                        "Url" => state = State::Url,
-                        "Level" => level_lines.clear(),
-                        "L" => state = State::Line,
+                        b"Description" => state = State::Description,
+                        b"Email" => state = State::Email,
+                        b"Url" => state = State::Url,
+                        b"Level" => level_lines.clear(),
+                        b"L" => state = State::Line,
                         _ => {}
                     }
                 }
 
-                XmlEvent::EndElement { ref name } => {
-                    match name.local_name.as_ref() {
-                        "Title" | "Description" | "Email" | "Url" => state = State::Nothing,
-                        "Level" => {
+                Ok(Event::End(e)) => {
+                    match e.name() {
+                        b"Title" | b"Description" | b"Email" | b"Url" => state = State::Nothing,
+                        b"Level" => {
                             if parse_levels {
                                 levels.push(Level::parse(num, &level_lines)?);
                             }
                             num += 1;
                         }
-                        "L" => {
+                        b"L" => {
                             state = State::Nothing;
                             level_lines.push('\n');
                         }
@@ -196,7 +198,8 @@ impl Collection {
                     }
                 }
 
-                XmlEvent::Characters(s) => {
+                Ok(Event::Text(e)) => {
+                    let s = e.unescape_and_decode(&reader).unwrap();
                     match state {
                         State::Nothing => {}
                         State::Title => title.push_str(&s),
@@ -207,12 +210,10 @@ impl Collection {
                     }
                 }
 
-                XmlEvent::StartDocument { .. } |
-                XmlEvent::EndDocument { .. } |
-                XmlEvent::ProcessingInstruction { .. } |
-                XmlEvent::CData(_) |
-                XmlEvent::Comment(_) |
-                XmlEvent::Whitespace(_) => {}
+                Ok(Event::Eof) => break,
+
+                Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
+                _ => {}
             }
         }
 

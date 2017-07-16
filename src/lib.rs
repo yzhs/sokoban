@@ -15,7 +15,7 @@ extern crate find_folder;
 extern crate lazy_static;
 extern crate app_dirs;
 
-extern crate xml; // Streaming XML parser
+extern crate quick_xml; // XML parser
 extern crate ansi_term; // Colored output
 extern crate natord; // Sort strings respecting numeric value, i.e. "9" before "10"
 

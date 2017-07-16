@@ -25,7 +25,7 @@ lazy_static!{
 #[derive(Debug)]
 pub enum SokobanError {
     IoError(io::Error),
-    XmlError(::xml::reader::Error),
+    XmlError(::quick_xml::errors::Error),
     NoWorker(usize),
     TwoWorkers(usize),
     CratesGoalsMismatch(usize, i32),
@@ -71,8 +71,8 @@ impl From<io::Error> for SokobanError {
 }
 
 /// Automatically wrap XML reader errors
-impl From<::xml::reader::Error> for SokobanError {
-    fn from(e: ::xml::reader::Error) -> Self {
+impl From<::quick_xml::errors::Error> for SokobanError {
+    fn from(e: ::quick_xml::errors::Error) -> Self {
         SokobanError::XmlError(e)
     }
 }
