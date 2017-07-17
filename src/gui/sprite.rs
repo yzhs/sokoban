@@ -54,7 +54,7 @@ impl Sprite {
 
     /// Create a list of vertices of two triangles making up a square on which the texture for
     /// this sprite can be drawn.
-    pub fn quad(&self, columns: u32, rows: u32, aspect_ratio: f32) -> Vec<Vertex> {
+    pub fn quad(&self, columns: u32, rows: u32) -> Vec<Vertex> {
         let lambda;
         let old;
         if let Some((start, old_pos)) = self.animation.get() {
@@ -64,7 +64,7 @@ impl Sprite {
             lambda = duration_seconds / *ANIMATION_DURATION.lock().unwrap();
             if lambda >= 1.0 {
                 self.animation.set(None);
-                return self.quad(columns, rows, aspect_ratio);
+                return self.quad(columns, rows);
             }
             old = old_pos;
         } else {
@@ -90,6 +90,6 @@ impl Sprite {
              lambda * new_bottom + (1.0 - lambda) * old_bottom)
         };
 
-        lrtp_to_vertices(left, right, top, bottom, self.direction, aspect_ratio)
+        lrtp_to_vertices(left, right, top, bottom, self.direction)
     }
 }

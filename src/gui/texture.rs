@@ -74,9 +74,11 @@ in vec2 position;
 in vec2 tex_coords;
 out vec2 v_tex_coords;
 
+uniform mat4 matrix;
+
 void main() {
     v_tex_coords = tex_coords;
-    gl_Position = vec4(position, 0.0, 1.0);
+    gl_Position = matrix * vec4(position, 0.0, 1.0);
 }
 "#;
 
@@ -128,21 +130,12 @@ fn direction_to_index(dir: Direction) -> usize {
 
 /// Create a vector of vertices consisting of two triangles which together form a square with the
 /// given coordinates, together with texture coordinates to fill that square with a texture.
-pub fn lrtp_to_vertices(mut left: f32,
-                        mut right: f32,
-                        mut top: f32,
-                        mut bottom: f32,
-                        dir: Direction,
-                        aspect_ratio: f32)
+pub fn lrtp_to_vertices(left: f32,
+                        right: f32,
+                        top: f32,
+                        bottom: f32,
+                        dir: Direction)
                         -> Vec<Vertex> {
-
-    if aspect_ratio < 1.0 {
-        top *= aspect_ratio;
-        bottom *= aspect_ratio;
-    } else {
-        left /= aspect_ratio;
-        right /= aspect_ratio;
-    }
 
     let tex = [[0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, 0.0]];
 
@@ -168,35 +161,19 @@ pub fn lrtp_to_vertices(mut left: f32,
 }
 
 /// Create a bunch of vertices for rendering a textured square.
-pub fn quad(pos: Position, columns: u32, rows: u32, aspect_ratio: f32) -> Vec<Vertex> {
+pub fn quad(pos: Position, columns: u32, rows: u32) -> Vec<Vertex> {
     let left = 2.0 * pos.x as f32 / columns as f32 - 1.0;
     let right = left + 2.0 / columns as f32;
     let bottom = -2.0 * pos.y as f32 / rows as f32 + 1.0;
     let top = bottom - 2.0 / rows as f32;
 
-    lrtp_to_vertices(left, right, top, bottom, Direction::Left, aspect_ratio)
+    lrtp_to_vertices(left, right, top, bottom, Direction::Left)
 }
 
 
 /// Create a rectangle covering the entire viewport.
 pub fn full_screen() -> Vec<Vertex> {
-    lrtp_to_vertices(-1.0, 1.0, -1.0, 1.0, Direction::Left, 1.0)
-}
-
-/// Create a centered rectangle with the right size to display the static parts of a level with
-/// the correct aspect ratio.
-pub fn background(window_aspect_ratio: f32, columns: usize, rows: usize) -> Vec<Vertex> {
-    let aspect_ratio = columns as f32 / rows as f32 * window_aspect_ratio;
-    if aspect_ratio < 1.0 {
-        lrtp_to_vertices(-aspect_ratio, aspect_ratio, -1.0, 1.0, Direction::Left, 1.0)
-    } else {
-        lrtp_to_vertices(-1.0,
-                         1.0,
-                         -1.0 / aspect_ratio,
-                         1.0 / aspect_ratio,
-                         Direction::Left,
-                         1.0)
-    }
+    lrtp_to_vertices(-1.0, 1.0, -1.0, 1.0, Direction::Left)
 }
 
 pub fn transition(pos: Position, columns: u32, rows: u32, orientation: Direction) -> Vec<Vertex> {
@@ -218,6 +195,6 @@ pub fn transition(pos: Position, columns: u32, rows: u32, orientation: Direction
             top = bottom - 0.5 / rows as f32;
         }
     }
-    lrtp_to_vertices(left, right, top, bottom, Direction::Left, 1.0)
+    lrtp_to_vertices(left, right, top, bottom, Direction::Left)
 
 }

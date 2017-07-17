@@ -20,6 +20,17 @@ use gui::texture::*;
 /// `PrimitiveType`.
 const NO_INDICES: NoIndices = NoIndices(PrimitiveType::TrianglesList);
 
+/// Cull half of all faces to make rendering faster.
+const CULLING: ::glium::BackfaceCullingMode =
+    ::glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise;
+
+const IDENTITY: [[f32; 4]; 4] = {
+    [[1.0, 0.0, 0.0, 0.0],
+     [0.0, 1.0, 0.0, 0.0],
+     [0.0, 0.0, 1.0, 0.0],
+     [0.0, 0.0, 0.0, 1.0]]
+};
+
 
 pub struct Gui {
     // Game state
@@ -50,6 +61,7 @@ pub struct Gui {
     // Graphics
     display: GlutinFacade,
     font_data: FontData,
+    matrix: [[f32; 4]; 4],
 
     program: Program,
 
@@ -110,6 +122,7 @@ impl Gui {
 
             display,
             font_data,
+            matrix: IDENTITY,
             program,
             window_size: [800, 600],
             textures,
@@ -234,7 +247,7 @@ impl Gui {
         let rows = self.game.rows() as isize;
         let tile_size = self.tile_size();
 
-        let (offset_x, offset_y) = if self.aspect_ratio() < rows as f32 / columns as f32 {
+        let (offset_x, offset_y) = if self.aspect_ratio_ratio() < 1.0 {
             ((self.window_size[0] as f64 - columns as f64 * tile_size) / 2.0, 0.0)
         } else {
             (0.0, (self.window_size[1] as f64 - rows as f64 * tile_size) / 2.0)
@@ -242,7 +255,7 @@ impl Gui {
 
         let x = ((self.cursor_pos[0] - offset_x) / tile_size).trunc() as isize;
         let y = ((self.cursor_pos[1] - offset_y - 0.5) / tile_size).trunc() as isize;
-        if x >= 0 && y >= 0 && x < columns && y < rows {
+        if x > 0 && y > 0 && x < columns - 1 && y < rows - 1 {
             Command::MoveToPosition(::backend::Position { x, y },
                                     MayPushCrate(mouse_button == MouseButton::Right))
         } else {
@@ -251,16 +264,18 @@ impl Gui {
     }
 }
 
-const CULLING: ::glium::BackfaceCullingMode =
-    ::glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise;
-
 /// Rendering
 impl Gui {
     /// Compute the window’s aspect ratio.
-    fn aspect_ratio(&self) -> f32 {
-        let width = self.window_size[0];
-        let height = self.window_size[1];
-        height as f32 / width as f32
+    fn window_aspect_ratio(&self) -> f32 {
+        let width = self.window_size[0] as f32;
+        let height = self.window_size[1] as f32;
+        height / width
+    }
+
+    /// Ratio between the window’s and the level’s aspect ratio.
+    fn aspect_ratio_ratio(&self) -> f32 {
+        self.window_aspect_ratio() * self.game.columns() as f32 / self.game.rows() as f32
     }
 
     /// Render the static tiles of the current level onto a texture.
@@ -268,13 +283,25 @@ impl Gui {
         use glium::texture::Texture2d;
         let target;
 
-        {
-            let columns = self.game.columns() as u32;
-            let rows = self.game.rows() as u32;
-            let tile_size = self.tile_size();
-            let width = tile_size as u32 * columns;
-            let height = tile_size as u32 * rows;
+        let columns = self.game.columns() as u32;
+        let rows = self.game.rows() as u32;
 
+        {
+            self.matrix = {
+                let a_r = self.aspect_ratio_ratio();
+                if a_r < 1.0 {
+                    [[a_r, 0.0, 0.0, 0.0],
+                     [0.0, 1.0, 0.0, 0.0],
+                     [0.0, 0.0, 1.0, 0.0],
+                     [0.0, 0.0, 0.0, 1.0]]
+                } else {
+                    let a_r = 1.0 / a_r;
+                    [[1.0, 0.0, 0.0, 0.0],
+                     [0.0, a_r, 0.0, 0.0],
+                     [0.0, 0.0, 1.0, 0.0],
+                     [0.0, 0.0, 0.0, 1.0]]
+                }
+            };
             let lvl = self.current_level();
 
             // Find transitions between wall and non-wall tiles
@@ -324,7 +351,11 @@ impl Gui {
             }
 
             // Create texture
-            target = Texture2d::empty(&self.display, width * 2, height * 2).unwrap();
+            target = {
+                let width = self.window_size[0];
+                let height = self.window_size[1];
+                Texture2d::empty(&self.display, width, height).unwrap()
+            };
             target.as_surface().clear_color(0.0, 0.0, 0.0, 1.0);
 
             let program = &self.program;
@@ -342,7 +373,7 @@ impl Gui {
                         continue;
                     }
                     let pos = lvl.position(i);
-                    vertices.extend(texture::quad(pos, columns, rows, 1.0));
+                    vertices.extend(texture::quad(pos, columns, rows));
                 }
                 let vertex_buffer = ::glium::VertexBuffer::new(&self.display, &vertices).unwrap();
 
@@ -352,7 +383,7 @@ impl Gui {
                     Background::Goal => &self.textures.goal,
                     Background::Wall => &self.textures.wall,
                 };
-                let uniforms = uniform!{tex: texture};
+                let uniforms = uniform!{tex: texture, matrix: self.matrix};
 
                 target
                     .as_surface()
@@ -373,10 +404,10 @@ impl Gui {
                     vertices.extend(texture::transition(pos, columns, rows, orientation));
                 }
                 let vertex_buffer = ::glium::VertexBuffer::new(&self.display, &vertices).unwrap();
-                let uniforms = uniform!{tex: texture};
+                let uniforms = uniform!{tex: texture, matrix: self.matrix};
                 target
                     .as_surface()
-                    .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
+                    .draw(&vertex_buffer, &NO_INDICES, program, &uniforms, &params)
                     .unwrap();
 
                 vertices.clear();
@@ -409,7 +440,7 @@ impl Gui {
                   program: &::glium::Program)
                   -> Result<(), ::glium::DrawError> {
         let vertex_buffer = ::glium::VertexBuffer::new(&self.display, &vertices).unwrap();
-        let uniforms = uniform!{tex: tex};
+        let uniforms = uniform!{tex: tex, matrix: self.matrix};
         target.draw(&vertex_buffer, &NO_INDICES, program, &uniforms, params)
     }
 
@@ -431,7 +462,7 @@ impl Gui {
                    &program)
                 .unwrap();
 
-        let aspect_ratio = self.aspect_ratio();
+        let aspect_ratio = self.window_aspect_ratio();
 
         // Print text
         let font_data = &self.font_data;
@@ -483,27 +514,21 @@ impl Gui {
         let rows = lvl.rows() as u32;
 
         // Draw background
-        let vertices =
-            texture::background(self.aspect_ratio(), self.game.columns(), self.game.rows());
+        let vertices = texture::full_screen();
         let vertex_buffer = ::glium::VertexBuffer::new(&self.display, &vertices).unwrap();
         let program = &self.program;
 
-        let uniforms = uniform!{tex: bg};
+        let uniforms = uniform!{tex: bg, matrix: IDENTITY};
 
         let mut target = self.display.draw();
-        target.clear_color(0.0, 0.0, 0.0, 1.0);
+        target.clear_color(0.0, 0.0, 0.0, 1.0); // Prevent artefacts when resizing the window
 
         target
-            .draw(&vertex_buffer, &NO_INDICES, &program, &uniforms, &params)
+            .draw(&vertex_buffer, &NO_INDICES, program, &uniforms, &params)
             .unwrap();
 
         // Draw foreground
         {
-            let aspect_ratio = {
-                let (width, height) = target.get_dimensions();
-                width as f32 / height as f32 * rows as f32 / columns as f32
-            };
-
             let mut draw = |vs, tex| {
                 self.draw_quads(&mut target, vs, tex, &params, program)
                     .unwrap()
@@ -512,20 +537,19 @@ impl Gui {
             // Draw the crates
             let mut vertices = vec![];
             for sprite in &self.crates {
-                vertices.extend(sprite.quad(columns, rows, aspect_ratio));
+                vertices.extend(sprite.quad(columns, rows));
             }
             draw(vertices, &self.textures.crate_);
 
             // Draw the worker
-            draw(self.worker.quad(columns, rows, aspect_ratio),
-                 &self.textures.worker);
+            draw(self.worker.quad(columns, rows), &self.textures.worker);
         }
 
         // Display text overlay
         if self.level_solved {
             self.draw_end_of_level_overlay(&mut target, &params);
         } else {
-            let aspect_ratio = self.aspect_ratio();
+            let aspect_ratio = self.window_aspect_ratio();
             // TODO show collection name
             // Show some statistics
             let text = format!("Level: {}, Steps: {}, Pushes: {}",
