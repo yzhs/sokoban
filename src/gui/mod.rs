@@ -45,6 +45,8 @@ pub struct Gui {
 
     command_queue: VecDeque<Command>,
 
+    state: State,
+
     // Inputs
     /// Is the shift key currently pressed?
     shift_pressed: bool,
@@ -60,6 +62,7 @@ pub struct Gui {
 
     // Graphics
     display: GlutinFacade,
+    params: ::glium::DrawParameters<'static>,
     font_data: FontData,
     matrix: [[f32; 4]; 4],
 
@@ -113,6 +116,11 @@ impl Gui {
         info!("Loading level #{} of collection {}",
               game.rank(),
               game.name());
+        let params = ::glium::DrawParameters {
+            backface_culling: CULLING,
+            blend: ::glium::Blend::alpha_blending(),
+            ..Default::default()
+        };
 
         let mut gui = Gui {
             game,
@@ -121,6 +129,7 @@ impl Gui {
             command_queue: VecDeque::new(),
 
             display,
+            params,
             font_data,
             matrix: IDENTITY,
             program,
@@ -151,9 +160,21 @@ impl Gui {
         let rows = self.game.rows() as u32;
         min(self.window_size[0] / columns, self.window_size[1] / rows) as f64
     }
+
+    /// Compute the window’s aspect ratio.
+    fn window_aspect_ratio(&self) -> f32 {
+        let width = self.window_size[0] as f32;
+        let height = self.window_size[1] as f32;
+        height / width
+    }
+
+    /// Ratio between the window’s and the level’s aspect ratio.
+    fn aspect_ratio_ratio(&self) -> f32 {
+        self.window_aspect_ratio() * self.game.columns() as f32 / self.game.rows() as f32
+    }
 }
 
-// Helper functions
+// Helper functions for input handling
 /// Map Fn key to their index in [F1, F2, ..., F12].
 fn key_to_num(key: VirtualKeyCode) -> u8 {
     use self::VirtualKeyCode::*;
@@ -266,18 +287,6 @@ impl Gui {
 
 /// Rendering
 impl Gui {
-    /// Compute the window’s aspect ratio.
-    fn window_aspect_ratio(&self) -> f32 {
-        let width = self.window_size[0] as f32;
-        let height = self.window_size[1] as f32;
-        height / width
-    }
-
-    /// Ratio between the window’s and the level’s aspect ratio.
-    fn aspect_ratio_ratio(&self) -> f32 {
-        self.window_aspect_ratio() * self.game.columns() as f32 / self.game.rows() as f32
-    }
-
     /// Render the static tiles of the current level onto a texture.
     fn generate_background(&mut self) {
         use glium::texture::Texture2d;
@@ -359,11 +368,6 @@ impl Gui {
             target.as_surface().clear_color(0.0, 0.0, 0.0, 1.0);
 
             let program = &self.program;
-            let params = ::glium::DrawParameters {
-                backface_culling: CULLING,
-                blend: ::glium::Blend::alpha_blending(),
-                ..Default::default()
-            };
 
             // Render each of the (square) tiles
             for &value in &[Background::Floor, Background::Goal, Background::Wall] {
@@ -387,7 +391,11 @@ impl Gui {
 
                 target
                     .as_surface()
-                    .draw(&vertex_buffer, &NO_INDICES, program, &uniforms, &params)
+                    .draw(&vertex_buffer,
+                          &NO_INDICES,
+                          program,
+                          &uniforms,
+                          &self.params)
                     .unwrap();
             }
 
@@ -407,7 +415,11 @@ impl Gui {
                 let uniforms = uniform!{tex: texture, matrix: self.matrix};
                 target
                     .as_surface()
-                    .draw(&vertex_buffer, &NO_INDICES, program, &uniforms, &params)
+                    .draw(&vertex_buffer,
+                          &NO_INDICES,
+                          program,
+                          &uniforms,
+                          &self.params)
                     .unwrap();
 
                 vertices.clear();
@@ -436,18 +448,19 @@ impl Gui {
                   target: &mut ::glium::Frame,
                   vertices: Vec<Vertex>,
                   tex: &Texture2d,
-                  params: &::glium::DrawParameters,
                   program: &::glium::Program)
                   -> Result<(), ::glium::DrawError> {
         let vertex_buffer = ::glium::VertexBuffer::new(&self.display, &vertices).unwrap();
         let uniforms = uniform!{tex: tex, matrix: self.matrix};
-        target.draw(&vertex_buffer, &NO_INDICES, program, &uniforms, params)
+        target.draw(&vertex_buffer,
+                    &NO_INDICES,
+                    program,
+                    &uniforms,
+                    &self.params)
     }
 
     /// Draw an overlay with some statistics.
-    fn draw_end_of_level_overlay(&self,
-                                 target: &mut ::glium::Frame,
-                                 params: &::glium::DrawParameters) {
+    fn draw_end_of_level_overlay(&self, target: &mut ::glium::Frame) {
         use glium::Program;
         use self::texture::{VERTEX_SHADER, DARKEN_SHADER};
 
@@ -458,7 +471,6 @@ impl Gui {
                    texture::full_screen(),
                    // The texture is ignored by the given fragment shader, so we can take any here
                    &self.textures.worker, // FIXME find a cleaner solution
-                   params,
                    &program)
                 .unwrap();
 
@@ -497,11 +509,6 @@ impl Gui {
 
     /// Render the current level.
     fn render_level(&mut self) {
-        let params = ::glium::DrawParameters {
-            backface_culling: CULLING,
-            blend: ::glium::Blend::alpha_blending(),
-            ..Default::default()
-        };
 
         // Do we have to update the cache?
         if self.background.is_none() {
@@ -524,15 +531,16 @@ impl Gui {
         target.clear_color(0.0, 0.0, 0.0, 1.0); // Prevent artefacts when resizing the window
 
         target
-            .draw(&vertex_buffer, &NO_INDICES, program, &uniforms, &params)
+            .draw(&vertex_buffer,
+                  &NO_INDICES,
+                  program,
+                  &uniforms,
+                  &self.params)
             .unwrap();
 
         // Draw foreground
         {
-            let mut draw = |vs, tex| {
-                self.draw_quads(&mut target, vs, tex, &params, program)
-                    .unwrap()
-            };
+            let mut draw = |vs, tex| self.draw_quads(&mut target, vs, tex, program).unwrap();
 
             // Draw the crates
             let mut vertices = vec![];
@@ -547,7 +555,7 @@ impl Gui {
 
         // Display text overlay
         if self.level_solved {
-            self.draw_end_of_level_overlay(&mut target, &params);
+            self.draw_end_of_level_overlay(&mut target);
         } else {
             let aspect_ratio = self.window_aspect_ratio();
             // TODO show collection name
