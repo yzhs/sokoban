@@ -24,7 +24,6 @@ impl Move {
     /// Describe a move using one character signifying its direction. The character is upper case
     /// if and only if `self.moves_crate` is true.
     pub fn to_char(&self) -> char {
-        use std::ascii::AsciiExt;
         let mut c = match self.direction {
             Direction::Left => 'l',
             Direction::Right => 'r',
@@ -53,7 +52,6 @@ impl TryFrom<char> for Move {
     type Error = char;
 
     fn try_from(c: char) -> Result<Move, char> {
-        use std::ascii::AsciiExt;
         use Direction::*;
         let dir = match c {
             'l' | 'L' => Left,
