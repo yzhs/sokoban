@@ -75,7 +75,11 @@ impl Macros {
 
     /// Retrieve the macro stored at the given slot.
     pub fn get(&self, slot: u8) -> &[Command] {
-        self.slots[slot as usize].as_ref()
+        if self.target_slot == Some(slot) {
+            &[]
+        } else {
+            self.slots[slot as usize].as_ref()
+        }
     }
 
     pub fn to_string(&self, slot: u8) -> String {
