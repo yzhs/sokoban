@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::path::Path;
 
-use glium::Frame;
+use glium::Surface;
 use glium::backend::glutin_backend::GlutinFacade;
 use glium_text_rusttype::{FontTexture, TextDisplay, TextSystem};
 
@@ -56,13 +56,15 @@ impl FontData {
 
     /// Draw text in the specified font. Scale by `scale` and move to a given position. Correct
     /// for aspect ratio.
-    pub fn draw(&self,
-                target: &mut Frame,
-                text: &str,
-                font_type: Font,
-                scale: f32,
-                offset: [f32; 2],
-                aspect_ratio: f32) {
+    pub fn draw<S: Surface>(
+        &self,
+        target: &mut S,
+        text: &str,
+        font_type: Font,
+        scale: f32,
+        offset: [f32; 2],
+        aspect_ratio: f32,
+    ) {
 
         let font = match font_type {
             Font::Heading => &self.heading_font,

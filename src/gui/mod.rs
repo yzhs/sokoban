@@ -394,12 +394,13 @@ impl Gui {
     }
 
     /// Given a vector of vertices describing a list of quads, draw them onto `target`.
-    fn draw_quads(&self,
-                  target: &mut ::glium::Frame,
-                  vertices: Vec<Vertex>,
-                  tex: &Texture2d,
-                  program: &::glium::Program)
-                  -> Result<(), ::glium::DrawError> {
+    fn draw_quads<S: Surface>(
+        &self,
+        target: &mut S,
+        vertices: Vec<Vertex>,
+        tex: &Texture2d,
+        program: &::glium::Program,
+    ) -> Result<(), ::glium::DrawError> {
         let vertex_buffer = ::glium::VertexBuffer::new(&self.display, &vertices).unwrap();
         let uniforms = uniform!{tex: tex, matrix: self.matrix};
         target.draw(
@@ -412,7 +413,7 @@ impl Gui {
     }
 
     /// Draw an overlay with some statistics.
-    fn draw_end_of_level_overlay(&self, target: &mut ::glium::Frame) {
+    fn draw_end_of_level_overlay<S: Surface>(&self, target: &mut S) {
         use glium::Program;
         use self::texture::{VERTEX_SHADER, DARKEN_SHADER};
 
