@@ -12,10 +12,6 @@ pub struct Textures {
     pub goal: Texture2d,
     pub wall: Texture2d,
     pub worker: Texture2d,
-    pub transition_wall_empty_vertical: Texture2d,
-    pub transition_wall_floor_vertical: Texture2d,
-    pub transition_wall_empty_horizontal: Texture2d,
-    pub transition_wall_floor_horizontal: Texture2d,
 }
 
 impl Textures {
@@ -26,10 +22,6 @@ impl Textures {
         let goal = load(factory, "goal");
         let wall = load(factory, "wall");
         let worker = load(factory, "worker");
-        let transition_wall_empty_vertical = load(factory, "transition_wall_empty_vertical");
-        let transition_wall_floor_vertical = load(factory, "transition_wall_floor_vertical");
-        let transition_wall_empty_horizontal = load(factory, "transition_wall_empty_horizontal");
-        let transition_wall_floor_horizontal = load(factory, "transition_wall_floor_horizontal");
 
         Textures {
             crate_,
@@ -37,10 +29,6 @@ impl Textures {
             goal,
             wall,
             worker,
-            transition_wall_empty_vertical,
-            transition_wall_floor_vertical,
-            transition_wall_empty_horizontal,
-            transition_wall_floor_horizontal,
         }
     }
 }
@@ -174,27 +162,4 @@ pub fn quad(pos: Position, columns: u32, rows: u32) -> Vec<Vertex> {
 /// Create a rectangle covering the entire viewport.
 pub fn full_screen() -> Vec<Vertex> {
     lrtp_to_vertices(-1.0, 1.0, -1.0, 1.0, Direction::Left)
-}
-
-pub fn transition(pos: Position, columns: u32, rows: u32, orientation: Direction) -> Vec<Vertex> {
-    let left;
-    let right;
-    let top;
-    let bottom;
-    match orientation {
-        Direction::Left | Direction::Right => {
-            left = (2.0 * pos.x as f32 - 0.25) / columns as f32 - 1.0;
-            right = left + 0.5 / columns as f32;
-            bottom = -2.0 * pos.y as f32 / rows as f32 + 1.0;
-            top = bottom - 2.0 / rows as f32;
-        }
-        Direction::Up | Direction::Down => {
-            left = 2.0 * pos.x as f32 / columns as f32 - 1.0;
-            right = left + 2.0 / columns as f32;
-            bottom = (-2.0 * pos.y as f32 + 0.25) / rows as f32 + 1.0;
-            top = bottom - 0.5 / rows as f32;
-        }
-    }
-    lrtp_to_vertices(left, right, top, bottom, Direction::Left)
-
 }
