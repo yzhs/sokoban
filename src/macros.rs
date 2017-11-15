@@ -20,8 +20,20 @@ impl Macros {
         Macros {
             tmp: vec![],
             target_slot: None,
-            slots: [vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![], vec![],
-                    vec![], vec![], vec![]],
+            slots: [
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+            ],
         }
     }
 
@@ -68,9 +80,7 @@ impl Macros {
 
     pub fn to_string(&self, slot: u8) -> String {
         let mut result = "".to_string();
-        for cmd in self.slots[slot as usize]
-                .iter()
-                .filter(|&c| !c.is_empty()) {
+        for cmd in self.slots[slot as usize].iter().filter(|&c| !c.is_empty()) {
             result.push_str(&cmd.to_string());
         }
         result

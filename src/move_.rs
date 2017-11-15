@@ -40,9 +40,7 @@ impl Move {
 
 /// Parse a string representation of moves.
 pub fn parse(s: &str) -> Result<Vec<Move>, char> {
-    s.chars()
-        .map(Move::try_from)
-        .collect::<Result<Vec<_>, _>>()
+    s.chars().map(Move::try_from).collect::<Result<Vec<_>, _>>()
 }
 
 impl fmt::Display for Move {

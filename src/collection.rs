@@ -74,10 +74,11 @@ impl Collection {
 
     /// Load a file containing a bunch of levels separated by an empty line, i.e. the usual ASCII
     /// format.
-    fn parse_lvl(short_name: &str,
-                 file: File,
-                 parse_levels: bool)
-                 -> Result<Collection, SokobanError> {
+    fn parse_lvl(
+        short_name: &str,
+        file: File,
+        parse_levels: bool,
+    ) -> Result<Collection, SokobanError> {
         #[cfg(unix)]
         const EMPTY_LINE: &str = "\n\n";
         #[cfg(windows)]
@@ -95,10 +96,9 @@ impl Collection {
             .filter(|x| !x.is_empty())
             .collect();
         let name = level_strings[0].lines().next().unwrap();
-        let description = level_strings[0]
-            .splitn(1, &eol)
-            .last()
-            .map(|x| x.trim().to_owned());
+        let description = level_strings[0].splitn(1, &eol).last().map(|x| {
+            x.trim().to_owned()
+        });
 
         // Parse the individual levels
         let (num, levels) = {
@@ -115,26 +115,27 @@ impl Collection {
         };
 
         Ok(Collection {
-               name: name.to_string(),
-               short_name: short_name.to_string(),
-               description,
-               number_of_levels: num,
-               current_level: if parse_levels {
-                   levels[0].clone()
-               } else {
-                   Level::parse(0, "###\n#@#\n###").unwrap()
-               },
-               levels,
-               state: CollectionState::new(short_name),
-               macros: Macros::new(),
-           })
+            name: name.to_string(),
+            short_name: short_name.to_string(),
+            description,
+            number_of_levels: num,
+            current_level: if parse_levels {
+                levels[0].clone()
+            } else {
+                Level::parse(0, "###\n#@#\n###").unwrap()
+            },
+            levels,
+            state: CollectionState::new(short_name),
+            macros: Macros::new(),
+        })
     }
 
     /// Load a level set in the XML-based .slc format.
-    fn parse_xml(short_name: &str,
-                 file: File,
-                 parse_levels: bool)
-                 -> Result<Collection, SokobanError> {
+    fn parse_xml(
+        short_name: &str,
+        file: File,
+        parse_levels: bool,
+    ) -> Result<Collection, SokobanError> {
         use quick_xml::reader::Reader;
         use quick_xml::events::Event;
 
@@ -218,23 +219,23 @@ impl Collection {
         }
 
         Ok(Collection {
-               name: title,
-               short_name: short_name.to_string(),
-               description: if description.is_empty() {
-                   None
-               } else {
-                   Some(description)
-               },
-               number_of_levels: num,
-               current_level: if parse_levels {
-                   levels[0].clone()
-               } else {
-                   Level::parse(0, "###\n#@#\n###").unwrap()
-               },
-               levels,
-               state: CollectionState::new(short_name),
-               macros: Macros::new(),
-           })
+            name: title,
+            short_name: short_name.to_string(),
+            description: if description.is_empty() {
+                None
+            } else {
+                Some(description)
+            },
+            number_of_levels: num,
+            current_level: if parse_levels {
+                levels[0].clone()
+            } else {
+                Level::parse(0, "###\n#@#\n###").unwrap()
+            },
+            levels,
+            state: CollectionState::new(short_name),
+            macros: Macros::new(),
+        })
     }
 
     // Accessor methods
@@ -283,9 +284,7 @@ impl Collection {
 
             Move(dir) => self.current_level.try_move(dir),
             MoveAsFarAsPossible(dir, MayPushCrate(b)) => {
-                self.current_level
-                    .move_until(dir, b)
-                    .unwrap_or_default()
+                self.current_level.move_until(dir, b).unwrap_or_default()
             }
             MoveToPosition(pos, MayPushCrate(b)) => self.current_level.move_to(pos, b),
 
@@ -390,10 +389,11 @@ impl Collection {
             let mut lvl = self.levels[n].clone();
             if n < state.levels.len() {
                 if let LevelState::Started {
-                           number_of_moves,
-                           ref moves,
-                           ..
-                       } = state.levels[n] {
+                    number_of_moves,
+                    ref moves,
+                    ..
+                } = state.levels[n]
+                {
                     lvl.execute_moves(number_of_moves, moves);
                 }
             }
@@ -463,14 +463,21 @@ mod test {
         assert_eq!(col.short_name, name);
 
         assert!(exec_ok(&mut col, Command::Move(Up)));
-        assert!(exec_ok(&mut col,
-                        Command::MoveAsFarAsPossible(Left, MayPushCrate(true))));
+        assert!(exec_ok(
+            &mut col,
+            Command::MoveAsFarAsPossible(Left, MayPushCrate(true)),
+        ));
         let res = col.execute(Command::Move(Left));
         assert!(contains_error(&res));
 
         assert!(exec_ok(&mut col, Command::ResetLevel));
-        assert!(exec_ok(&mut col,
-                        Command::MoveToPosition(Position::new(8, 4), MayPushCrate(false))));
+        assert!(exec_ok(
+            &mut col,
+            Command::MoveToPosition(
+                Position::new(8, 4),
+                MayPushCrate(false),
+            ),
+        ));
         assert_eq!(col.current_level.number_of_moves(), 7);
         assert!(exec_ok(&mut col, Command::Move(Left)));
         assert_eq!(col.current_level.number_of_pushes(), 1);

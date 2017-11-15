@@ -25,10 +25,12 @@ impl Direction {
 }
 
 /// All directions
-pub const DIRECTIONS: [Direction; 4] = [Direction::Left,
-                                        Direction::Right,
-                                        Direction::Up,
-                                        Direction::Down];
+pub const DIRECTIONS: [Direction; 4] = [
+    Direction::Left,
+    Direction::Right,
+    Direction::Up,
+    Direction::Down,
+];
 
 /// Find out in which direction you have to move to get from `from` to `to`, if there is such a
 /// direction. If both positions are the same, return `Err(None)`, if the two positions are neither
@@ -51,14 +53,16 @@ pub fn direction(from: Position, to: Position) -> Result<Direction, Option<Posit
 impl fmt::Display for Direction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::Direction::*;
-        write!(f,
-               "{}",
-               match *self {
-                   Left => 'l',
-                   Right => 'r',
-                   Up => 'u',
-                   Down => 'd',
-               })
+        write!(
+            f,
+            "{}",
+            match *self {
+                Left => 'l',
+                Right => 'r',
+                Up => 'u',
+                Down => 'd',
+            }
+        )
     }
 }
 

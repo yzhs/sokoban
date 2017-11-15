@@ -120,7 +120,8 @@ impl Level {
                 }
 
                 if inside && bg == Background::Empty && index >= columns &&
-                   background[index - columns] != Background::Empty {
+                    background[index - columns] != Background::Empty
+                {
                     background[index] = Background::Floor;
                 }
 
@@ -195,23 +196,23 @@ impl Level {
         }
 
         Ok(Level {
-               rank: rank, // The first level is level 1
-               columns,
-               rows,
+            rank: rank, // The first level is level 1
+            columns,
+            rows,
 
-               background,
-               crates: crates
-                   .into_iter()
-                   .enumerate()
-                   .map(|(i, x)| (x, i))
-                   .collect(),
+            background,
+            crates: crates
+                .into_iter()
+                .enumerate()
+                .map(|(i, x)| (x, i))
+                .collect(),
 
-               empty_goals,
-               worker_position,
+            empty_goals,
+            worker_position,
 
-               moves: vec![],
-               number_of_moves: 0,
-           })
+            moves: vec![],
+            number_of_moves: 0,
+        })
     }
 
     pub fn rows(&self) -> usize {
@@ -240,7 +241,9 @@ impl Level {
         DIRECTIONS
             .iter()
             .map(|&dir| position.neighbour(dir))
-            .filter(|&neighbour| self.is_empty(neighbour) || self.is_worker(neighbour))
+            .filter(|&neighbour| {
+                self.is_empty(neighbour) || self.is_worker(neighbour)
+            })
             .collect()
     }
 
@@ -352,10 +355,11 @@ impl Level {
 
     /// Move one step in the given direction if that cell is empty or `may_push_crate` is true and
     /// the next cell contains a crate which can be pushed in the given direction.
-    fn move_helper(&mut self,
-                   direction: Direction,
-                   may_push_crate: bool)
-                   -> Result<Vec<Response>, Response> {
+    fn move_helper(
+        &mut self,
+        direction: Direction,
+        may_push_crate: bool,
+    ) -> Result<Vec<Response>, Response> {
         let mut result = vec![];
         let next = self.worker_position.neighbour(direction);
         let next_but_one = next.neighbour(direction);
@@ -363,11 +367,13 @@ impl Level {
         let moves_crate = if self.is_empty(next) {
             // Move to empty cell
             false
-        } else if self.is_crate(next) && self.is_empty(next_but_one) &&
-                  may_push_crate {
+        } else if self.is_crate(next) && self.is_empty(next_but_one) && may_push_crate {
             // Push crate into empty next cell
             self.move_object(next, direction, false);
-            result.push(Response::MoveCrateTo(self.crates[&next_but_one], next_but_one));
+            result.push(Response::MoveCrateTo(
+                self.crates[&next_but_one],
+                next_but_one,
+            ));
             true
         } else {
             let b = may_push_crate && self.is_crate(next);
@@ -491,7 +497,8 @@ impl Level {
             loop {
                 for neighbour in self.empty_neighbours(self.worker_position) {
                     if distances[self.index(neighbour)] <
-                       distances[self.index(self.worker_position)] {
+                        distances[self.index(self.worker_position)]
+                    {
                         let dir = direction(self.worker_position, neighbour);
                         result.extend(self.try_move(dir.unwrap()))
                     }
@@ -507,10 +514,11 @@ impl Level {
 
     /// Move as far as possible in the given direction (without pushing crates if `may_push_crate`
     /// is `false`).
-    pub fn move_until(&mut self,
-                      direction: Direction,
-                      may_push_crate: bool)
-                      -> Result<Vec<Response>, ()> {
+    pub fn move_until(
+        &mut self,
+        direction: Direction,
+        may_push_crate: bool,
+    ) -> Result<Vec<Response>, ()> {
         let mut result = vec![];
         while let Ok(resp) = self.move_helper(direction, may_push_crate) {
             result.extend(resp);
@@ -612,9 +620,11 @@ impl fmt::Display for Level {
                     (Background::Goal, Foreground::Crate) => '*',
                     (Background::Goal, Foreground::Worker) => '+',
                     _ => {
-                        panic!("Invalid combination: {:?} on top of {:?}",
-                               foreground,
-                               background)
+                        panic!(
+                            "Invalid combination: {:?} on top of {:?}",
+                            foreground,
+                            background
+                        )
                     }
                 };
                 write!(f, "{}", cell)?;
@@ -676,11 +686,12 @@ mod test {
     fn test_trivial_move_1() {
         use self::Direction::*;
 
-        let mut lvl = Level::parse(0,
-                                   "####\n\
+        let mut lvl = Level::parse(
+            0,
+            "####\n\
                                     #@ #\n\
-                                    ####\n")
-                .unwrap();
+                                    ####\n",
+        ).unwrap();
         assert_eq!(lvl.worker_position.x, 1);
         assert_eq!(lvl.worker_position.y, 1);
 
@@ -702,11 +713,12 @@ mod test {
     #[test]
     fn test_trivial_move_2() {
         use self::Direction::*;
-        let mut lvl = Level::parse(0,
-                                   "#######\n\
+        let mut lvl = Level::parse(
+            0,
+            "#######\n\
                                     #.$@$.#\n\
-                                    #######\n")
-                .unwrap();
+                                    #######\n",
+        ).unwrap();
         assert_eq!(lvl.worker_position.x, 3);
         assert_eq!(lvl.worker_position.y, 1);
         assert_eq!(lvl.worker_direction(), Left);
@@ -739,11 +751,12 @@ mod test {
 
     #[test]
     fn out_of_bounds_not_interior() {
-        let lvl = Level::parse(0,
-                               "#######\n\
+        let lvl = Level::parse(
+            0,
+            "#######\n\
                                 #.$@$.#\n\
-                                #######\n")
-                .unwrap();
+                                #######\n",
+        ).unwrap();
         assert!(!lvl.is_interior(Position { x: -1, y: 0 }));
         assert!(!lvl.is_interior(Position { x: 1, y: -3 }));
     }

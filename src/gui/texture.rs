@@ -40,8 +40,8 @@ pub fn load(display: &Facade, name: &str) -> Texture2d {
     path.set_extension("png");
     let image = image::open(path).unwrap().to_rgba();
     let image_dimensions = image.dimensions();
-    let image = glium::texture::RawImage2d::from_raw_rgba_reversed(image.into_raw(),
-                                                                   image_dimensions);
+    let image =
+        glium::texture::RawImage2d::from_raw_rgba_reversed(image.into_raw(), image_dimensions);
     Texture2d::new(display, image).unwrap()
 }
 
@@ -118,12 +118,13 @@ fn direction_to_index(dir: Direction) -> usize {
 
 /// Create a vector of vertices consisting of two triangles which together form a square with the
 /// given coordinates, together with texture coordinates to fill that square with a texture.
-pub fn lrtp_to_vertices(left: f32,
-                        right: f32,
-                        top: f32,
-                        bottom: f32,
-                        dir: Direction)
-                        -> Vec<Vertex> {
+pub fn lrtp_to_vertices(
+    left: f32,
+    right: f32,
+    top: f32,
+    bottom: f32,
+    dir: Direction,
+) -> Vec<Vertex> {
 
     let tex = [[0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, 0.0]];
 

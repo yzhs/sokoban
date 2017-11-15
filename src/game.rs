@@ -17,9 +17,9 @@ pub struct Game {
 impl Game {
     pub fn new(name: &str) -> Result<Self, SokobanError> {
         Ok(Game {
-               name: name.into(),
-               collection: Collection::parse(name, true)?,
-           })
+            name: name.into(),
+            collection: Collection::parse(name, true)?,
+        })
     }
 
     /// Load a collection by name.
@@ -112,12 +112,13 @@ fn file_stem(p: &::std::path::PathBuf) -> &str {
 pub fn print_collections_table() {
     use ansi_term::Colour::{Blue, Green, White, Yellow};
 
-    #[cfg(windows)]
-    ansi_term::enable_ansi_support();
+    #[cfg(windows)] ansi_term::enable_ansi_support();
 
-    println!(" {}               {}",
-             Yellow.bold().paint("File name"),
-             Yellow.bold().paint("Collection name"));
+    println!(
+        " {}               {}",
+        Yellow.bold().paint("File name"),
+        Yellow.bold().paint("Collection name")
+    );
     println!("{0}{0}{0}{0}{0}", "----------------");
 
     // Find all level set files
@@ -138,11 +139,13 @@ pub fn print_collections_table() {
                 let padded_full_name = format!("{:<36}", collection.name);
 
                 if collection.is_solved() {
-                    println!(" {}{}{:>10} {}",
-                             Green.paint(padded_short_name),
-                             Green.bold().paint(padded_full_name),
-                             "",
-                             Green.paint("done"));
+                    println!(
+                        " {}{}{:>10} {}",
+                        Green.paint(padded_short_name),
+                        Green.bold().paint(padded_full_name),
+                        "",
+                        Green.paint("done")
+                    );
                 } else {
                     let num_solved = collection.number_of_solved_levels();
                     let solved = if num_solved == 0 {
@@ -150,11 +153,13 @@ pub fn print_collections_table() {
                     } else {
                         Blue.paint("solved")
                     };
-                    println!(" {}{}{:>10} {}",
-                             padded_short_name,
-                             White.bold().paint(padded_full_name),
-                             format!("{}/{}", num_solved, collection.number_of_levels()),
-                             solved);
+                    println!(
+                        " {}{}{:>10} {}",
+                        padded_short_name,
+                        White.bold().paint(padded_full_name),
+                        format!("{}/{}", num_solved, collection.number_of_levels()),
+                        solved
+                    );
                 }
             }
         }

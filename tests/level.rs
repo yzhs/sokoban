@@ -45,10 +45,12 @@ fn test_simple_moves() {
                      lllllllluuulluuulDDDDDuulldddrRRRRRRRRRRR\
                      llllllluuulluuurDDllddddrrruuuLLulDDDuulldddrRRRRRRRRRRdrUluR";
     for (i, mv) in moves.chars().map(char_to_direction).enumerate() {
-        assert!(!contains_error(&lvl.try_move(mv)),
-                "Move #{} failed:\n{}\n",
-                i,
-                lvl);
+        assert!(
+            !contains_error(&lvl.try_move(mv)),
+            "Move #{} failed:\n{}\n",
+            i,
+            lvl
+        );
     }
     assert!(lvl.is_finished(), "\n{}\n", lvl);
 }
@@ -59,23 +61,28 @@ fn test_path_finding() {
     let mut lvl = Level::parse(0, ORIGINAL_LEVEL_1).unwrap();
     for (i, mv) in "ullluuuLUllDlldddrRRRRRRRRRRRRurD\
                         llllllllllllllulldRRRRRRRRRRRRRRR"
-                .chars()
-                .map(char_to_direction)
-                .enumerate() {
-        assert!(!contains_error(&lvl.try_move(mv)),
-                "Move #{} failed:\n{}\n",
-                i,
-                lvl);
+        .chars()
+        .map(char_to_direction)
+        .enumerate()
+    {
+        assert!(
+            !contains_error(&lvl.try_move(mv)),
+            "Move #{} failed:\n{}\n",
+            i,
+            lvl
+        );
     }
     let pos = Position { x: 5, y: 4 };
     let _ = lvl.find_path(pos);
     assert_eq!(lvl.worker_position, pos);
 
     for (i, mv) in "DDuulldddr".chars().map(char_to_direction).enumerate() {
-        assert!(!contains_error(&lvl.try_move(mv)),
-                "Move #{} failed:\n{}\n",
-                i,
-                lvl);
+        assert!(
+            !contains_error(&lvl.try_move(mv)),
+            "Move #{} failed:\n{}\n",
+            i,
+            lvl
+        );
     }
 
     let pos = lvl.worker_position;
@@ -87,13 +94,16 @@ fn test_path_finding() {
                         lldlllllluuulLulDDDuulldddrRRRRRRRRRRRurD\
                           lllllllluuulluuulDDDDDuulldddrRRRRRRRRRRR\
                         llllllluuulluuurDDllddddrrruuuLLulDDDuulldddrRRRRRRRRRRdrUluR"
-                .chars()
-                .map(char_to_direction)
-                .enumerate() {
-        assert!(!contains_error(&lvl.try_move(mv)),
-                "Move #{} failed:\n{}\n",
-                i,
-                lvl);
+        .chars()
+        .map(char_to_direction)
+        .enumerate()
+    {
+        assert!(
+            !contains_error(&lvl.try_move(mv)),
+            "Move #{} failed:\n{}\n",
+            i,
+            lvl
+        );
     }
 
     assert!(lvl.is_finished());

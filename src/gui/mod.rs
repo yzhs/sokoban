@@ -25,10 +25,12 @@ const CULLING: ::glium::BackfaceCullingMode =
     ::glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise;
 
 const IDENTITY: [[f32; 4]; 4] = {
-    [[1.0, 0.0, 0.0, 0.0],
-     [0.0, 1.0, 0.0, 0.0],
-     [0.0, 0.0, 1.0, 0.0],
-     [0.0, 0.0, 0.0, 1.0]]
+    [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]
 };
 
 
@@ -96,26 +98,31 @@ impl Gui {
             .build_glium()
             .unwrap_or_else(|e| panic!("Failed to build window: {}", e));
 
-        display
-            .get_window()
-            .map(|x| x.set_cursor(::glium::glutin::MouseCursor::Default));
+        display.get_window().map(|x| {
+            x.set_cursor(::glium::glutin::MouseCursor::Default)
+        });
 
         let textures = Textures::new(&display);
-        let font_data = FontData::new(&display,
-                                      ASSETS.join("FiraSans-Regular.ttf"),
-                                      ASSETS.join("FiraMono-Regular.ttf"));
-        let program = Program::from_source(&display,
-                                           texture::VERTEX_SHADER,
-                                           texture::FRAGMENT_SHADER,
-                                           None)
-                .unwrap();
+        let font_data = FontData::new(
+            &display,
+            ASSETS.join("FiraSans-Regular.ttf"),
+            ASSETS.join("FiraMono-Regular.ttf"),
+        );
+        let program = Program::from_source(
+            &display,
+            texture::VERTEX_SHADER,
+            texture::FRAGMENT_SHADER,
+            None,
+        ).unwrap();
 
         let worker = Sprite::new(game.worker_position(), texture::TileKind::Worker);
         // FIXME code duplicated from Gui::update_sprites()
 
-        info!("Loading level #{} of collection {}",
-              game.rank(),
-              game.name());
+        info!(
+            "Loading level #{} of collection {}",
+            game.rank(),
+            game.name()
+        );
         let params = ::glium::DrawParameters {
             backface_culling: CULLING,
             blend: ::glium::Blend::alpha_blending(),
@@ -217,10 +224,10 @@ impl Gui {
             Left | Right | Up | Down => {
                 let dir = key_to_direction(key);
                 return if self.control_pressed == self.shift_pressed {
-                           Move(dir)
-                       } else {
-                           MoveAsFarAsPossible(dir, MayPushCrate(self.shift_pressed))
-                       };
+                    Move(dir)
+                } else {
+                    MoveAsFarAsPossible(dir, MayPushCrate(self.shift_pressed))
+                };
             }
 
             // Undo and redo
@@ -233,10 +240,10 @@ impl Gui {
             F1 | F2 | F3 | F4 | F5 | F6 | F7 | F8 | F9 | F10 | F11 | F12 => {
                 let n = key_to_num(key);
                 return if self.recording_macro && self.control_pressed {
-                           // Finish recording
-                           self.recording_macro = false;
-                           StoreMacro
-                       } else if self.control_pressed {
+                    // Finish recording
+                    self.recording_macro = false;
+                    StoreMacro
+                } else if self.control_pressed {
                     // Start recording
                     self.recording_macro = true;
                     RecordMacro(n)
@@ -269,16 +276,24 @@ impl Gui {
         let tile_size = self.tile_size();
 
         let (offset_x, offset_y) = if self.aspect_ratio_ratio() < 1.0 {
-            ((self.window_size[0] as f64 - columns as f64 * tile_size) / 2.0, 0.0)
+            (
+                (self.window_size[0] as f64 - columns as f64 * tile_size) / 2.0,
+                0.0,
+            )
         } else {
-            (0.0, (self.window_size[1] as f64 - rows as f64 * tile_size) / 2.0)
+            (
+                0.0,
+                (self.window_size[1] as f64 - rows as f64 * tile_size) / 2.0,
+            )
         };
 
         let x = ((self.cursor_pos[0] - offset_x) / tile_size).trunc() as isize;
         let y = ((self.cursor_pos[1] - offset_y - 0.5) / tile_size).trunc() as isize;
         if x > 0 && y > 0 && x < columns - 1 && y < rows - 1 {
-            Command::MoveToPosition(::backend::Position { x, y },
-                                    MayPushCrate(mouse_button == MouseButton::Right))
+            Command::MoveToPosition(
+                ::backend::Position { x, y },
+                MayPushCrate(mouse_button == MouseButton::Right),
+            )
         } else {
             Command::Nothing
         }
@@ -349,11 +364,13 @@ impl Gui {
 
                 target
                     .as_surface()
-                    .draw(&vertex_buffer,
-                          &NO_INDICES,
-                          program,
-                          &uniforms,
-                          &self.params)
+                    .draw(
+                        &vertex_buffer,
+                        &NO_INDICES,
+                        program,
+                        &uniforms,
+                        &self.params,
+                    )
                     .unwrap();
             }
 
@@ -385,11 +402,13 @@ impl Gui {
                   -> Result<(), ::glium::DrawError> {
         let vertex_buffer = ::glium::VertexBuffer::new(&self.display, &vertices).unwrap();
         let uniforms = uniform!{tex: tex, matrix: self.matrix};
-        target.draw(&vertex_buffer,
-                    &NO_INDICES,
-                    program,
-                    &uniforms,
-                    &self.params)
+        target.draw(
+            &vertex_buffer,
+            &NO_INDICES,
+            program,
+            &uniforms,
+            &self.params,
+        )
     }
 
     /// Draw an overlay with some statistics.
@@ -400,36 +419,43 @@ impl Gui {
         let program = Program::from_source(&self.display, VERTEX_SHADER, DARKEN_SHADER, None)
             .unwrap();
 
-        self.draw_quads(target,
-                   texture::full_screen(),
-                   // The texture is ignored by the given fragment shader, so we can take any here
-                   &self.textures.worker, // FIXME find a cleaner solution
-                   &program)
-                .unwrap();
+        self.draw_quads(
+            target,
+            texture::full_screen(),
+            // The texture is ignored by the given fragment shader, so we can take any here
+            &self.textures.worker, // FIXME find a cleaner solution
+            &program,
+        ).unwrap();
 
         let aspect_ratio = self.window_aspect_ratio();
 
         // Print text
         let font_data = &self.font_data;
-        font_data.draw(target,
-                       "Congratulations!",
-                       Font::Heading,
-                       0.1,
-                       [-0.5, 0.2],
-                       aspect_ratio);
+        font_data.draw(
+            target,
+            "Congratulations!",
+            Font::Heading,
+            0.1,
+            [-0.5, 0.2],
+            aspect_ratio,
+        );
 
-        let stats_text = format!("You have finished the level {} using {} moves, \
+        let stats_text = format!(
+            "You have finished the level {} using {} moves, \
                                       {} of which moved a crate.",
-                                 self.game.rank(),
-                                 self.game.number_of_moves(),
-                                 self.game.number_of_pushes());
+            self.game.rank(),
+            self.game.number_of_moves(),
+            self.game.number_of_pushes()
+        );
 
-        font_data.draw(target,
-                       &stats_text,
-                       Font::Text,
-                       0.05,
-                       [-0.5, -0.2],
-                       aspect_ratio);
+        font_data.draw(
+            target,
+            &stats_text,
+            Font::Text,
+            0.05,
+            [-0.5, -0.2],
+            aspect_ratio,
+        );
 
         let txt = if self.game.end_of_collection() {
             "This was the last level in this colletion. Press Q to quit."
@@ -442,33 +468,34 @@ impl Gui {
 
     /// Render the current level.
     fn render_level(&mut self) {
-
         // Do we have to update the cache?
         if self.background.is_none() {
             self.generate_background();
         }
-        let bg = self.background.as_ref().unwrap();
 
-        let lvl = self.current_level();
-        let columns = lvl.columns() as u32;
-        let rows = lvl.rows() as u32;
+        let columns = self.game.columns() as u32;
+        let rows = self.game.rows() as u32;
 
         // Draw background
         let vertices = texture::full_screen();
         let vertex_buffer = ::glium::VertexBuffer::new(&self.display, &vertices).unwrap();
+
+        let bg = self.background.as_ref().unwrap();
+        let uniforms = uniform!{tex: bg, matrix: IDENTITY};
         let program = &self.program;
 
-        let uniforms = uniform!{tex: bg, matrix: IDENTITY};
-
         let mut target = self.display.draw();
+
         target.clear_color(0.0, 0.0, 0.0, 1.0); // Prevent artefacts when resizing the window
 
         target
-            .draw(&vertex_buffer,
-                  &NO_INDICES,
-                  program,
-                  &uniforms,
-                  &self.params)
+            .draw(
+                &vertex_buffer,
+                &NO_INDICES,
+                program,
+                &uniforms,
+                &self.params,
+            )
             .unwrap();
 
         // Draw foreground
@@ -493,18 +520,21 @@ impl Gui {
             let aspect_ratio = self.window_aspect_ratio();
             // TODO show collection name
             // Show some statistics
-            let text = format!("Level: {}, Steps: {}, Pushes: {}",
-                               self.game.rank(),
-                               self.game.number_of_moves(),
-                               self.game.number_of_pushes());
+            let text = format!(
+                "Level: {}, Steps: {}, Pushes: {}",
+                self.game.rank(),
+                self.game.number_of_moves(),
+                self.game.number_of_pushes()
+            );
 
-            self.font_data
-                .draw(&mut target,
-                      &text,
-                      Font::Mono,
-                      0.04,
-                      [0.5, -0.9],
-                      aspect_ratio);
+            self.font_data.draw(
+                &mut target,
+                &text,
+                Font::Mono,
+                0.04,
+                [0.5, -0.9],
+                aspect_ratio,
+            );
         }
 
         target.finish().unwrap();
@@ -534,8 +564,10 @@ impl Gui {
                         self.level_solved = true;
                         match resp {
                             FirstTimeSolved => {
-                                info!("You have successfully solved this level for the first time! \
-                                   Congratulations!")
+                                info!(
+                                    "You have successfully solved this level for the first time! \
+                                   Congratulations!"
+                                )
                             }
                             Update { moves, pushes } => {
                                 if moves && pushes {
@@ -575,14 +607,14 @@ impl Gui {
                 MoveCrateTo(id, pos) => self.crates[id].move_to(pos),
 
                 // Errors
-                // CannotMove(WithCrate(true), Obstacle::Wall) => info!("A crate hit a wall"),
-                // CannotMove(WithCrate(false), Obstacle::Wall) => info!("The worker hit a wall"),
-                // CannotMove(WithCrate(true), Obstacle::Crate) => info!("Two crates collided"),
-                // CannotMove(WithCrate(false), Obstacle::Crate) => info!("The worker ran into a crate"),
-                // NothingToUndo => info!("Cannot undo move"),
-                // NothingToRedo => info!("Cannot redo move"),
-                // NoPreviousLevel => warn!("Cannot go backwards past level 1"),
-                // NoPathfindingWhilePushing => error!("Path finding when moving crates is not implemented"),
+                // CannotMove(WithCrate(true), Obstacle::Wall) => /* A crate hit a wall */
+                // CannotMove(WithCrate(false), Obstacle::Wall) => /* The worker hit a wall */
+                // CannotMove(WithCrate(true), Obstacle::Crate) => /* Two crates collided */
+                // CannotMove(WithCrate(false), Obstacle::Crate) => /* The worker hit a crate */
+                // NothingToUndo => /* Cannot undo move */
+                // NothingToRedo => /* Cannot redo move */
+                // NoPreviousLevel => /* Cannot go backwards past level 1 */
+                // NoPathfindingWhilePushing => /* Path finding pusing crates unimplemented */
                 EndOfCollection => self.end_of_collection = true,
                 _ => {}
             }

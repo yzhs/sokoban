@@ -60,7 +60,7 @@ impl Sprite {
         if let Some((start, old_pos)) = self.animation.get() {
             let duration = Instant::now() - start;
             let duration_seconds = duration.as_secs() as f32 +
-                                   duration.subsec_nanos() as f32 / 1.0e9;
+                duration.subsec_nanos() as f32 / 1.0e9;
             lambda = duration_seconds / *ANIMATION_DURATION.lock().unwrap();
             if lambda >= 1.0 {
                 self.animation.set(None);
@@ -84,10 +84,12 @@ impl Sprite {
             let new_bottom = -2.0 * new.y as f32 / rows as f32 + 1.0;
             let new_top = new_bottom - 2.0 / rows as f32;
 
-            (lambda * new_left + (1.0 - lambda) * old_left,
-             lambda * new_right + (1.0 - lambda) * old_right,
-             lambda * new_top + (1.0 - lambda) * old_top,
-             lambda * new_bottom + (1.0 - lambda) * old_bottom)
+            (
+                lambda * new_left + (1.0 - lambda) * old_left,
+                lambda * new_right + (1.0 - lambda) * old_right,
+                lambda * new_top + (1.0 - lambda) * old_top,
+                lambda * new_bottom + (1.0 - lambda) * old_bottom,
+            )
         };
 
         lrtp_to_vertices(left, right, top, bottom, self.direction)

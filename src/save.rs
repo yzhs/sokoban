@@ -63,10 +63,10 @@ impl<'a> TryFrom<&'a Level> for Solution {
     fn try_from(lvl: &'a Level) -> Result<Solution, ()> {
         if lvl.is_finished() {
             Ok(Solution {
-                   number_of_moves: lvl.number_of_moves(),
-                   number_of_pushes: lvl.number_of_pushes(),
-                   steps: lvl.moves_to_string(),
-               })
+                number_of_moves: lvl.number_of_moves(),
+                number_of_pushes: lvl.number_of_pushes(),
+                steps: lvl.moves_to_string(),
+            })
         } else {
             Err(())
         }
@@ -175,19 +175,19 @@ impl CollectionState {
     }
 
     fn load_json(path: &Path) -> Option<Self> {
-        File::open(path.with_extension("json"))
-            .ok()
-            .and_then(|file| ::serde_json::from_reader(file).ok())
+        File::open(path.with_extension("json")).ok().and_then(
+            |file| {
+                ::serde_json::from_reader(file).ok()
+            },
+        )
     }
 
     fn load_messagepack(path: &Path) -> Option<Self> {
         use std::io::BufReader;
-        File::open(path.with_extension("mp"))
-            .ok()
-            .and_then(|file| {
-                          let mut de = Deserializer::new(BufReader::new(file));
-                          Deserialize::deserialize(&mut de).ok()
-                      })
+        File::open(path.with_extension("mp")).ok().and_then(|file| {
+            let mut de = Deserializer::new(BufReader::new(file));
+            Deserialize::deserialize(&mut de).ok()
+        })
     }
 
     /// Save the current state to disc.
@@ -203,7 +203,9 @@ impl CollectionState {
         path.set_extension("json");
         File::create(path)
             .map_err(SaveError::from)
-            .and_then(|file| ::serde_json::to_writer(file, &self).map_err(SaveError::from))
+            .and_then(|file| {
+                ::serde_json::to_writer(file, &self).map_err(SaveError::from)
+            })
             .map(|_| ())
     }
 
@@ -227,10 +229,11 @@ impl CollectionState {
                     least_pushes: ref lp_old,
                 } => {
                     if let Finished {
-                               least_moves: ref lm,
-                               least_pushes: ref lp,
-                               ..
-                           } = level_state {
+                        least_moves: ref lm,
+                        least_pushes: ref lp,
+                        ..
+                    } = level_state
+                    {
                         self.levels[index] = Finished {
                             rank,
                             least_moves: lm_old.min_moves(lm),

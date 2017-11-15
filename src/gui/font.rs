@@ -24,24 +24,27 @@ pub struct FontData {
 
 impl FontData {
     /// Load font from disk and create a glyph texture at two different font sizes.
-    pub fn new<P: AsRef<Path>, Q: AsRef<Path>>(display: &GlutinFacade,
-                                               font_path: P,
-                                               mono_path: Q)
-                                               -> Self {
+    pub fn new<P: AsRef<Path>, Q: AsRef<Path>>(
+        display: &GlutinFacade,
+        font_path: P,
+        mono_path: Q,
+    ) -> Self {
         let chars = FontTexture::ascii_character_list();
         let system = TextSystem::new(display);
         let text_font =
             FontTexture::new(display, File::open(&font_path).unwrap(), 32, chars.clone()).unwrap();
-        let heading_font = FontTexture::new(display,
-                                            File::open(&font_path).unwrap(),
-                                            64,
-                                            "Congratulis!".chars())
-                .unwrap();
-        let mono_font = FontTexture::new(display,
-                                         File::open(&mono_path).unwrap(),
-                                         32,
-                                         "Levl: ,StpsPuh0123456789".chars())
-                .unwrap();
+        let heading_font = FontTexture::new(
+            display,
+            File::open(&font_path).unwrap(),
+            64,
+            "Congratulis!".chars(),
+        ).unwrap();
+        let mono_font = FontTexture::new(
+            display,
+            File::open(&mono_path).unwrap(),
+            32,
+            "Levl: ,StpsPuh0123456789".chars(),
+        ).unwrap();
 
         FontData {
             system,
@@ -67,13 +70,17 @@ impl FontData {
             Font::Mono => &self.mono_font,
         };
         let text_display = TextDisplay::new(&self.system, font, text);
-        let matrix = [[scale, 0.0, 0.0, 0.0],
-                      [0.0, scale / aspect_ratio, 0.0, 0.0],
-                      [0.0, 0.0, 1.0, 0.0],
-                      [offset[0] * scale * text_display.get_width(),
-                       offset[1],
-                       0.0,
-                       1.0_f32]];
+        let matrix = [
+            [scale, 0.0, 0.0, 0.0],
+            [0.0, scale / aspect_ratio, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [
+                offset[0] * scale * text_display.get_width(),
+                offset[1],
+                0.0,
+                1.0_f32,
+            ],
+        ];
 
         let _ = ::glium_text_rusttype::draw(&text_display, &self.system, target, matrix, WHITE);
     }

@@ -27,13 +27,17 @@ fn main() {
     let matches = App::new(TITLE)
         .author(env!("CARGO_PKG_AUTHORS"))
         .version(env!("CARGO_PKG_VERSION"))
-        .arg(Arg::with_name("collection")
-                 .help("The level collection to load during startup")
-                 .index(1))
-        .arg(Arg::with_name("list")
-                 .help("Print a list of available level sets")
-                 .short("l")
-                 .long("list"))
+        .arg(
+            Arg::with_name("collection")
+                .help("The level collection to load during startup")
+                .index(1),
+        )
+        .arg(
+            Arg::with_name("list")
+                .help("Print a list of available level sets")
+                .short("l")
+                .long("list"),
+        )
         .get_matches();
 
     if matches.is_present("list") {
