@@ -33,14 +33,15 @@ const IDENTITY: [[f32; 4]; 4] = {
     ]
 };
 
+enum State {
+    Level,
+    EndOfLevel,
+}
 
 pub struct Gui {
     // Game state
     /// The main back end data structure.
     game: Game,
-
-    /// Has the current level been solved, i.e. should the end-of-level overlay be rendered?
-    level_solved: bool,
 
     /// Is the current level the last of this collection.
     end_of_collection: bool,
@@ -131,9 +132,9 @@ impl Gui {
 
         let mut gui = Gui {
             game,
-            level_solved: false,
             end_of_collection: false,
             command_queue: VecDeque::new(),
+            state: State::Level,
 
             display,
             params,
@@ -178,6 +179,14 @@ impl Gui {
     /// Ratio between the window’s and the level’s aspect ratio.
     fn aspect_ratio_ratio(&self) -> f32 {
         self.window_aspect_ratio() * self.game.columns() as f32 / self.game.rows() as f32
+    }
+
+    /// Has the current level been solved, i.e. should the end-of-level overlay be rendered?
+    fn level_solved(&self) -> bool {
+        match self.state {
+            State::EndOfLevel => true,
+            _ => false,
+        }
     }
 }
 
@@ -515,7 +524,7 @@ impl Gui {
         }
 
         // Display text overlay
-        if self.level_solved {
+        if self.level_solved() {
             self.draw_end_of_level_overlay(&mut target);
         } else {
             let aspect_ratio = self.window_aspect_ratio();
@@ -540,12 +549,94 @@ impl Gui {
 
         target.finish().unwrap();
     }
+
+    fn render_end_of_level(&mut self) {
+        let vertices = texture::full_screen();
+        let vertex_buffer = ::glium::VertexBuffer::new(&self.display, &vertices).unwrap();
+
+        if self.background.is_none() {
+            // Render the end-of-level screen and store it in self.bg
+            let columns = self.game.columns() as u32;
+            let rows = self.game.rows() as u32;
+
+            self.generate_background();
+            let width = self.window_size[0];
+            let height = self.window_size[1];
+            let texture = Texture2d::empty(&self.display, width, height).unwrap();
+
+            {
+                let mut target = texture.as_surface();
+                let bg = self.background.as_ref().unwrap();
+                let uniforms = uniform!{tex: bg, matrix: IDENTITY};
+                let program = &self.program;
+
+                // Prevent artefacts when resizing the window
+                target.clear_color(0.0, 0.0, 0.0, 1.0);
+
+                target
+                    .draw(
+                        &vertex_buffer,
+                        &NO_INDICES,
+                        program,
+                        &uniforms,
+                        &self.params,
+                    )
+                    .unwrap();
+
+                // Draw foreground
+                {
+                    let mut draw =
+                        |vs, tex| self.draw_quads(&mut target, vs, tex, program).unwrap();
+
+                    // Draw the crates
+                    let mut vertices = vec![];
+                    for sprite in &self.crates {
+                        vertices.extend(sprite.quad(columns, rows));
+                    }
+                    draw(vertices, &self.textures.crate_);
+
+                    // Draw the worker
+                    draw(self.worker.quad(columns, rows), &self.textures.worker);
+                }
+
+                // Display text overlay
+                self.draw_end_of_level_overlay(&mut target);
+            }
+
+            self.background = Some(texture);
+            self.render_level();
+        } else {
+            // Fill the screen with the cached image
+            let bg = self.background.as_ref().unwrap();
+            let uniforms = uniform!{tex: bg, matrix: IDENTITY};
+            let mut target = self.display.draw();
+
+            target
+                .draw(
+                    &vertex_buffer,
+                    &NO_INDICES,
+                    &self.program,
+                    &uniforms,
+                    &self.params,
+                )
+                .unwrap();
+            target.finish().unwrap();
+        }
+
+    }
+
+    fn render(&mut self) {
+        match self.state {
+            State::Level => self.render_level(),
+            State::EndOfLevel => self.render_end_of_level(),
+        }
+    }
 }
 
 impl Gui {
     /// Handle the queue of responses from the back end, updating the gui status and logging
     /// messages.
-    pub fn handle_responses(&mut self, queue: &mut VecDeque<Response>) {
+    fn handle_responses(&mut self, queue: &mut VecDeque<Response>) {
         let mut steps = 0;
         while let Some(response) = queue.pop_front() {
             use self::Response::*;
@@ -560,9 +651,10 @@ impl Gui {
 
             match response {
                 LevelFinished(resp) => {
-                    if !self.level_solved {
+                    if !self.level_solved() {
                         use self::save::UpdateResponse::*;
-                        self.level_solved = true;
+                        self.state = State::EndOfLevel;
+                        self.background = None;
                         match resp {
                             FirstTimeSolved => {
                                 info!(
@@ -572,7 +664,7 @@ impl Gui {
                             }
                             Update { moves, pushes } => {
                                 if moves && pushes {
-                                    info!("Your solution is the best so far, both in terms of moves and pushes!");
+                                    info!("Your solution uses the least moves and pushes!");
                                 } else if moves {
                                     info!("Your solution is the best so far in terms of moves!");
                                 } else if pushes {
@@ -589,7 +681,7 @@ impl Gui {
                         info!("Loading level #{}", rank);
                     }
                     self.end_of_collection = false;
-                    self.level_solved = false;
+                    self.state = State::Level;
                     self.update_sprites();
                 }
                 MoveWorkerTo(pos, dir) => {
@@ -628,7 +720,7 @@ impl Gui {
         let mut cmd;
 
         loop {
-            self.render_level();
+            self.render();
 
             events = self.display.poll_events().collect();
             for ev in events {
@@ -642,7 +734,7 @@ impl Gui {
                     Event::KeyboardInput(Pressed, _, Some(VirtualKeyCode::Q)) => return,
 
                     Event::KeyboardInput(Pressed, _, _) |
-                    Event::MouseInput(..) if self.level_solved => cmd = Command::NextLevel,
+                    Event::MouseInput(..) if self.level_solved() => cmd = Command::NextLevel,
                     Event::KeyboardInput(state, _, Some(key)) => {
                         use glium::glutin::VirtualKeyCode::*;
                         match key {
