@@ -43,6 +43,20 @@ pub struct Collection {
 }
 
 impl Collection {
+    #[cfg(test)]
+    pub fn from_levels(name: &str, levels: &[Level]) -> Collection {
+        Collection {
+            name: name.into(),
+            short_name: name.into(),
+            description: None,
+            number_of_levels: levels.len(),
+            current_level: levels[0].clone(),
+            levels: levels.into(),
+            state: CollectionState::new(name),
+            macros: Macros::new(),
+        }
+    }
+
     /// Load a level set with the given name, whatever the format might be.
     pub fn parse(short_name: &str, parse_levels: bool) -> Result<Collection, SokobanError> {
         let mut level_path = ASSETS.clone();

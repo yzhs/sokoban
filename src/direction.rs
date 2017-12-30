@@ -1,5 +1,8 @@
 use std::fmt;
 
+#[cfg(test)]
+use quickcheck::{Arbitrary, Gen};
+
 use position::Position;
 
 /// Any of the directions needed for Sokoban.
@@ -80,5 +83,12 @@ mod test {
         }
         assert_eq!(direction(pos0, pos0), Err(None));
         assert_eq!(direction(pos0.left().above(), pos0), Err(Some(pos0)));
+    }
+}
+
+#[cfg(test)]
+impl Arbitrary for Direction {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        *g.choose(&DIRECTIONS).unwrap()
     }
 }

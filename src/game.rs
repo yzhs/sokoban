@@ -165,3 +165,73 @@ pub fn print_collections_table() {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_game() -> Game {
+        const LARGE_EMPTY_LEVEL: &str = r#"
+#########################################
+#                                    #$.#
+#                                    ####
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                 @                  #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+#                                    #
+######################################
+"#;
+        const NAME: &str = "Test";
+        let lvl = Level::parse(0, LARGE_EMPTY_LEVEL).unwrap();
+        let collection = Collection::from_levels(NAME, &[lvl.clone()]);
+        Game {
+            name: "LARGE_EMPTY_LEVEL".into(),
+            collection,
+        }
+    }
+
+    #[quickcheck]
+    fn prop_move_undo(mut move_dirs: Vec<Direction>) -> bool {
+        let mut game = create_game();
+        let lvl = game.current_level().clone();
+        move_dirs.truncate(10);
+
+        let num_moves = move_dirs.len();
+        for dir in move_dirs {
+            game.execute(Command::Move(dir));
+        }
+        for _ in 0..num_moves {
+            game.execute(Command::Undo);
+        }
+
+        let current_lvl = game.current_level();
+        current_lvl.worker_position == lvl.worker_position &&
+            current_lvl.number_of_moves() == lvl.number_of_moves()
+    }
+}

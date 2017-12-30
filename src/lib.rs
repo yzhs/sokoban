@@ -1,4 +1,6 @@
 #![feature(ascii_ctype, try_from)]
+#![cfg_attr(test, feature(plugin))]
+#![cfg_attr(test, plugin(quickcheck_macros))]
 
 #[macro_use]
 extern crate log;
@@ -18,6 +20,9 @@ extern crate app_dirs;
 extern crate quick_xml; // XML parser
 extern crate ansi_term; // Colored output
 extern crate natord; // Sort strings respecting numeric value, i.e. "9" before "10"
+
+#[cfg(test)]
+extern crate quickcheck;
 
 mod collection;
 mod command;
