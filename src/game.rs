@@ -112,7 +112,7 @@ fn file_stem(p: &::std::path::PathBuf) -> &str {
 pub fn print_collections_table() {
     use ansi_term::Colour::{Blue, Green, White, Yellow};
 
-    #[cfg(windows)] ansi_term::enable_ansi_support();
+    #[cfg(windows)] ::ansi_term::enable_ansi_support();
 
     println!(
         " {}               {}",
