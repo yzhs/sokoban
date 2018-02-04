@@ -59,8 +59,8 @@ impl Sprite {
         let old;
         if let Some((start, old_pos)) = self.animation.get() {
             let duration = Instant::now() - start;
-            let duration_seconds = duration.as_secs() as f32 +
-                duration.subsec_nanos() as f32 / 1.0e9;
+            let duration_seconds =
+                duration.as_secs() as f32 + duration.subsec_nanos() as f32 / 1.0e9;
             lambda = duration_seconds / *ANIMATION_DURATION.lock().unwrap();
             if lambda >= 1.0 {
                 self.animation.set(None);

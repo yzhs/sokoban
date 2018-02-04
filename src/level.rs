@@ -1,7 +1,7 @@
 use std::fmt;
-use std::collections::{VecDeque, HashMap};
+use std::collections::{HashMap, VecDeque};
 
-use command::{Response, Obstacle, WithCrate};
+use command::{Obstacle, Response, WithCrate};
 use direction::*;
 use move_::Move;
 use position::*;
@@ -33,7 +33,6 @@ enum Foreground {
     Crate,
 }
 
-
 #[derive(Debug, Clone)]
 pub struct Level {
     pub rank: usize,
@@ -59,7 +58,6 @@ pub struct Level {
     /// This describes how many moves have to be performed to arrive at the current state.
     number_of_moves: usize,
 }
-
 
 /// Parse level and some basic utility functions. None of these change an existing `Level`.
 impl Level {
@@ -119,8 +117,8 @@ impl Level {
                     inside = true;
                 }
 
-                if inside && bg == Background::Empty && index >= columns &&
-                    background[index - columns] != Background::Empty
+                if inside && bg == Background::Empty && index >= columns
+                    && background[index - columns] != Background::Empty
                 {
                     background[index] = Background::Floor;
                 }
@@ -241,9 +239,7 @@ impl Level {
         DIRECTIONS
             .iter()
             .map(|&dir| position.neighbour(dir))
-            .filter(|&neighbour| {
-                self.is_empty(neighbour) || self.is_worker(neighbour)
-            })
+            .filter(|&neighbour| self.is_empty(neighbour) || self.is_worker(neighbour))
             .collect()
     }
 
@@ -253,7 +249,6 @@ impl Level {
 
     /// Is there a crate at the given position?
     fn is_crate(&self, pos: Position) -> bool {
-
         // Check the cell itself
         self.crates.get(&pos).is_some()
     }
@@ -285,7 +280,6 @@ impl Level {
             _ => false,
         }
     }
-
 
     /// Check whether the given level is completed, i.e. every goal has a crate on it, and every
     /// crate is on a goal.
@@ -324,7 +318,6 @@ impl Level {
             .collect()
     }
 }
-
 
 /// Movement, i.e. everything that *does* change the `self`.
 impl Level {
@@ -412,7 +405,6 @@ impl Level {
         Ok(result)
     }
 
-
     /// Move the worker towards `to`. If may_push_crate is set, `to` must be in the same row or
     /// column as the worker. In that case, the worker moves to `to`
     pub fn move_to(&mut self, to: Position, may_push_crate: bool) -> Vec<Response> {
@@ -496,8 +488,8 @@ impl Level {
             // Move worker along the path
             loop {
                 for neighbour in self.empty_neighbours(self.worker_position) {
-                    if distances[self.index(neighbour)] <
-                        distances[self.index(self.worker_position)]
+                    if distances[self.index(neighbour)]
+                        < distances[self.index(self.worker_position)]
                     {
                         let dir = direction(self.worker_position, neighbour);
                         result.extend(self.try_move(dir.unwrap()))
@@ -592,7 +584,6 @@ impl Level {
     }
 }
 
-
 impl fmt::Display for Level {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let columns = self.columns();
@@ -612,20 +603,17 @@ impl fmt::Display for Level {
                 };
                 let cell = match (background, foreground) {
                     (Background::Wall, Foreground::None) => '#',
-                    (Background::Empty, Foreground::None) |
-                    (Background::Floor, Foreground::None) => ' ',
+                    (Background::Empty, Foreground::None)
+                    | (Background::Floor, Foreground::None) => ' ',
                     (Background::Floor, Foreground::Crate) => '$',
                     (Background::Floor, Foreground::Worker) => '@',
                     (Background::Goal, Foreground::None) => '.',
                     (Background::Goal, Foreground::Crate) => '*',
                     (Background::Goal, Foreground::Worker) => '+',
-                    _ => {
-                        panic!(
-                            "Invalid combination: {:?} on top of {:?}",
-                            foreground,
-                            background
-                        )
-                    }
+                    _ => panic!(
+                        "Invalid combination: {:?} on top of {:?}",
+                        foreground, background
+                    ),
                 };
                 write!(f, "{}", cell)?;
             }
@@ -633,7 +621,6 @@ impl fmt::Display for Level {
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod test {
@@ -657,9 +644,9 @@ mod test {
                  #..    @ ##  #\n\
                  #..  # #  $ ##\n\
                  ###### ##$ $ #\n\
-                   # $  $ $ $ #\n\
-                   #    #     #\n\
-                   ############";
+                 # $  $ $ $ #\n\
+                 #    #     #\n\
+                 ############";
         let res = Level::parse(0, s);
         assert!(res.is_err());
         assert_eq!(res.unwrap_err().to_string(), "TwoWorkers(1)");
@@ -674,9 +661,9 @@ mod test {
                  #..    # ##  #\n\
                  #..  # #  $ ##\n\
                  ###### ##$ $ #\n\
-                   # $  $ $ $ #\n\
-                   #    #     #\n\
-                   ############";
+                 # $  $ $ $ #\n\
+                 #    #     #\n\
+                 ############";
         let res = Level::parse(0, s);
         assert!(res.is_err());
         assert_eq!(res.unwrap_err().to_string(), "NoWorker(1)");
@@ -689,8 +676,8 @@ mod test {
         let mut lvl = Level::parse(
             0,
             "####\n\
-                                    #@ #\n\
-                                    ####\n",
+             #@ #\n\
+             ####\n",
         ).unwrap();
         assert_eq!(lvl.worker_position.x, 1);
         assert_eq!(lvl.worker_position.y, 1);
@@ -716,8 +703,8 @@ mod test {
         let mut lvl = Level::parse(
             0,
             "#######\n\
-                                    #.$@$.#\n\
-                                    #######\n",
+             #.$@$.#\n\
+             #######\n",
         ).unwrap();
         assert_eq!(lvl.worker_position.x, 3);
         assert_eq!(lvl.worker_position.y, 1);
@@ -754,8 +741,8 @@ mod test {
         let lvl = Level::parse(
             0,
             "#######\n\
-                                #.$@$.#\n\
-                                #######\n",
+             #.$@$.#\n\
+             #######\n",
         ).unwrap();
         assert!(!lvl.is_interior(Position { x: -1, y: 0 }));
         assert!(!lvl.is_interior(Position { x: 1, y: -3 }));

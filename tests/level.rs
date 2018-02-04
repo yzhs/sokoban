@@ -20,7 +20,6 @@ fn contains_error(responses: &[Response]) -> bool {
     responses.iter().any(|x| x.is_error())
 }
 
-
 fn char_to_direction(c: char) -> Direction {
     use self::Direction::*;
     match c {
@@ -39,11 +38,11 @@ fn test_simple_moves() {
     assert_eq!(lvl.columns(), 19);
 
     let moves = "ullluuuLUllDlldddrRRRRRRRRRRRRurD\
-                     llllllllllllllulldRRRRRRRRRRRRRRR\
-                     lllllllluuululldDDuulldddrRRRRRRRRRRRdrUluR\
-                     lldlllllluuulLulDDDuulldddrRRRRRRRRRRRurD\
-                     lllllllluuulluuulDDDDDuulldddrRRRRRRRRRRR\
-                     llllllluuulluuurDDllddddrrruuuLLulDDDuulldddrRRRRRRRRRRdrUluR";
+                 llllllllllllllulldRRRRRRRRRRRRRRR\
+                 lllllllluuululldDDuulldddrRRRRRRRRRRRdrUluR\
+                 lldlllllluuulLulDDDuulldddrRRRRRRRRRRRurD\
+                 lllllllluuulluuulDDDDDuulldddrRRRRRRRRRRR\
+                 llllllluuulluuurDDllddddrrruuuLLulDDDuulldddrRRRRRRRRRRdrUluR";
     for (i, mv) in moves.chars().map(char_to_direction).enumerate() {
         assert!(
             !contains_error(&lvl.try_move(mv)),
@@ -60,7 +59,7 @@ fn test_path_finding() {
     use self::Direction::*;
     let mut lvl = Level::parse(0, ORIGINAL_LEVEL_1).unwrap();
     for (i, mv) in "ullluuuLUllDlldddrRRRRRRRRRRRRurD\
-                        llllllllllllllulldRRRRRRRRRRRRRRR"
+                    llllllllllllllulldRRRRRRRRRRRRRRR"
         .chars()
         .map(char_to_direction)
         .enumerate()
@@ -91,9 +90,9 @@ fn test_path_finding() {
 
     let _ = lvl.move_until(Right, true);
     for (i, mv) in "drUluR\
-                        lldlllllluuulLulDDDuulldddrRRRRRRRRRRRurD\
-                          lllllllluuulluuulDDDDDuulldddrRRRRRRRRRRR\
-                        llllllluuulluuurDDllddddrrruuuLLulDDDuulldddrRRRRRRRRRRdrUluR"
+                    lldlllllluuulLulDDDuulldddrRRRRRRRRRRRurD\
+                    lllllllluuulluuulDDDDDuulldddrRRRRRRRRRRR\
+                    llllllluuulluuurDDllddddrrruuuLLulDDDuulldddrRRRRRRRRRRdrUluR"
         .chars()
         .map(char_to_direction)
         .enumerate()

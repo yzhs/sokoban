@@ -7,7 +7,7 @@ use std::collections::VecDeque;
 
 use glium::{Program, Surface};
 use glium::backend::glutin_backend::GlutinFacade;
-use glium::glutin::{VirtualKeyCode, MouseButton};
+use glium::glutin::{MouseButton, VirtualKeyCode};
 use glium::index::{NoIndices, PrimitiveType};
 use glium::texture::Texture2d;
 
@@ -84,7 +84,6 @@ pub struct Gui {
     crates: Vec<Sprite>,
 }
 
-
 /// Constructor and getters
 impl Gui {
     /// Initialize the `Gui` struct by setting default values, and loading a collection and
@@ -99,9 +98,9 @@ impl Gui {
             .build_glium()
             .unwrap_or_else(|e| panic!("Failed to build window: {}", e));
 
-        display.get_window().map(|x| {
-            x.set_cursor(::glium::glutin::MouseCursor::Default)
-        });
+        display
+            .get_window()
+            .map(|x| x.set_cursor(::glium::glutin::MouseCursor::Default));
 
         let textures = Textures::new(&display);
         let font_data = FontData::new(
@@ -382,7 +381,6 @@ impl Gui {
                     )
                     .unwrap();
             }
-
         }
 
         self.background = Some(target);
@@ -424,10 +422,10 @@ impl Gui {
     /// Draw an overlay with some statistics.
     fn draw_end_of_level_overlay<S: Surface>(&self, target: &mut S) {
         use glium::Program;
-        use self::texture::{VERTEX_SHADER, DARKEN_SHADER};
+        use self::texture::{DARKEN_SHADER, VERTEX_SHADER};
 
-        let program = Program::from_source(&self.display, VERTEX_SHADER, DARKEN_SHADER, None)
-            .unwrap();
+        let program =
+            Program::from_source(&self.display, VERTEX_SHADER, DARKEN_SHADER, None).unwrap();
 
         self.draw_quads(
             target,
@@ -452,7 +450,7 @@ impl Gui {
 
         let stats_text = format!(
             "You have finished the level {} using {} moves, \
-                                      {} of which moved a crate.",
+             {} of which moved a crate.",
             self.game.rank(),
             self.game.number_of_moves(),
             self.game.number_of_pushes()
@@ -622,7 +620,6 @@ impl Gui {
                 .unwrap();
             target.finish().unwrap();
         }
-
     }
 
     fn render(&mut self) {
@@ -656,12 +653,10 @@ impl Gui {
                         self.state = State::EndOfLevel;
                         self.background = None;
                         match resp {
-                            FirstTimeSolved => {
-                                info!(
-                                    "You have successfully solved this level for the first time! \
-                                   Congratulations!"
-                                )
-                            }
+                            FirstTimeSolved => info!(
+                                "You have successfully solved this level for the first time! \
+                                 Congratulations!"
+                            ),
                             Update { moves, pushes } => {
                                 if moves && pushes {
                                     info!("Your solution uses the least moves and pushes!");
@@ -730,11 +725,15 @@ impl Gui {
                 cmd = Command::Nothing;
 
                 match ev {
-                    Event::Closed |
-                    Event::KeyboardInput(Pressed, _, Some(VirtualKeyCode::Q)) => return,
+                    Event::Closed | Event::KeyboardInput(Pressed, _, Some(VirtualKeyCode::Q)) => {
+                        return
+                    }
 
-                    Event::KeyboardInput(Pressed, _, _) |
-                    Event::MouseInput(..) if self.level_solved() => cmd = Command::NextLevel,
+                    Event::KeyboardInput(Pressed, _, _) | Event::MouseInput(..)
+                        if self.level_solved() =>
+                    {
+                        cmd = Command::NextLevel
+                    }
                     Event::KeyboardInput(state, _, Some(key)) => {
                         use glium::glutin::VirtualKeyCode::*;
                         match key {

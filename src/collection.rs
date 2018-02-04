@@ -9,7 +9,6 @@ use macros::Macros;
 use save::*;
 use util::*;
 
-
 enum FileFormat {
     Ascii,
     Xml,
@@ -110,9 +109,10 @@ impl Collection {
             .filter(|x| !x.is_empty())
             .collect();
         let name = level_strings[0].lines().next().unwrap();
-        let description = level_strings[0].splitn(1, &eol).last().map(|x| {
-            x.trim().to_owned()
-        });
+        let description = level_strings[0]
+            .splitn(1, &eol)
+            .last()
+            .map(|x| x.trim().to_owned());
 
         // Parse the individual levels
         let (num, levels) = {
@@ -181,37 +181,33 @@ impl Collection {
         let mut buf = Vec::new();
         loop {
             match reader.read_event(&mut buf) {
-                Ok(Event::Start(ref e)) => {
-                    match e.name() {
-                        b"Title" => {
-                            state = State::Title;
-                            title.clear();
-                        }
-                        b"Description" => state = State::Description,
-                        b"Email" => state = State::Email,
-                        b"Url" => state = State::Url,
-                        b"Level" => level_lines.clear(),
-                        b"L" => state = State::Line,
-                        _ => {}
+                Ok(Event::Start(ref e)) => match e.name() {
+                    b"Title" => {
+                        state = State::Title;
+                        title.clear();
                     }
-                }
+                    b"Description" => state = State::Description,
+                    b"Email" => state = State::Email,
+                    b"Url" => state = State::Url,
+                    b"Level" => level_lines.clear(),
+                    b"L" => state = State::Line,
+                    _ => {}
+                },
 
-                Ok(Event::End(e)) => {
-                    match e.name() {
-                        b"Title" | b"Description" | b"Email" | b"Url" => state = State::Nothing,
-                        b"Level" => {
-                            if parse_levels {
-                                levels.push(Level::parse(num, &level_lines)?);
-                            }
-                            num += 1;
+                Ok(Event::End(e)) => match e.name() {
+                    b"Title" | b"Description" | b"Email" | b"Url" => state = State::Nothing,
+                    b"Level" => {
+                        if parse_levels {
+                            levels.push(Level::parse(num, &level_lines)?);
                         }
-                        b"L" => {
-                            state = State::Nothing;
-                            level_lines.push('\n');
-                        }
-                        _ => {}
+                        num += 1;
                     }
-                }
+                    b"L" => {
+                        state = State::Nothing;
+                        level_lines.push('\n');
+                    }
+                    _ => {}
+                },
 
                 Ok(Event::Text(e)) => {
                     let s = e.unescape_and_decode(&reader).unwrap();
@@ -276,7 +272,6 @@ impl Collection {
         self.current_level.worker_direction()
     }
 }
-
 
 impl Collection {
     /// Execute whatever command we get from the frontend.
@@ -351,7 +346,6 @@ impl Collection {
                     result.push(Response::LevelFinished(UpdateResponse::FirstTimeSolved))
                 }
             }
-
         }
         result
     }
@@ -440,7 +434,6 @@ pub enum NextLevelError {
     EndOfCollection,
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -487,10 +480,7 @@ mod test {
         assert!(exec_ok(&mut col, Command::ResetLevel));
         assert!(exec_ok(
             &mut col,
-            Command::MoveToPosition(
-                Position::new(8, 4),
-                MayPushCrate(false),
-            ),
+            Command::MoveToPosition(Position::new(8, 4), MayPushCrate(false),),
         ));
         assert_eq!(col.current_level.number_of_moves(), 7);
         assert!(exec_ok(&mut col, Command::Move(Left)));

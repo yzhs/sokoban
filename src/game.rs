@@ -6,7 +6,7 @@ use command::*;
 use direction::Direction;
 use level::Level;
 use position::Position;
-use util::{ASSETS, SokobanError};
+use util::{SokobanError, ASSETS};
 
 #[derive(Debug)]
 pub struct Game {
@@ -67,7 +67,6 @@ impl Game {
         self.collection.current_level.rows()
     }
 
-
     /// Get an ordered list of the crates’ positions where the id of a crate is its index in the
     /// list.
     pub fn crate_positions(&self) -> Vec<Position> {
@@ -86,7 +85,6 @@ impl Game {
         self.collection.worker_direction()
     }
 
-
     /// The number of moves performed since starting to solve this level.
     pub fn number_of_moves(&self) -> usize {
         self.collection.current_level.number_of_moves()
@@ -97,13 +95,11 @@ impl Game {
         self.collection.current_level.number_of_pushes()
     }
 
-
     /// The collections full name
     pub fn name(&self) -> &str {
         self.collection.name.as_ref()
     }
 }
-
 
 fn file_stem(p: &::std::path::PathBuf) -> &str {
     p.file_stem().unwrap().to_str().unwrap()
@@ -229,7 +225,7 @@ mod tests {
         }
 
         let current_lvl = game.current_level();
-        current_lvl.worker_position == lvl.worker_position &&
-            current_lvl.number_of_moves() == lvl.number_of_moves()
+        current_lvl.worker_position == lvl.worker_position
+            && current_lvl.number_of_moves() == lvl.number_of_moves()
     }
 }

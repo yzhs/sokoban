@@ -1,10 +1,9 @@
-
 use glium;
 use glium::texture::Texture2d;
 use glium::backend::Facade;
 use image;
 
-use backend::{ASSETS, Direction, Position};
+use backend::{Direction, Position, ASSETS};
 
 pub struct Textures {
     pub crate_: Texture2d,
@@ -45,7 +44,6 @@ pub fn load(display: &Facade, name: &str) -> Texture2d {
     Texture2d::new(display, image).unwrap()
 }
 
-
 #[derive(Copy, Clone)]
 pub struct Vertex {
     pub position: [f32; 2],
@@ -69,7 +67,6 @@ void main() {
     gl_Position = matrix * vec4(position, 0.0, 1.0);
 }
 "#;
-
 
 /// Render texture on triangles.
 pub const FRAGMENT_SHADER: &str = r#"
@@ -97,13 +94,11 @@ void main() {
 }
 "#;
 
-
 #[derive(Clone, Copy, Debug)]
 pub enum TileKind {
     Crate,
     Worker,
 }
-
 
 /// All tiles face left by default, so the worker has to turned by 90 degrees (clockwise) to face
 /// up instead of left, etc.
@@ -125,7 +120,6 @@ pub fn lrtp_to_vertices(
     bottom: f32,
     dir: Direction,
 ) -> Vec<Vertex> {
-
     let tex = [[0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, 0.0]];
 
     let rot = direction_to_index(dir);
@@ -158,7 +152,6 @@ pub fn quad(pos: Position, columns: u32, rows: u32) -> Vec<Vertex> {
 
     lrtp_to_vertices(left, right, top, bottom, Direction::Left)
 }
-
 
 /// Create a rectangle covering the entire viewport.
 pub fn full_screen() -> Vec<Vertex> {

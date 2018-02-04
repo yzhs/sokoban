@@ -5,9 +5,9 @@ extern crate glium_text_rusttype;
 extern crate image;
 
 // Logging
+extern crate colog;
 #[macro_use]
 extern crate log;
-extern crate colog;
 
 extern crate clap; // Argument handling
 #[macro_use]
@@ -17,7 +17,7 @@ extern crate sokoban_backend as backend;
 
 mod gui;
 
-use backend::{TITLE, print_collections_table};
+use backend::{print_collections_table, TITLE};
 
 fn main() {
     use clap::{App, Arg};

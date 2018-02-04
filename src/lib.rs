@@ -2,24 +2,24 @@
 #![cfg_attr(test, feature(plugin))]
 #![cfg_attr(test, plugin(quickcheck_macros))]
 
+extern crate colog; //! Colored output
 #[macro_use]
 extern crate log;
-extern crate colog;
 
+extern crate rmp_serde; //! MessagePack
+extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde;
 extern crate serde_json;
-extern crate rmp_serde; // MessagePack
 
+extern crate app_dirs;
 extern crate find_folder;
 #[macro_use]
 extern crate lazy_static;
-extern crate app_dirs;
 
-extern crate quick_xml; // XML parser
-extern crate ansi_term; // Colored output
-extern crate natord; // Sort strings respecting numeric value, i.e. "9" before "10"
+extern crate ansi_term;
+extern crate natord; //! Sort strings respecting numeric value, i.e. "9" before "10"
+extern crate quick_xml; //! XML parser
 
 #[cfg(test)]
 extern crate quickcheck;

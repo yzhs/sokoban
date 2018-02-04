@@ -2,13 +2,11 @@ use direction::*;
 use position::*;
 use save::UpdateResponse;
 
-
 #[derive(Debug, Clone)]
 pub struct MayPushCrate(pub bool);
 
 type Slot = u8;
 type Steps = usize;
-
 
 /// Anything the user can ask the back end to do.
 #[derive(Debug, Clone)]
@@ -62,8 +60,7 @@ impl Command {
     /// macro?
     pub fn changes_macros(&self) -> bool {
         match *self {
-            Command::RecordMacro(_) |
-            Command::StoreMacro => true,
+            Command::RecordMacro(_) | Command::StoreMacro => true,
             _ => false,
         }
     }
@@ -144,7 +141,6 @@ impl Response {
         }
     }
 }
-
 
 /// Did the player try to move a crate?
 #[derive(Debug)]

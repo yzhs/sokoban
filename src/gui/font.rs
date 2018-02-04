@@ -5,7 +5,6 @@ use glium::Surface;
 use glium::backend::glutin_backend::GlutinFacade;
 use glium_text_rusttype::{FontTexture, TextDisplay, TextSystem};
 
-
 const WHITE: (f32, f32, f32, f32) = (1.0, 1.0, 1.0, 1.0);
 
 pub enum Font {
@@ -65,7 +64,6 @@ impl FontData {
         offset: [f32; 2],
         aspect_ratio: f32,
     ) {
-
         let font = match font_type {
             Font::Heading => &self.heading_font,
             Font::Text => &self.text_font,

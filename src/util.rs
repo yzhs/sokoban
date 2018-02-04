@@ -3,7 +3,7 @@ use std::fmt;
 use std::io;
 use std::path::PathBuf;
 
-use app_dirs::{AppInfo, AppDataType, app_dir};
+use app_dirs::{app_dir, AppDataType, AppInfo};
 
 pub const TITLE: &'static str = "Sokoban";
 

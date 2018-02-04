@@ -123,15 +123,14 @@ impl LevelState {
 
     pub fn rank(&self) -> usize {
         match *self {
-            LevelState::Started { rank, .. } |
-            LevelState::Finished { rank, .. } => rank,
+            LevelState::Started { rank, .. } | LevelState::Finished { rank, .. } => rank,
         }
     }
 
     pub fn set_rank(&mut self, new_rank: usize) {
         match *self {
-            LevelState::Started { ref mut rank, .. } |
-            LevelState::Finished { ref mut rank, .. } => *rank = new_rank,
+            LevelState::Started { ref mut rank, .. }
+            | LevelState::Finished { ref mut rank, .. } => *rank = new_rank,
         }
     }
 }
@@ -175,11 +174,9 @@ impl CollectionState {
     }
 
     fn load_json(path: &Path) -> Option<Self> {
-        File::open(path.with_extension("json")).ok().and_then(
-            |file| {
-                ::serde_json::from_reader(file).ok()
-            },
-        )
+        File::open(path.with_extension("json"))
+            .ok()
+            .and_then(|file| ::serde_json::from_reader(file).ok())
     }
 
     fn load_messagepack(path: &Path) -> Option<Self> {
@@ -203,9 +200,7 @@ impl CollectionState {
         path.set_extension("json");
         File::create(path)
             .map_err(SaveError::from)
-            .and_then(|file| {
-                ::serde_json::to_writer(file, &self).map_err(SaveError::from)
-            })
+            .and_then(|file| ::serde_json::to_writer(file, &self).map_err(SaveError::from))
             .map(|_| ())
     }
 
