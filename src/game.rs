@@ -31,10 +31,10 @@ impl Game {
 
     /// Execute a command from the front end. Load new collections or pass control to
     /// `Collection::execute`.
-    pub fn execute(&mut self, cmd: Command) -> Vec<Response> {
-        if let Command::LoadCollection(name) = cmd {
+    pub fn execute(&mut self, cmd: &Command) -> Vec<Response> {
+        if let Command::LoadCollection(ref name) = *cmd {
             error!("Loading level collection {}.", name);
-            self.set_collection(&name).unwrap();
+            self.set_collection(name).unwrap();
             vec![Response::NewLevel(self.collection.current_level.rank)]
         } else {
             self.collection.execute(cmd)
@@ -218,10 +218,10 @@ mod tests {
 
         let num_moves = move_dirs.len();
         for dir in move_dirs {
-            game.execute(Command::Move(dir));
+            game.execute(&Command::Move(dir));
         }
         for _ in 0..num_moves {
-            game.execute(Command::Undo);
+            game.execute(&Command::Undo);
         }
 
         let current_lvl = game.current_level();

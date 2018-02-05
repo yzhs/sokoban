@@ -7,7 +7,8 @@ use glium_text_rusttype::{FontTexture, TextDisplay, TextSystem};
 
 const WHITE: (f32, f32, f32, f32) = (1.0, 1.0, 1.0, 1.0);
 
-pub enum Font {
+#[derive(Clone, Copy)]
+pub enum FontStyle {
     Heading,
     Text,
     Mono,
@@ -59,15 +60,15 @@ impl FontData {
         &self,
         target: &mut S,
         text: &str,
-        font_type: Font,
+        font_type: FontStyle,
         scale: f32,
         offset: [f32; 2],
         aspect_ratio: f32,
     ) {
         let font = match font_type {
-            Font::Heading => &self.heading_font,
-            Font::Text => &self.text_font,
-            Font::Mono => &self.mono_font,
+            FontStyle::Heading => &self.heading_font,
+            FontStyle::Text => &self.text_font,
+            FontStyle::Mono => &self.mono_font,
         };
         let text_display = TextDisplay::new(&self.system, font, text);
         let matrix = [

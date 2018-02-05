@@ -12,7 +12,7 @@ use glium::index::{NoIndices, PrimitiveType};
 use glium::texture::Texture2d;
 
 use backend::*;
-use gui::font::{Font, FontData};
+use gui::font::{FontData, FontStyle};
 use gui::sprite::*;
 use gui::texture::*;
 
@@ -166,7 +166,10 @@ impl Gui {
     fn tile_size(&self) -> f64 {
         let columns = self.game.columns() as u32;
         let rows = self.game.rows() as u32;
-        min(self.window_size[0] / columns, self.window_size[1] / rows) as f64
+        f64::from(min(
+            self.window_size[0] / columns,
+            self.window_size[1] / rows,
+        ))
     }
 
     /// Compute the window’s aspect ratio.
@@ -286,13 +289,13 @@ impl Gui {
 
         let (offset_x, offset_y) = if self.aspect_ratio_ratio() < 1.0 {
             (
-                (self.window_size[0] as f64 - columns as f64 * tile_size) / 2.0,
+                (f64::from(self.window_size[0]) - columns as f64 * tile_size) / 2.0,
                 0.0,
             )
         } else {
             (
                 0.0,
-                (self.window_size[1] as f64 - rows as f64 * tile_size) / 2.0,
+                (f64::from(self.window_size[1]) - rows as f64 * tile_size) / 2.0,
             )
         };
 
@@ -402,14 +405,14 @@ impl Gui {
     }
 
     /// Given a vector of vertices describing a list of quads, draw them onto `target`.
-    fn draw_quads<S: Surface>(
+    fn draw_quads<S: Surface, V: AsRef<Vec<Vertex>>>(
         &self,
         target: &mut S,
-        vertices: Vec<Vertex>,
+        vertices: V,
         tex: &Texture2d,
         program: &::glium::Program,
     ) -> Result<(), ::glium::DrawError> {
-        let vertex_buffer = ::glium::VertexBuffer::new(&self.display, &vertices).unwrap();
+        let vertex_buffer = ::glium::VertexBuffer::new(&self.display, vertices.as_ref()).unwrap();
         let uniforms = uniform!{tex: tex, matrix: self.matrix};
         target.draw(
             &vertex_buffer,
@@ -443,7 +446,7 @@ impl Gui {
         font_data.draw(
             target,
             "Congratulations!",
-            Font::Heading,
+            FontStyle::Heading,
             0.1,
             [-0.5, 0.2],
             aspect_ratio,
@@ -460,7 +463,7 @@ impl Gui {
         font_data.draw(
             target,
             &stats_text,
-            Font::Text,
+            FontStyle::Text,
             0.05,
             [-0.5, -0.2],
             aspect_ratio,
@@ -472,7 +475,14 @@ impl Gui {
             "Press any key to go to the next level."
         };
 
-        font_data.draw(target, txt, Font::Text, 0.05, [-0.5, -0.4], aspect_ratio);
+        font_data.draw(
+            target,
+            txt,
+            FontStyle::Text,
+            0.05,
+            [-0.5, -0.4],
+            aspect_ratio,
+        );
     }
 
     /// Render the current level.
@@ -536,7 +546,7 @@ impl Gui {
         self.font_data.draw(
             &mut target,
             &text,
-            Font::Mono,
+            FontStyle::Mono,
             0.04,
             [0.5, -0.9],
             aspect_ratio,
@@ -747,7 +757,7 @@ impl Gui {
                         }
                     }
 
-                    Event::MouseMoved(x, y) => self.cursor_pos = [x as f64, y as f64],
+                    Event::MouseMoved(x, y) => self.cursor_pos = [f64::from(x), f64::from(y)],
                     Event::MouseInput(Released, btn) => cmd = self.click_to_command(btn),
 
                     Event::Resized(w, h) => {
@@ -764,7 +774,7 @@ impl Gui {
             }
 
             while let Some(cmd) = self.command_queue.pop_front() {
-                queue.extend(self.game.execute(cmd));
+                queue.extend(self.game.execute(&cmd));
             }
 
             self.handle_responses(&mut queue);

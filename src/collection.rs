@@ -275,20 +275,20 @@ impl Collection {
 
 impl Collection {
     /// Execute whatever command we get from the frontend.
-    pub fn execute(&mut self, command: Command) -> Vec<Response> {
+    pub fn execute(&mut self, command: &Command) -> Vec<Response> {
         self.execute_helper(command, false)
     }
 
-    fn execute_helper(&mut self, command: Command, executing_macro: bool) -> Vec<Response> {
+    fn execute_helper(&mut self, command: &Command, executing_macro: bool) -> Vec<Response> {
         use Command::*;
 
         // Record everything while recording a macro. If no macro is currently being recorded,
         // Macros::push will just do nothing.
         if !executing_macro && !command.changes_macros() && !command.is_empty() {
-            self.macros.push(&command);
+            self.macros.push(command);
         }
 
-        let mut result = match command {
+        let mut result = match *command {
             Command::Nothing => vec![],
 
             Move(dir) => self.current_level.try_move(dir),
@@ -325,7 +325,7 @@ impl Collection {
                 let cmds = self.macros.get(slot).to_owned();
                 let mut result = vec![];
                 for cmd in &cmds {
-                    result.extend(self.execute_helper(cmd.clone(), true));
+                    result.extend(self.execute_helper(cmd, true));
                 }
                 result
             }
@@ -440,7 +440,7 @@ mod test {
     use command::contains_error;
 
     fn exec_ok(col: &mut Collection, cmd: Command) -> bool {
-        !contains_error(&col.execute(cmd))
+        !contains_error(&col.execute(&cmd))
     }
 
     #[test]
@@ -474,7 +474,7 @@ mod test {
             &mut col,
             Command::MoveAsFarAsPossible(Left, MayPushCrate(true)),
         ));
-        let res = col.execute(Command::Move(Left));
+        let res = col.execute(&Command::Move(Left));
         assert!(contains_error(&res));
 
         assert!(exec_ok(&mut col, Command::ResetLevel));
