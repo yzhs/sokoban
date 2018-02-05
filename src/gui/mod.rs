@@ -35,7 +35,8 @@ const IDENTITY: [[f32; 4]; 4] = {
 
 enum State {
     Level,
-    EndOfLevel,
+    FinishAnimation,
+    LevelSolved,
 }
 
 pub struct Gui {
@@ -183,8 +184,8 @@ impl Gui {
     /// Has the current level been solved, i.e. should the end-of-level overlay be rendered?
     fn level_solved(&self) -> bool {
         match self.state {
-            State::EndOfLevel => true,
-            _ => false,
+            State::Level => false,
+            _ => true,
         }
     }
 }
@@ -522,28 +523,24 @@ impl Gui {
         }
 
         // Display text overlay
-        if self.level_solved() {
-            self.draw_end_of_level_overlay(&mut target);
-        } else {
-            let aspect_ratio = self.window_aspect_ratio();
-            // TODO show collection name
-            // Show some statistics
-            let text = format!(
-                "Level: {}, Steps: {}, Pushes: {}",
-                self.game.rank(),
-                self.game.number_of_moves(),
-                self.game.number_of_pushes()
-            );
+        let aspect_ratio = self.window_aspect_ratio();
+        // TODO show collection name
+        // Show some statistics
+        let text = format!(
+            "Level: {}, Steps: {}, Pushes: {}",
+            self.game.rank(),
+            self.game.number_of_moves(),
+            self.game.number_of_pushes()
+        );
 
-            self.font_data.draw(
-                &mut target,
-                &text,
-                Font::Mono,
-                0.04,
-                [0.5, -0.9],
-                aspect_ratio,
-            );
-        }
+        self.font_data.draw(
+            &mut target,
+            &text,
+            Font::Mono,
+            0.04,
+            [0.5, -0.9],
+            aspect_ratio,
+        );
 
         target.finish().unwrap();
     }
@@ -625,7 +622,14 @@ impl Gui {
     fn render(&mut self) {
         match self.state {
             State::Level => self.render_level(),
-            State::EndOfLevel => self.render_end_of_level(),
+            State::FinishAnimation => {
+                self.render_level();
+                if !self.worker.is_animated() {
+                    self.background = None;
+                    self.state = State::LevelSolved;
+                }
+            }
+            State::LevelSolved => self.render_end_of_level(),
         }
     }
 }
@@ -650,8 +654,7 @@ impl Gui {
                 LevelFinished(resp) => {
                     if !self.level_solved() {
                         use self::save::UpdateResponse::*;
-                        self.state = State::EndOfLevel;
-                        self.background = None;
+                        self.state = State::FinishAnimation;
                         match resp {
                             FirstTimeSolved => info!(
                                 "You have successfully solved this level for the first time! \

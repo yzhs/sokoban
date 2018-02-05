@@ -39,6 +39,10 @@ impl Sprite {
         }
     }
 
+    pub fn is_animated(&self) -> bool {
+        self.animation.get().is_some()
+    }
+
     /// Animate the current sprite’s movement from its current position to the given position.
     pub fn move_to(&mut self, new_position: Position) {
         let old_position = self.position;
