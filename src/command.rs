@@ -83,7 +83,8 @@ impl Command {
             Undo => "<".to_string(),
             Redo => ">".to_string(),
             ExecuteMacro(slot) => format!("@{}", slot),
-            _ => "".to_string(),
+            Nothing | ResetLevel | NextLevel | PreviousLevel | Save | LoadCollection(_)
+            | RecordMacro(_) | StoreMacro => unreachable!(),
         }
     }
 }
