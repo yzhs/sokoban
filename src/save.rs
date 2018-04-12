@@ -149,8 +149,23 @@ impl<'a> From<&'a Level> for LevelState {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CollectionState {
     pub name: String,
+
     pub collection_solved: bool,
+
+    #[serde(default)]
+    pub levels_solved: u32,
+
     pub levels: Vec<LevelState>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StatsOnlyCollectionState {
+    pub name: String,
+
+    pub collection_solved: bool,
+
+    #[serde(default)]
+    pub levels_solved: u32,
 }
 
 impl CollectionState {
@@ -159,27 +174,47 @@ impl CollectionState {
         CollectionState {
             name: name.to_string(),
             collection_solved: false,
+            levels_solved: 0,
             levels: vec![],
         }
+    }
+
+    pub fn load_stats(name: &str) -> Self {
+        Self::load_helper(name, true)
     }
 
     /// Try to load the `CollectionState` for the level set with the given name. If that fails,
     /// return a new empty `CollectionState`.
     pub fn load(name: &str) -> Self {
+        Self::load_helper(name, false)
+    }
+
+    fn load_helper(name: &str, stats_only: bool) -> Self {
         let path = DATA_DIR.join(name);
 
-        Self::load_messagepack(&path)
-            .or_else(|| Self::load_json(&path))
+        Self::load_messagepack(&path, stats_only)
+            .or_else(|| Self::load_json(&path, stats_only))
             .unwrap_or_else(|| Self::new(name))
     }
 
-    fn load_json(path: &Path) -> Option<Self> {
-        File::open(path.with_extension("json"))
-            .ok()
-            .and_then(|file| ::serde_json::from_reader(file).ok())
+    fn load_json(path: &Path, stats_only: bool) -> Option<Self> {
+        let file = File::open(path.with_extension("json")).ok();
+
+        if stats_only {
+            let stats: Option<StatsOnlyCollectionState> =
+                file.and_then(|file| ::serde_json::from_reader(file).ok());
+            stats.map(|stats| Self {
+                name: stats.name,
+                collection_solved: stats.collection_solved,
+                levels_solved: stats.levels_solved,
+                levels: vec![],
+            })
+        } else {
+            file.and_then(|file| ::serde_json::from_reader(file).ok())
+        }
     }
 
-    fn load_messagepack(path: &Path) -> Option<Self> {
+    fn load_messagepack(path: &Path, stats_only: bool) -> Option<Self> {
         use std::io::BufReader;
         File::open(path.with_extension("mp")).ok().and_then(|file| {
             let mut de = Deserializer::new(BufReader::new(file));
@@ -195,6 +230,8 @@ impl CollectionState {
                 lvl.set_rank(i + 1);
             }
         }
+
+        self.levels_solved = self.levels_finished() as u32;
 
         let mut path = DATA_DIR.join(name);
         path.set_extension("json");
