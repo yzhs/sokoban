@@ -260,7 +260,11 @@ impl Collection {
     }
 
     pub fn number_of_solved_levels(&self) -> usize {
-        self.state.levels_finished()
+        if self.levels.len() == 0 {
+            self.state.levels_solved as usize
+        } else {
+            self.state.levels_finished()
+        }
     }
 
     pub fn is_solved(&self) -> bool {
@@ -391,22 +395,27 @@ impl Collection {
 
     /// Load state stored on disc.
     fn load(&mut self, parse_levels: bool) {
-        let state = CollectionState::load(&self.short_name);
-        if parse_levels && !state.collection_solved {
-            let n = state.levels_finished();
-            let mut lvl = self.levels[n].clone();
-            if n < state.levels.len() {
-                if let LevelState::Started {
-                    number_of_moves,
-                    ref moves,
-                    ..
-                } = state.levels[n]
-                {
-                    lvl.execute_moves(number_of_moves, moves);
+        let state: CollectionState;
+        if parse_levels {
+            state = CollectionState::load(&self.short_name);
+            if !state.collection_solved {
+                let n = state.levels_finished();
+                let mut lvl = self.levels[n].clone();
+                if n < state.levels.len() {
+                    if let LevelState::Started {
+                        number_of_moves,
+                        ref moves,
+                        ..
+                    } = state.levels[n]
+                    {
+                        lvl.execute_moves(number_of_moves, moves);
+                    }
                 }
+                self.current_level = lvl;
             }
-            self.current_level = lvl;
-        };
+        } else {
+            state = CollectionState::load_stats(&self.short_name);
+        }
         self.state = state;
     }
 
