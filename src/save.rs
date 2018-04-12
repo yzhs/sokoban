@@ -251,6 +251,15 @@ impl CollectionState {
             .map(|_| ())
     }
 
+    fn save_cbor(&self, name: &str) -> Result<(), SaveError> {
+        let mut path = DATA_DIR.join(name);
+        path.set_extension("cbor");
+        File::create(path)
+            .map_err(SaveError::from)
+            .and_then(|mut file| ::serde_cbor::to_writer(&mut file, &self).map_err(SaveError::from))
+            .map(|_| ())
+    }
+
     /// If a better or more complete solution for the current level is available, replace the old
     /// one with it.
     pub fn update(&mut self, index: usize, level_state: LevelState) -> UpdateResponse {
