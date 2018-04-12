@@ -56,6 +56,20 @@ fn file_stem(p: &::std::path::PathBuf) -> &str {
     p.file_stem().unwrap().to_str().unwrap()
 }
 
+pub fn convert_savegames() {
+    use std::ffi::OsStr;
+
+    for entry in fs::read_dir(DATA_DIR.as_path()).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if path.is_file() && path.extension() == Some(OsStr::new("json")) {
+            let collection_name = file_stem(&path);
+            let mut state = save::CollectionState::load(&collection_name);
+            state.save(&collection_name).unwrap();
+        }
+    }
+}
+
 pub fn print_collections_table() {
     use ansi_term::Colour::{Blue, Green, White, Yellow};
 
