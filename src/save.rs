@@ -239,7 +239,7 @@ impl CollectionState {
 
         self.levels_solved = self.levels_finished() as u32;
 
-        self.save_json(name)
+        self.save_cbor(name)
     }
 
     fn save_json(&self, name: &str) -> Result<(), SaveError> {
