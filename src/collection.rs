@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
-use std::io::Read;
 use std::fs::File;
+use std::io::Read;
 
 use command::*;
 use direction::*;
@@ -150,8 +150,8 @@ impl Collection {
         file: File,
         parse_levels: bool,
     ) -> Result<Collection, SokobanError> {
-        use quick_xml::reader::Reader;
         use quick_xml::events::Event;
+        use quick_xml::reader::Reader;
 
         enum State {
             Nothing,

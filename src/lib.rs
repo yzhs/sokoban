@@ -44,8 +44,8 @@ use std::path::PathBuf;
 
 pub use collection::*;
 pub use command::*;
-pub use game::*;
 pub use direction::*;
+pub use game::*;
 pub use level::*;
 pub use macros::*;
 pub use move_::*;

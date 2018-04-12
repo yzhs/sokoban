@@ -1,6 +1,6 @@
 use glium;
-use glium::texture::Texture2d;
 use glium::backend::Facade;
+use glium::texture::Texture2d;
 use image;
 
 use backend::{Direction, Position, ASSETS};

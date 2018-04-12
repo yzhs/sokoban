@@ -5,11 +5,11 @@ mod texture;
 use std::cmp::min;
 use std::collections::VecDeque;
 
-use glium::{Program, Surface};
 use glium::backend::glutin_backend::GlutinFacade;
 use glium::glutin::{MouseButton, VirtualKeyCode};
 use glium::index::{NoIndices, PrimitiveType};
 use glium::texture::Texture2d;
+use glium::{Program, Surface};
 
 use backend::*;
 use gui::font::{FontData, FontStyle};
@@ -425,8 +425,8 @@ impl Gui {
 
     /// Draw an overlay with some statistics.
     fn draw_end_of_level_overlay<S: Surface>(&self, target: &mut S) {
-        use glium::Program;
         use self::texture::{DARKEN_SHADER, VERTEX_SHADER};
+        use glium::Program;
 
         let program =
             Program::from_source(&self.display, VERTEX_SHADER, DARKEN_SHADER, None).unwrap();
@@ -732,8 +732,8 @@ impl Gui {
 
             events = self.display.poll_events().collect();
             for ev in events {
-                use glium::glutin::Event;
                 use glium::glutin::ElementState::*;
+                use glium::glutin::Event;
 
                 cmd = Command::Nothing;
 

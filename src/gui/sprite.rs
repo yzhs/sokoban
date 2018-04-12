@@ -1,6 +1,6 @@
 use std::cell::Cell;
-use std::time::Instant;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use backend::{Direction, Position};
 use gui::texture::*;
