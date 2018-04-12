@@ -212,8 +212,7 @@ impl CollectionState {
             UpdateResponse::FirstTimeSolved
         } else {
             use self::LevelState::*;
-            let ls_old = self.levels[index].clone();
-            match ls_old {
+            match self.levels[index].clone() {
                 Started { .. } => {
                     self.levels[index] = level_state;
                     UpdateResponse::FirstTimeSolved

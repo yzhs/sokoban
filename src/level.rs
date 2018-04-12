@@ -1,5 +1,5 @@
-use std::fmt;
 use std::collections::{HashMap, VecDeque};
+use std::fmt;
 
 use command::{Obstacle, Response, WithCrate};
 use direction::*;
@@ -194,7 +194,7 @@ impl Level {
         }
 
         Ok(Level {
-            rank: rank, // The first level is level 1
+            rank, // The first level is level 1
             columns,
             rows,
 
