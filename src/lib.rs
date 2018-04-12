@@ -51,7 +51,7 @@ pub use move_::*;
 pub use position::*;
 pub use util::*;
 
-fn file_stem(p: &::std::path::PathBuf) -> &str {
+fn file_stem(p: &PathBuf) -> &str {
     p.file_stem().unwrap().to_str().unwrap()
 }
 
