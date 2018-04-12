@@ -242,15 +242,6 @@ impl CollectionState {
         self.save_cbor(name)
     }
 
-    fn save_json(&self, name: &str) -> Result<(), SaveError> {
-        let mut path = DATA_DIR.join(name);
-        path.set_extension("json");
-        File::create(path)
-            .map_err(SaveError::from)
-            .and_then(|file| ::serde_json::to_writer(file, &self).map_err(SaveError::from))
-            .map(|_| ())
-    }
-
     fn save_cbor(&self, name: &str) -> Result<(), SaveError> {
         let mut path = DATA_DIR.join(name);
         path.set_extension("cbor");
