@@ -239,6 +239,10 @@ impl CollectionState {
 
         self.levels_solved = self.levels_finished() as u32;
 
+        self.save_json(name)
+    }
+
+    fn save_json(&self, name: &str) -> Result<(), SaveError> {
         let mut path = DATA_DIR.join(name);
         path.set_extension("json");
         File::create(path)
