@@ -40,7 +40,7 @@ pub fn load(display: &Facade, name: &str) -> Texture2d {
     let image = image::open(path).unwrap().to_rgba();
     let image_dimensions = image.dimensions();
     let image =
-        glium::texture::RawImage2d::from_raw_rgba_reversed(image.into_raw(), image_dimensions);
+        glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
     Texture2d::new(display, image).unwrap()
 }
 

@@ -5,7 +5,7 @@ mod texture;
 use std::cmp::min;
 use std::collections::VecDeque;
 
-use glium::backend::glutin_backend::GlutinFacade;
+use glium::backend::glutin::Display;
 use glium::glutin::{MouseButton, VirtualKeyCode};
 use glium::index::{NoIndices, PrimitiveType};
 use glium::texture::Texture2d;
@@ -65,7 +65,8 @@ pub struct Gui {
     cursor_pos: [f64; 2],
 
     // Graphics
-    display: GlutinFacade,
+    display: Display,
+    events_loop: ::glium::glutin::EventsLoop,
     params: ::glium::DrawParameters<'static>,
     font_data: FontData,
     matrix: [[f32; 4]; 4],
@@ -90,18 +91,19 @@ impl Gui {
     /// Initialize the `Gui` struct by setting default values, and loading a collection and
     /// textures.
     pub fn new(collection_name: &str) -> Self {
-        use glium::DisplayBuild;
+        use glium;
         let game = Game::new(collection_name).expect("Failed to load level set");
 
-        let display = ::glium::glutin::WindowBuilder::new()
+        let events_loop = glium::glutin::EventsLoop::new();
+        let window = glium::glutin::WindowBuilder::new()
             .with_dimensions(800, 600)
-            .with_title(TITLE.to_string() + " - " + game.name())
-            .build_glium()
-            .unwrap_or_else(|e| panic!("Failed to build window: {}", e));
+            .with_title(TITLE.to_string() + " - " + game.name());
 
+        let context = glium::glutin::ContextBuilder::new();
+        let display = glium::Display::new(window, context, &events_loop).unwrap();
         display
-            .get_window()
-            .map(|x| x.set_cursor(::glium::glutin::MouseCursor::Default));
+            .gl_window()
+            .set_cursor(::glium::glutin::MouseCursor::Default);
 
         let textures = Textures::new(&display);
         let font_data = FontData::new(
@@ -137,6 +139,7 @@ impl Gui {
             state: State::Level,
 
             display,
+            events_loop,
             params,
             font_data,
             matrix: IDENTITY,
@@ -724,30 +727,51 @@ impl Gui {
 
     pub fn main_loop(mut self) {
         let mut queue = VecDeque::new();
-        let mut events: Vec<_>;
-        let mut cmd;
 
         loop {
+            use glium::glutin::ElementState::*;
+            use glium::glutin::{Event, KeyboardInput, WindowEvent};
             self.render();
 
-            events = self.display.poll_events().collect();
-            for ev in events {
-                use glium::glutin::ElementState::*;
-                use glium::glutin::Event;
+            let mut events = vec![];
+            self.events_loop.poll_events(|event: Event| match event {
+                Event::Awakened => {}
+                Event::DeviceEvent { .. } => {}
+                Event::WindowEvent { event: ev, .. } => events.push(ev),
+            });
 
-                cmd = Command::Nothing;
+            for event in events {
+                let mut cmd = Command::Nothing;
 
-                match ev {
-                    Event::Closed | Event::KeyboardInput(Pressed, _, Some(VirtualKeyCode::Q)) => {
-                        return
+                match event {
+                    WindowEvent::Closed
+                    | WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                state: Pressed,
+                                virtual_keycode: Some(VirtualKeyCode::Q),
+                                ..
+                            },
+                        ..
+                    } => return,
+
+                    WindowEvent::KeyboardInput {
+                        input: KeyboardInput { state: Pressed, .. },
+                        ..
                     }
-
-                    Event::KeyboardInput(Pressed, _, _) | Event::MouseInput(..)
-                        if self.level_solved() =>
+                    | WindowEvent::MouseInput { .. } if self.level_solved() =>
                     {
                         cmd = Command::NextLevel
                     }
-                    Event::KeyboardInput(state, _, Some(key)) => {
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                state,
+                                virtual_keycode: Some(key),
+                                ..
+                            },
+                        ..
+                    } => {
                         use glium::glutin::VirtualKeyCode::*;
                         match key {
                             LControl | RControl => self.control_pressed = state == Pressed,
@@ -757,16 +781,22 @@ impl Gui {
                         }
                     }
 
-                    Event::MouseMoved(x, y) => self.cursor_pos = [f64::from(x), f64::from(y)],
-                    Event::MouseInput(Released, btn) => cmd = self.click_to_command(btn),
+                    WindowEvent::MouseMoved {
+                        position: (x, y), ..
+                    } => self.cursor_pos = [f64::from(x), f64::from(y)],
+                    WindowEvent::MouseInput {
+                        state: Released,
+                        button: btn,
+                        ..
+                    } => cmd = self.click_to_command(btn),
 
-                    Event::Resized(w, h) => {
+                    WindowEvent::Resized(w, h) => {
                         self.window_size = [w, h];
                         self.background = None;
                     }
 
-                    // Event::KeyboardInput(_, _, None) | Event::ReceivedCharacter(_) |
-                    // Event::MouseInput(Pressed, _) | Event::MouseWheel(..)
+                    // WindowEvent::KeyboardInput(_, _, None) | WindowEvent::ReceivedCharacter(_) |
+                    // WindowEvent::MouseInput(Pressed, _) | WindowEvent::MouseWheel(..)
                     _ => (),
                 }
 

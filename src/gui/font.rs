@@ -2,7 +2,7 @@ use std::fs::File;
 use std::path::Path;
 
 use glium::Surface;
-use glium::backend::glutin_backend::GlutinFacade;
+use glium::backend::glutin::Display;
 use glium_text_rusttype::{FontTexture, TextDisplay, TextSystem};
 
 const WHITE: (f32, f32, f32, f32) = (1.0, 1.0, 1.0, 1.0);
@@ -25,7 +25,7 @@ pub struct FontData {
 impl FontData {
     /// Load font from disk and create a glyph texture at two different font sizes.
     pub fn new<P: AsRef<Path>, Q: AsRef<Path>>(
-        display: &GlutinFacade,
+        display: &Display,
         font_path: P,
         mono_path: Q,
     ) -> Self {
