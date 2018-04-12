@@ -209,17 +209,21 @@ impl Collection {
                     _ => {}
                 },
 
-                Ok(Event::Text(e)) => {
-                    let s = e.unescape_and_decode(&reader).unwrap();
-                    match state {
-                        State::Nothing => {}
-                        State::Title => title.push_str(&s),
-                        State::Description => description.push_str(&s),
-                        State::Email => email.push_str(&s),
-                        State::Url => url.push_str(&s),
-                        State::Line => level_lines.push_str(&s),
+                Ok(Event::Text(ref e)) => match state {
+                    State::Nothing => {}
+                    State::Line if !parse_levels => {}
+                    _ => {
+                        let s = e.unescape_and_decode(&reader).unwrap();
+                        match state {
+                            State::Title => title.push_str(&s),
+                            State::Description => description.push_str(&s),
+                            State::Email => email.push_str(&s),
+                            State::Url => url.push_str(&s),
+                            State::Line => level_lines.push_str(&s),
+                            _ => unreachable!(),
+                        }
                     }
-                }
+                },
 
                 Ok(Event::Eof) => break,
 
