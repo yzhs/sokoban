@@ -784,7 +784,7 @@ impl Gui {
 
                     WindowEvent::CursorMoved {
                         position: (x, y), ..
-                    } => self.cursor_pos = [f64::from(x), f64::from(y)],
+                    } => self.cursor_pos = [x, y],
                     WindowEvent::MouseInput {
                         state: Released,
                         button: btn,

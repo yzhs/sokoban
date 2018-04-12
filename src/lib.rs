@@ -63,8 +63,8 @@ pub fn convert_savegames() {
         let path = entry.path();
         if path.is_file() && path.extension() == Some(OsStr::new("json")) {
             let collection_name = file_stem(&path);
-            let mut state = save::CollectionState::load(&collection_name);
-            state.save(&collection_name).unwrap();
+            let mut state = save::CollectionState::load(collection_name);
+            state.save(collection_name).unwrap();
         }
     }
 }

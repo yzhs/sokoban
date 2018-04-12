@@ -264,7 +264,7 @@ impl Collection {
     }
 
     pub fn number_of_solved_levels(&self) -> usize {
-        if self.levels.len() == 0 {
+        if self.levels.is_empty() {
             self.state.levels_solved as usize
         } else {
             self.state.levels_finished()
