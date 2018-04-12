@@ -7,9 +7,8 @@ extern crate colog;
 #[macro_use]
 extern crate log;
 
-/// MessagePack
-extern crate rmp_serde;
 extern crate serde;
+extern crate serde_cbor;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;

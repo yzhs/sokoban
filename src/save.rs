@@ -8,9 +8,6 @@ use std::fs::File;
 use std::io;
 use std::path::Path;
 
-use rmp_serde::Deserializer;
-use serde::Deserialize;
-
 use level::*;
 use util::DATA_DIR;
 
@@ -192,7 +189,7 @@ impl CollectionState {
     fn load_helper(name: &str, stats_only: bool) -> Self {
         let path = DATA_DIR.join(name);
 
-        Self::load_messagepack(&path, stats_only)
+        Self::load_cbor(&path, stats_only)
             .or_else(|| Self::load_json(&path, stats_only))
             .unwrap_or_else(|| Self::new(name))
     }
@@ -214,12 +211,21 @@ impl CollectionState {
         }
     }
 
-    fn load_messagepack(path: &Path, stats_only: bool) -> Option<Self> {
-        use std::io::BufReader;
-        File::open(path.with_extension("mp")).ok().and_then(|file| {
-            let mut de = Deserializer::new(BufReader::new(file));
-            Deserialize::deserialize(&mut de).ok()
-        })
+    fn load_cbor(path: &Path, stats_only: bool) -> Option<Self> {
+        let file = File::open(path.with_extension("cbor")).ok();
+
+        if stats_only {
+            let stats: Option<StatsOnlyCollectionState> =
+                file.and_then(|file| ::serde_cbor::from_reader(file).ok());
+            stats.map(|stats| Self {
+                name: stats.name,
+                collection_solved: stats.collection_solved,
+                levels_solved: stats.levels_solved,
+                levels: vec![],
+            })
+        } else {
+            file.and_then(|file| ::serde_cbor::from_reader(file).ok())
+        }
     }
 
     /// Save the current state to disc.
@@ -304,6 +310,7 @@ impl CollectionState {
 pub enum SaveError {
     FailedToCreateFile(io::Error),
     FailedToWriteFile(::serde_json::Error),
+    CBOREncodeError(::serde_cbor::error::Error),
 }
 
 impl error::Error for SaveError {
@@ -312,6 +319,7 @@ impl error::Error for SaveError {
         match *self {
             FailedToCreateFile(_) => "Failed to create file",
             FailedToWriteFile(_) => "Failed to serialize to file",
+            CBOREncodeError(_) => "Failed to serialize to CBOR",
         }
     }
 
@@ -320,6 +328,7 @@ impl error::Error for SaveError {
         match *self {
             FailedToCreateFile(ref e) => e.cause(),
             FailedToWriteFile(ref e) => e.cause(),
+            CBOREncodeError(ref e) => e.cause(),
         }
     }
 }
@@ -334,6 +343,11 @@ impl From<::serde_json::Error> for SaveError {
         self::SaveError::FailedToWriteFile(e)
     }
 }
+impl From<::serde_cbor::error::Error> for SaveError {
+    fn from(e: ::serde_cbor::error::Error) -> Self {
+        self::SaveError::CBOREncodeError(e)
+    }
+}
 
 impl fmt::Display for SaveError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -341,6 +355,7 @@ impl fmt::Display for SaveError {
         match *self {
             FailedToCreateFile(ref e) => write!(fmt, "Failed to create file: {}", e),
             FailedToWriteFile(ref e) => write!(fmt, "Failed to write file: {}", e),
+            CBOREncodeError(ref e) => write!(fmt, "Failed to encode CBOR file: {}", e),
         }
     }
 }
