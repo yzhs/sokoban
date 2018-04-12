@@ -736,6 +736,7 @@ impl Gui {
             let mut events = vec![];
             self.events_loop.poll_events(|event: Event| match event {
                 Event::Awakened => {}
+                Event::Suspended(_) => {}
                 Event::DeviceEvent { .. } => {}
                 Event::WindowEvent { event: ev, .. } => events.push(ev),
             });
@@ -781,7 +782,7 @@ impl Gui {
                         }
                     }
 
-                    WindowEvent::MouseMoved {
+                    WindowEvent::CursorMoved {
                         position: (x, y), ..
                     } => self.cursor_pos = [f64::from(x), f64::from(y)],
                     WindowEvent::MouseInput {
