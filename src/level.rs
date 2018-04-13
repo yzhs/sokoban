@@ -589,7 +589,7 @@ impl fmt::Display for Level {
         let columns = self.columns();
         for i in 0..self.rows() {
             if i != 0 {
-                write!(f, "\n")?;
+                writeln!(f)?;
             }
             for j in 0..columns {
                 let background = self.background[j + i * self.columns];

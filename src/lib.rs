@@ -98,10 +98,9 @@ pub fn print_collections_table() {
 
                 if collection.is_solved() {
                     println!(
-                        " {}{}{:>10} {}",
+                        " {}{}           {}",
                         Green.paint(padded_short_name),
                         Green.bold().paint(padded_full_name),
-                        "",
                         Green.paint("done")
                     );
                 } else {
