@@ -6,7 +6,7 @@ use std::cmp::min;
 use std::collections::VecDeque;
 
 use glium::backend::glutin::Display;
-use glium::glutin::{MouseButton, VirtualKeyCode};
+use glium::glutin::{Event, KeyboardInput, ModifiersState, MouseButton, VirtualKeyCode, WindowEvent};
 use glium::index::{NoIndices, PrimitiveType};
 use glium::texture::Texture2d;
 use glium::{Program, Surface};
@@ -47,22 +47,7 @@ pub struct Gui {
     /// Is the current level the last of this collection.
     end_of_collection: bool,
 
-    command_queue: VecDeque<Command>,
-
     state: State,
-
-    // Inputs
-    /// Is the shift key currently pressed?
-    shift_pressed: bool,
-
-    /// Is the control key currently pressed?
-    control_pressed: bool,
-
-    /// Is a macro currently being recorded and if so, which?
-    recording_macro: bool,
-
-    /// The current mouse position
-    cursor_pos: [f64; 2],
 
     // Graphics
     display: Display,
@@ -135,7 +120,6 @@ impl Gui {
         let mut gui = Gui {
             game,
             end_of_collection: false,
-            command_queue: VecDeque::new(),
             state: State::Level,
 
             display,
@@ -147,11 +131,6 @@ impl Gui {
             window_size: [800, 600],
             textures,
             background: None,
-
-            shift_pressed: false,
-            control_pressed: false,
-            recording_macro: false,
-            cursor_pos: [0.0, 0.0],
 
             worker,
             crates: vec![],
@@ -230,62 +209,8 @@ fn key_to_direction(key: VirtualKeyCode) -> Direction {
 
 /// Handle user input
 impl Gui {
-    /// Handle key press events.
-    fn press_to_command(&mut self, key: VirtualKeyCode) -> Command {
-        use self::Command::*;
-        use self::VirtualKeyCode::*;
-        match key {
-            // Move
-            Left | Right | Up | Down => {
-                let dir = key_to_direction(key);
-                return if self.control_pressed == self.shift_pressed {
-                    Move(dir)
-                } else {
-                    MoveAsFarAsPossible(dir, MayPushCrate(self.shift_pressed))
-                };
-            }
-
-            // Undo and redo
-            Z if !self.control_pressed => {}
-            U if self.control_pressed => {}
-            U | Z if self.shift_pressed => return Redo,
-            U | Z => return Undo,
-
-            // Record or execute macro
-            F1 | F2 | F3 | F4 | F5 | F6 | F7 | F8 | F9 | F10 | F11 | F12 => {
-                let n = key_to_num(key);
-                return if self.recording_macro && self.control_pressed {
-                    // Finish recording
-                    self.recording_macro = false;
-                    StoreMacro
-                } else if self.control_pressed {
-                    // Start recording
-                    self.recording_macro = true;
-                    RecordMacro(n)
-                } else {
-                    // Execute
-                    ExecuteMacro(n)
-                };
-            }
-
-            // Modifier keys
-            LControl | RControl => self.control_pressed = true,
-            LShift | RShift => self.shift_pressed = true,
-
-            P => return PreviousLevel,
-            N => return NextLevel,
-
-            S if self.control_pressed => return Save,
-
-            // Open the main menu
-            Escape => return ResetLevel,
-            _ => error!("Unknown key: {:?}", key),
-        }
-        Nothing
-    }
-
     /// Handle a mouse click.
-    fn click_to_command(&self, mouse_button: MouseButton) -> Command {
+    fn click_to_command(&self, mouse_button: MouseButton, input_state: &InputState) -> Command {
         let columns = self.game.columns() as isize;
         let rows = self.game.rows() as isize;
         let tile_size = self.tile_size();
@@ -302,8 +227,8 @@ impl Gui {
             )
         };
 
-        let x = ((self.cursor_pos[0] - offset_x) / tile_size).trunc() as isize;
-        let y = ((self.cursor_pos[1] - offset_y - 0.5) / tile_size).trunc() as isize;
+        let x = ((input_state.cursor_position[0] - offset_x) / tile_size).trunc() as isize;
+        let y = ((input_state.cursor_position[1] - offset_y - 0.5) / tile_size).trunc() as isize;
         if x > 0 && y > 0 && x < columns - 1 && y < rows - 1 {
             Command::MoveToPosition(
                 ::backend::Position { x, y },
@@ -647,6 +572,65 @@ impl Gui {
     }
 }
 
+#[derive(Default)]
+struct InputState {
+    recording_macro: bool,
+    cursor_position: [f64; 2],
+}
+
+impl InputState {
+    /// Handle key press events.
+    fn press_to_command(&mut self, key: VirtualKeyCode, modifiers: &ModifiersState) -> Command {
+        use self::Command::*;
+        use self::VirtualKeyCode::*;
+        match key {
+            // Move
+            Left | Right | Up | Down => {
+                let dir = key_to_direction(key);
+                return if modifiers.ctrl == modifiers.shift {
+                    Move(dir)
+                } else {
+                    MoveAsFarAsPossible(dir, MayPushCrate(modifiers.shift))
+                };
+            }
+
+            // Undo and redo
+            Z if !modifiers.ctrl => {}
+            U if modifiers.ctrl => {}
+            U | Z if modifiers.shift => return Redo,
+            U | Z => return Undo,
+
+            // Record or execute macro
+            F1 | F2 | F3 | F4 | F5 | F6 | F7 | F8 | F9 | F10 | F11 | F12 => {
+                let n = key_to_num(key);
+                return if self.recording_macro && modifiers.ctrl {
+                    // Finish recording
+                    self.recording_macro = false;
+                    StoreMacro
+                } else if modifiers.ctrl {
+                    // Start recording
+                    self.recording_macro = true;
+                    RecordMacro(n)
+                } else {
+                    // Execute
+                    ExecuteMacro(n)
+                };
+            }
+
+            P => return PreviousLevel,
+            N => return NextLevel,
+
+            S if modifiers.ctrl => return Save,
+
+            // Open the main menu
+            Escape => return ResetLevel,
+            LAlt | LControl | LMenu | LShift | LWin | RAlt | RControl | RMenu | RShift | RWin => {}
+            _ => error!("Unknown key: {:?}", key),
+        }
+        Nothing
+    }
+}
+
 impl Gui {
     /// Handle the queue of responses from the back end, updating the gui status and logging
     /// messages.
@@ -727,18 +711,17 @@ impl Gui {
 
     pub fn main_loop(mut self) {
         let mut queue = VecDeque::new();
+        let mut command_queue = VecDeque::new();
+        let mut input_state: InputState = Default::default();
 
         loop {
             use glium::glutin::ElementState::*;
-            use glium::glutin::{Event, KeyboardInput, WindowEvent};
             self.render();
 
             let mut events = vec![];
-            self.events_loop.poll_events(|event: Event| match event {
-                Event::Awakened => {}
-                Event::Suspended(_) => {}
-                Event::DeviceEvent { .. } => {}
-                Event::WindowEvent { event: ev, .. } => events.push(ev),
+            self.events_loop.poll_events(|ev: Event| match ev {
+                Event::Awakened | Event::Suspended(_) | Event::DeviceEvent { .. } => {}
+                Event::WindowEvent { event, .. } => events.push(event),
             });
 
             for event in events {
@@ -767,29 +750,22 @@ impl Gui {
                     WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
-                                state,
+                                state: Pressed,
                                 virtual_keycode: Some(key),
+                                modifiers,
                                 ..
                             },
                         ..
-                    } => {
-                        use glium::glutin::VirtualKeyCode::*;
-                        match key {
-                            LControl | RControl => self.control_pressed = state == Pressed,
-                            LShift | RShift => self.shift_pressed = state == Pressed,
-                            _ if state == Pressed => cmd = self.press_to_command(key),
-                            _ => (),
-                        }
-                    }
+                    } => cmd = input_state.press_to_command(key, &modifiers),
 
                     WindowEvent::CursorMoved {
                         position: (x, y), ..
-                    } => self.cursor_pos = [x, y],
+                    } => input_state.cursor_position = [x, y],
                     WindowEvent::MouseInput {
                         state: Released,
                         button: btn,
                         ..
-                    } => cmd = self.click_to_command(btn),
+                    } => cmd = self.click_to_command(btn, &input_state),
 
                     WindowEvent::Resized(w, h) => {
                         self.window_size = [w, h];
@@ -801,10 +777,10 @@ impl Gui {
                     _ => (),
                 }
 
-                self.command_queue.push_back(cmd);
+                command_queue.push_back(cmd);
             }
 
-            while let Some(cmd) = self.command_queue.pop_front() {
+            while let Some(cmd) = command_queue.pop_front() {
                 queue.extend(self.game.execute(&cmd));
             }
 
