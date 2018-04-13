@@ -253,6 +253,10 @@ impl Collection {
     }
 
     // Accessor methods
+    /// Get all levels. This is needed for image-to-level
+    pub fn levels(&self) -> &[Level] {
+        self.levels.as_ref()
+    }
 
     /// Is the current level the last one in this collection?
     pub fn end_of_collection(&self) -> bool {

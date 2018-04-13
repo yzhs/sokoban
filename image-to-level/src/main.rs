@@ -14,15 +14,19 @@ fn main() {
         .author("Colin Benner <colin@yzhs.de>")
         .version(env!("CARGO_PKG_VERSION"))
         .about("Convert a raster image into a Sokoban level")
-        .arg(Arg::with_name("INPUTS")
-                 .value_name("FILE")
-                 .help("The rastar images to be converted")
-                 .required(true)
-                 .multiple(true))
-        .arg(Arg::with_name("reverse")
-                 .help("Turn a level into a raster image")
-                 .short("r")
-                 .long("reverse"))
+        .arg(
+            Arg::with_name("INPUTS")
+                .value_name("FILE")
+                .help("The rastar images to be converted")
+                .required(true)
+                .multiple(true),
+        )
+        .arg(
+            Arg::with_name("reverse")
+                .help("Turn a level into a raster image")
+                .short("r")
+                .long("reverse"),
+        )
         .get_matches();
 
     if matches.is_present("reverse") {
@@ -65,14 +69,16 @@ fn write_collection<P: AsRef<Path>>(dir: P) -> io::Result<()> {
 /// Read a collection in the Sokoban assets directory and create a directory containing one image
 /// for each level of that collection.
 fn write_image_directory<P: AsRef<Path>>(name: P) -> io::Result<()> {
-    let collection = sokoban::Collection::parse(name.as_ref().to_str().unwrap()).unwrap();
+    let collection = sokoban::Collection::parse(name.as_ref().to_str().unwrap(), true).unwrap();
     let mut path = name.as_ref().to_path_buf();
     path.set_extension("");
 
     fs::create_dir(&path).unwrap_or(());
-    write!(fs::File::create(path.join("0000_title.txt")).unwrap(),
-           "{}\n",
-           collection.name)?;
+    write!(
+        fs::File::create(path.join("0000_title.txt")).unwrap(),
+        "{}\n",
+        collection.name
+    )?;
 
     for (i, level) in collection.levels().iter().enumerate() {
         level_to_image(path.join(format!("{:04}_level.png", i + 1)), level)?;
@@ -103,8 +109,8 @@ fn image_to_level<P: AsRef<Path>>(path: P) -> String {
 
     for (x, y, pixel) in img.pixels().skip(width as usize) {
         tmp.push(if pixel == empty_color || pixel == floor_color {
-                     ' '
-                 } else if pixel == wall_color {
+            ' '
+        } else if pixel == wall_color {
             '#'
         } else if pixel == goal_color {
             '.'
@@ -132,16 +138,26 @@ fn image_to_level<P: AsRef<Path>>(path: P) -> String {
 
 /// Generate an image representation of a given level.
 fn level_to_image<P: AsRef<Path>>(target: P, level: &sokoban::Level) -> std::io::Result<()> {
-    use image::{Rgb, ImageBuffer};
+    use image::{ImageBuffer, Rgb};
 
     const EMPTY_COLOR: Rgb<u8> = Rgb { data: [0, 0, 0] };
     const WALL_COLOR: Rgb<u8> = Rgb { data: [255, 0, 0] };
-    const FLOOR_COLOR: Rgb<u8> = Rgb { data: [160, 160, 160] };
-    const WORKER_COLOR: Rgb<u8> = Rgb { data: [255, 255, 00] };
-    const CRATE_ON_GOAL_COLOR: Rgb<u8> = Rgb { data: [0, 128, 128] };
-    const CRATE_COLOR: Rgb<u8> = Rgb { data: [0, 255, 255] };
+    const FLOOR_COLOR: Rgb<u8> = Rgb {
+        data: [160, 160, 160],
+    };
+    const WORKER_COLOR: Rgb<u8> = Rgb {
+        data: [255, 255, 00],
+    };
+    const CRATE_ON_GOAL_COLOR: Rgb<u8> = Rgb {
+        data: [0, 128, 128],
+    };
+    const CRATE_COLOR: Rgb<u8> = Rgb {
+        data: [0, 255, 255],
+    };
     const GOAL_COLOR: Rgb<u8> = Rgb { data: [64, 64, 64] };
-    const WORKER_ON_GOAL_COLOR: Rgb<u8> = Rgb { data: [128, 128, 0] };
+    const WORKER_ON_GOAL_COLOR: Rgb<u8> = Rgb {
+        data: [128, 128, 0],
+    };
 
     let width = level.columns() as u32;
     let height = level.rows() as u32 + 1;
