@@ -587,8 +587,10 @@ impl InputState {
             // Move
             Left | Right | Up | Down => {
                 let dir = key_to_direction(key);
-                return if modifiers.ctrl == modifiers.shift {
+                return if !modifiers.ctrl && !modifiers.shift {
                     Move(dir)
+                } else if modifiers.ctrl && modifiers.shift {
+                    Nothing
                 } else {
                     MoveAsFarAsPossible(dir, MayPushCrate(modifiers.shift))
                 };
