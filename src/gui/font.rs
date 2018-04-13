@@ -1,8 +1,8 @@
 use std::fs::File;
 use std::path::Path;
 
-use glium::Surface;
 use glium::backend::glutin::Display;
+use glium::Surface;
 use glium_text_rusttype::{FontTexture, TextDisplay, TextSystem};
 
 const WHITE: (f32, f32, f32, f32) = (1.0, 1.0, 1.0, 1.0);

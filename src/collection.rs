@@ -474,8 +474,8 @@ mod test {
 
     #[test]
     fn load_original() {
-        use Direction::*;
         use position::Position;
+        use Direction::*;
 
         let name = "original";
         let mut col = Collection::parse(name, true).unwrap();

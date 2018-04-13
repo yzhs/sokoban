@@ -76,6 +76,7 @@ impl Command {
         use Command::*;
         match *self {
             Move(dir) => dir.to_string(),
+            // TODO Find different formats for the next two cases
             MoveAsFarAsPossible(dir, MayPushCrate(true)) => format!("_{}", dir),
             MoveAsFarAsPossible(dir, MayPushCrate(false)) => format!("_{}", dir),
             MoveToPosition(pos, MayPushCrate(true)) => format!("[{}, {}]", pos.x, pos.y),
