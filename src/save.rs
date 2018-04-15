@@ -308,6 +308,18 @@ impl CollectionState {
             n - 1
         }
     }
+
+    pub fn number_of_levels(&self) -> usize {
+        self.levels.len()
+    }
+
+    pub fn number_of_solved_levels(&self) -> usize {
+        if self.levels.is_empty() {
+            self.levels_solved as usize
+        } else {
+            self.levels_finished()
+        }
+    }
 }
 
 #[derive(Debug)]

@@ -45,7 +45,7 @@ pub struct Gui {
     game: Game,
 
     /// Is the current level the last of this collection.
-    end_of_collection: bool,
+    is_last_level: bool,
 
     state: State,
 
@@ -119,7 +119,7 @@ impl Gui {
 
         let mut gui = Gui {
             game,
-            end_of_collection: false,
+            is_last_level: false,
             state: State::Level,
 
             display,
@@ -397,7 +397,7 @@ impl Gui {
             aspect_ratio,
         );
 
-        let txt = if self.game.end_of_collection() {
+        let txt = if self.game.is_last_level() {
             "This was the last level in this colletion. Press Q to quit."
         } else {
             "Press any key to go to the next level."
@@ -677,7 +677,7 @@ impl Gui {
                     if let Response::NewLevel(rank) = response {
                         info!("Loading level #{}", rank);
                     }
-                    self.end_of_collection = false;
+                    self.is_last_level = false;
                     self.state = State::Level;
                     self.update_sprites();
                 }
@@ -705,7 +705,7 @@ impl Gui {
                 // NothingToRedo => /* Cannot redo move */
                 // NoPreviousLevel => /* Cannot go backwards past level 1 */
                 // NoPathfindingWhilePushing => /* Path finding pusing crates unimplemented */
-                EndOfCollection => self.end_of_collection = true,
+                EndOfCollection => self.is_last_level = true,
                 _ => {}
             }
         }

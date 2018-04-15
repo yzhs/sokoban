@@ -49,6 +49,7 @@ pub use level::*;
 pub use macros::*;
 pub use move_::*;
 pub use position::*;
+use save::CollectionState;
 pub use util::*;
 
 fn file_stem(p: &PathBuf) -> &str {
@@ -92,11 +93,12 @@ pub fn print_collections_table() {
             if ext == OsStr::new("lvl") || ext == OsStr::new("slc") {
                 let name = path.file_stem().and_then(|x| x.to_str()).unwrap();
                 let collection = Collection::parse(name, false).unwrap();
+                let state = CollectionState::load(&collection.short_name);
 
                 let padded_short_name = format!("{:<24}", name);
                 let padded_full_name = format!("{:<36}", collection.name);
 
-                if collection.is_solved() {
+                if state.collection_solved {
                     println!(
                         " {}{}           {}",
                         Green.paint(padded_short_name),
@@ -104,7 +106,7 @@ pub fn print_collections_table() {
                         Green.paint("done")
                     );
                 } else {
-                    let num_solved = collection.number_of_solved_levels();
+                    let num_solved = state.number_of_solved_levels();
                     let solved = if num_solved == 0 {
                         White.paint("solved")
                     } else {
