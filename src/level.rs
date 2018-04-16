@@ -35,25 +35,25 @@ enum Foreground {
 
 #[derive(Debug, Clone)]
 pub struct Level {
-    pub rank: usize,
+    rank: usize,
     columns: usize,
     rows: usize,
 
     /// `columns * rows` cells’ backgrounds in row-major order
-    pub background: Vec<Background>,
+    background: Vec<Background>,
 
     /// Positions of all crates
-    pub crates: HashMap<Position, usize>,
+    crates: HashMap<Position, usize>,
 
     /// The number of goals that have to be filled to solve the level
     empty_goals: usize,
 
     /// Where the worker is at the moment
-    pub worker_position: Position,
+    worker_position: Position,
 
     /// The sequence of moves performed so far. Everything after the first number_of_moves moves is
     /// used to redo moves, i.e. undoing a previous undo operation.
-    pub moves: Vec<Move>,
+    moves: Vec<Move>,
 
     /// This describes how many moves have to be performed to arrive at the current state.
     number_of_moves: usize,
@@ -213,12 +213,20 @@ impl Level {
         })
     }
 
+    pub fn rank(&self) -> usize {
+        self.rank
+    }
+
     pub fn rows(&self) -> usize {
         self.rows
     }
 
     pub fn columns(&self) -> usize {
         self.columns
+    }
+
+    pub fn worker_position(&self) -> Position {
+        self.worker_position
     }
 
     fn index(&self, pos: Position) -> usize {
@@ -316,6 +324,18 @@ impl Level {
             .take(self.number_of_moves)
             .map(|mv| mv.to_char())
             .collect()
+    }
+
+    /// Get an ordered list of the crates’ positions where the id of a crate is its index in the
+    /// list.
+    pub fn crate_positions(&self) -> Vec<Position> {
+        let mut crates: Vec<_> = self.crates.iter().collect();
+        crates.sort_by_key(|&(_pos, id)| id);
+        crates.into_iter().map(|(&pos, _id)| pos).collect()
+    }
+
+    pub fn background_cells(&self) -> &[Background] {
+        self.background.as_ref()
     }
 }
 

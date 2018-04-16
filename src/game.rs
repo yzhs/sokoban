@@ -11,10 +11,10 @@ use util::SokobanError;
 
 #[derive(Debug)]
 pub struct Game {
-    pub name: String,
+    name: String,
 
     /// A copy of one of the levels.
-    pub current_level: Level,
+    current_level: Level,
 
     collection: Collection,
 
@@ -57,7 +57,7 @@ impl Game {
         if let Command::LoadCollection(ref name) = *cmd {
             error!("Loading level collection {}.", name);
             self.set_collection(name).unwrap();
-            vec![Response::NewLevel(self.current_level.rank)]
+            vec![Response::NewLevel(self.rank())]
         } else {
             self.execute_helper(cmd, false)
         }
@@ -65,7 +65,7 @@ impl Game {
 
     /// Is the current level the last one in this collection?
     pub fn is_last_level(&self) -> bool {
-        self.current_level.rank == self.collection.number_of_levels()
+        self.rank() == self.collection.number_of_levels()
     }
 
     // Access data concerning the current level
@@ -76,7 +76,7 @@ impl Game {
 
     /// The rank of the current level in the current collection.
     pub fn rank(&self) -> usize {
-        self.current_level.rank
+        self.current_level.rank()
     }
 
     /// The number of columns of the current level.
@@ -89,17 +89,13 @@ impl Game {
         self.current_level.rows()
     }
 
-    /// Get an ordered list of the crates’ positions where the id of a crate is its index in the
-    /// list.
     pub fn crate_positions(&self) -> Vec<Position> {
-        let mut crates: Vec<_> = self.current_level().crates.iter().collect();
-        crates.sort_by_key(|&(_pos, id)| id);
-        crates.into_iter().map(|(&pos, _id)| pos).collect()
+        self.current_level.crate_positions()
     }
 
     /// Where is the worker?
     pub fn worker_position(&self) -> Position {
-        self.current_level.worker_position
+        self.current_level.worker_position()
     }
 
     /// Find out which direction the worker is currently facing.
@@ -180,7 +176,7 @@ impl Game {
             LoadCollection(_) => unreachable!(),
         };
         if self.current_level.is_finished() {
-            if self.current_level.rank == self.collection.number_of_levels() {
+            if self.rank() == self.collection.number_of_levels() {
                 self.state.collection_solved = true;
             }
 
@@ -200,14 +196,14 @@ impl Game {
 
     /// Replace the current level by a clean copy.
     fn reset_level(&mut self) -> Response {
-        let n = self.current_level.rank;
+        let n = self.rank();
         self.current_level = self.collection.levels()[n - 1].clone();
         Response::ResetLevel
     }
 
     /// If `current_level` is finished, switch to the next level.
     fn next_level(&mut self) -> Result<Vec<Response>, NextLevelError> {
-        let n = self.current_level.rank;
+        let n = self.rank();
         let finished = self.current_level.is_finished();
         if finished {
             if n < self.collection.number_of_levels() {
@@ -226,7 +222,7 @@ impl Game {
 
     /// Go to the previous level unless this is already the first level in this collection.
     fn previous_level(&mut self) -> Result<Vec<Response>, ()> {
-        let n = self.current_level.rank;
+        let n = self.rank();
         if n < 2 {
             Err(())
         } else {
@@ -264,9 +260,9 @@ impl Game {
     /// Save the state of this collection including the state of the current level.
     fn save(&mut self) -> Result<UpdateResponse, SaveError> {
         // TODO self should not be mut
-        let rank = self.current_level.rank;
+        let rank = self.rank();
         let level_state = match Solution::try_from(&self.current_level) {
-            Ok(soln) => LevelState::new_solved(self.current_level.rank, soln),
+            Ok(soln) => LevelState::new_solved(self.rank(), soln),
             _ => LevelState::new_unsolved(&self.current_level),
         };
         let response = self.state.update(rank - 1, level_state);
@@ -396,7 +392,7 @@ mod tests {
         }
 
         let current_lvl = game.current_level();
-        current_lvl.worker_position == lvl.worker_position
+        current_lvl.worker_position() == lvl.worker_position()
             && current_lvl.number_of_moves() == lvl.number_of_moves()
     }
 }

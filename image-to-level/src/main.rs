@@ -177,25 +177,25 @@ fn level_to_image<P: AsRef<Path>>(target: P, level: &sokoban::Level) -> std::io:
     img.put_pixel(7, 0, WORKER_ON_GOAL_COLOR);
 
     // Write level into remaining rows
-    for (i, &bg) in level.background.iter().enumerate() {
+    for (i, &bg) in level.background_cells().iter().enumerate() {
         use sokoban::Background;
         let pos = level.position(i);
         let pixel = match bg {
             Background::Empty => EMPTY_COLOR,
             Background::Wall => WALL_COLOR,
             Background::Floor => {
-                if level.crates.contains_key(&pos) {
+                if level.crate_positions().contains(&pos) {
                     CRATE_COLOR
-                } else if level.worker_position == pos {
+                } else if level.worker_position() == pos {
                     WORKER_COLOR
                 } else {
                     FLOOR_COLOR
                 }
             }
             Background::Goal => {
-                if level.crates.contains_key(&pos) {
+                if level.crate_positions().contains(&pos) {
                     CRATE_ON_GOAL_COLOR
-                } else if level.worker_position == pos {
+                } else if level.worker_position() == pos {
                     WORKER_ON_GOAL_COLOR
                 } else {
                     GOAL_COLOR

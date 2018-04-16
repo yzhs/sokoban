@@ -285,7 +285,7 @@ impl Gui {
             // Render each of the (square) tiles
             for &value in &[Background::Floor, Background::Goal, Background::Wall] {
                 let mut vertices = vec![];
-                for (i, &cell) in lvl.background.iter().enumerate() {
+                for (i, &cell) in lvl.background_cells().iter().enumerate() {
                     if cell != value {
                         continue;
                     }

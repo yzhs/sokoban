@@ -103,7 +103,7 @@ impl LevelState {
 
     pub fn new_unsolved(level: &Level) -> Self {
         LevelState::Started {
-            rank: level.rank,
+            rank: level.rank(),
             number_of_moves: level.number_of_moves(),
             moves: level.all_moves_to_string(),
         }
@@ -136,7 +136,7 @@ impl<'a> From<&'a Level> for LevelState {
     fn from(lvl: &'a Level) -> Self {
         if lvl.is_finished() {
             let soln = Solution::try_from(lvl).unwrap();
-            LevelState::new_solved(lvl.rank, soln)
+            LevelState::new_solved(lvl.rank(), soln)
         } else {
             LevelState::new_unsolved(lvl)
         }
