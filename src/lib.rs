@@ -93,10 +93,10 @@ pub fn print_collections_table() {
             if ext == OsStr::new("lvl") || ext == OsStr::new("slc") {
                 let name = path.file_stem().and_then(|x| x.to_str()).unwrap();
                 let collection = Collection::parse(name, false).unwrap();
-                let state = CollectionState::load(&collection.short_name);
+                let state = CollectionState::load(collection.short_name());
 
                 let padded_short_name = format!("{:<24}", name);
-                let padded_full_name = format!("{:<36}", collection.name);
+                let padded_full_name = format!("{:<36}", collection.name());
 
                 if state.collection_solved {
                     println!(

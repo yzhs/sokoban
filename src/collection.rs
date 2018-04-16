@@ -13,12 +13,12 @@ enum FileFormat {
 #[derive(Debug)]
 pub struct Collection {
     /// The full name of the collection.
-    pub name: String,
+    name: String,
 
     /// The name of the file containing the level collection.
-    pub short_name: String,
+    short_name: String,
 
-    pub description: Option<String>,
+    description: Option<String>,
 
     number_of_levels: usize,
 
@@ -218,11 +218,26 @@ impl Collection {
     }
 
     // Accessor methods
-    /// Get all levels. This is needed for image-to-level
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn short_name(&self) -> &str {
+        &self.short_name
+    }
+
+    pub fn description(&self) -> Option<&str> {
+        match self.description {
+            Some(ref x) => Some(&x),
+            None => None,
+        }
+    }
+
     pub fn first_level(&self) -> &Level {
         &self.levels[0]
     }
 
+    /// Get all levels. This is needed for image-to-level
     pub fn levels(&self) -> &[Level] {
         self.levels.as_ref()
     }

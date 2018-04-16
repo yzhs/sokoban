@@ -77,7 +77,7 @@ fn write_image_directory<P: AsRef<Path>>(name: P) -> io::Result<()> {
     write!(
         fs::File::create(path.join("0000_title.txt")).unwrap(),
         "{}\n",
-        collection.name
+        collection.name()
     )?;
 
     for (i, level) in collection.levels().iter().enumerate() {

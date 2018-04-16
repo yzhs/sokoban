@@ -119,7 +119,7 @@ impl Game {
 
     /// The collections full name
     pub fn name(&self) -> &str {
-        self.collection.name.as_ref()
+        self.collection.name()
     }
 }
 
@@ -239,11 +239,11 @@ impl Game {
     fn load(&mut self, parse_levels: bool) {
         let state: CollectionState;
         if parse_levels {
-            state = CollectionState::load(&self.collection.short_name);
+            state = CollectionState::load(self.collection.short_name());
             if !state.collection_solved {
                 let n = state.levels_finished();
                 let mut lvl = self.collection.levels()[n].clone();
-                if n < state.levels.len() {
+                if n < state.number_of_levels() {
                     if let LevelState::Started {
                         number_of_moves,
                         ref moves,
@@ -256,7 +256,7 @@ impl Game {
                 self.current_level = lvl;
             }
         } else {
-            state = CollectionState::load_stats(&self.collection.short_name);
+            state = CollectionState::load_stats(self.collection.short_name());
         }
         self.state = state;
     }
@@ -271,7 +271,7 @@ impl Game {
         };
         let response = self.state.update(rank - 1, level_state);
 
-        self.state.save(&self.collection.short_name)?;
+        self.state.save(self.collection.short_name())?;
         Ok(response)
     }
 
@@ -305,7 +305,7 @@ mod tests {
         let name = "original";
         let mut game = Game::new(name).unwrap();
         assert_eq!(game.collection.number_of_levels(), 50);
-        assert_eq!(game.collection.short_name, name);
+        assert_eq!(game.collection.short_name(), name);
 
         assert!(exec_ok(&mut game, Command::Move(Up)));
         assert!(exec_ok(
