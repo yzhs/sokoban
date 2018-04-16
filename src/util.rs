@@ -1,9 +1,8 @@
-use std::error::Error;
-use std::fmt;
 use std::io;
 use std::path::PathBuf;
 
 use app_dirs::{app_dir, AppDataType, AppInfo};
+use quick_xml;
 
 pub const TITLE: &str = "Sokoban";
 
@@ -22,45 +21,25 @@ lazy_static!{
 
 }
 
-#[derive(Debug)]
+#[derive(Debug, Fail)]
 pub enum SokobanError {
+    #[fail(display = "I/O error: {}", _0)]
     IoError(io::Error),
-    XmlError(::quick_xml::errors::Error),
+
+    #[fail(display = "XML error: {}", _0)]
+    XmlError(quick_xml::Error),
+
+    #[fail(display = "No worker in level #{}", _0)]
     NoWorker(usize),
+
+    #[fail(display = "More than one worker in level #{}", _0)]
     TwoWorkers(usize),
+
+    #[fail(display = "Level #{}: #crates - #goals = {}", _0, _1)]
     CratesGoalsMismatch(usize, i32),
+
+    #[fail(display = "Empty description for level #{}", _0)]
     NoLevel(usize),
-}
-
-impl fmt::Display for SokobanError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::SokobanError::*;
-        match *self {
-            IoError(ref err) => write!(f, "{}", err),
-            XmlError(ref err) => write!(f, "{}", err),
-            NoWorker(lvl) => write!(f, "NoWorker({})", lvl),
-            TwoWorkers(lvl) => write!(f, "TwoWorkers({})", lvl),
-            CratesGoalsMismatch(lvl, goals_minus_crates) => {
-                write!(f, "CratesGoalsMismatch({}, {})", lvl, goals_minus_crates)
-            }
-            NoLevel(lvl) => write!(f, "NoLevel({})", lvl),
-        }
-    }
-}
-
-impl Error for SokobanError {
-    #[doc(hidden)]
-    fn description(&self) -> &str {
-        use self::SokobanError::*;
-        match *self {
-            IoError(ref err) => err.description(),
-            XmlError(ref err) => err.description(),
-            TwoWorkers(_) => "More than one worker found.",
-            NoWorker(_) => "No worker found.",
-            CratesGoalsMismatch(_, _) => "The number of crates and goals does not match",
-            NoLevel(_) => "No level description found.",
-        }
-    }
 }
 
 /// Automatically wrap io errors
@@ -71,8 +50,8 @@ impl From<io::Error> for SokobanError {
 }
 
 /// Automatically wrap XML reader errors
-impl From<::quick_xml::errors::Error> for SokobanError {
-    fn from(e: ::quick_xml::errors::Error) -> Self {
+impl From<quick_xml::Error> for SokobanError {
+    fn from(e: quick_xml::Error) -> Self {
         SokobanError::XmlError(e)
     }
 }

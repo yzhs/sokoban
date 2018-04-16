@@ -632,7 +632,10 @@ mod test {
         let s = "@.*.*.";
         let res = Level::parse(0, s);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err().to_string(), "CratesGoalsMismatch(1, 3)");
+        assert_eq!(
+            res.unwrap_err().to_string(),
+            "Level #1: #crates - #goals = 3"
+        );
     }
 
     #[test]
@@ -649,7 +652,10 @@ mod test {
                  ############";
         let res = Level::parse(0, s);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err().to_string(), "TwoWorkers(1)");
+        assert_eq!(
+            res.unwrap_err().to_string(),
+            "More than one worker in level #1"
+        );
     }
 
     #[test]
@@ -666,7 +672,7 @@ mod test {
                  ############";
         let res = Level::parse(0, s);
         assert!(res.is_err());
-        assert_eq!(res.unwrap_err().to_string(), "NoWorker(1)");
+        assert_eq!(res.unwrap_err().to_string(), "No worker in level #1");
     }
 
     #[test]

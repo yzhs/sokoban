@@ -123,7 +123,7 @@ impl Collection {
         parse_levels: bool,
     ) -> Result<Collection, SokobanError> {
         use quick_xml::events::Event;
-        use quick_xml::reader::Reader;
+        use quick_xml::Reader;
 
         enum State {
             Nothing,

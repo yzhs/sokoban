@@ -6,6 +6,8 @@
 extern crate colog;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate failure;
 
 extern crate serde;
 extern crate serde_cbor;
