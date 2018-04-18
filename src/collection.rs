@@ -44,16 +44,17 @@ impl Collection {
         let mut level_path = ASSETS.clone();
         level_path.push("levels");
         level_path.push(short_name);
-        level_path.set_extension("lvl");
 
         let (level_file, file_format) = {
-            if let Ok(f) = File::open(&level_path) {
-                (f, FileFormat::Ascii)
-            } else {
-                level_path.set_extension("slc");
-                match File::open(level_path) {
-                    Ok(f) => (f, FileFormat::Xml),
-                    Err(e) => return Err(SokobanError::from(e)),
+            level_path.set_extension("slc");
+            match File::open(&level_path) {
+                Ok(f) => (f, FileFormat::Xml),
+                Err(_) => {
+                    level_path.set_extension("lvl");
+                    match File::open(level_path) {
+                        Ok(f) => (f, FileFormat::Ascii),
+                        Err(e) => return Err(SokobanError::from(e)),
+                    }
                 }
             }
         };
