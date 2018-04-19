@@ -3,7 +3,7 @@ use std::path::Path;
 
 use glium::backend::glutin::Display;
 use glium::Surface;
-use glium_text_rusttype::{FontTexture, TextDisplay, TextSystem};
+use glium_text_rusttype::{draw, FontTexture, TextDisplay, TextSystem};
 
 const WHITE: (f32, f32, f32, f32) = (1.0, 1.0, 1.0, 1.0);
 
@@ -83,6 +83,6 @@ impl FontData {
             ],
         ];
 
-        let _ = ::glium_text_rusttype::draw(&text_display, &self.system, target, matrix, WHITE);
+        let _ = draw(&text_display, &self.system, target, matrix, WHITE);
     }
 }

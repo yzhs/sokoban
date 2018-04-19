@@ -96,6 +96,6 @@ impl Sprite {
             )
         };
 
-        lrtp_to_vertices(left, right, top, bottom, self.direction)
+        lrtb_to_vertices(left, right, top, bottom, self.direction)
     }
 }

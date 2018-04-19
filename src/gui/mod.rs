@@ -9,8 +9,9 @@ use glium::backend::glutin::Display;
 use glium::glutin::{Event, KeyboardInput, ModifiersState, MouseButton, VirtualKeyCode, WindowEvent};
 use glium::index::{NoIndices, PrimitiveType};
 use glium::texture::Texture2d;
-use glium::{Program, Surface};
+use glium::{self, Program, Surface};
 
+use backend;
 use backend::*;
 use gui::font::{FontData, FontStyle};
 use gui::sprite::*;
@@ -21,8 +22,8 @@ use gui::texture::*;
 const NO_INDICES: NoIndices = NoIndices(PrimitiveType::TrianglesList);
 
 /// Cull half of all faces to make rendering faster.
-const CULLING: ::glium::BackfaceCullingMode =
-    ::glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise;
+const CULLING: glium::BackfaceCullingMode =
+    glium::draw_parameters::BackfaceCullingMode::CullCounterClockwise;
 
 const IDENTITY: [[f32; 4]; 4] = {
     [
@@ -51,8 +52,8 @@ pub struct Gui {
 
     // Graphics
     display: Display,
-    events_loop: ::glium::glutin::EventsLoop,
-    params: ::glium::DrawParameters<'static>,
+    events_loop: glium::glutin::EventsLoop,
+    params: glium::DrawParameters<'static>,
     font_data: FontData,
     matrix: [[f32; 4]; 4],
 
@@ -76,7 +77,6 @@ impl Gui {
     /// Initialize the `Gui` struct by setting default values, and loading a collection and
     /// textures.
     pub fn new(collection_name: &str) -> Self {
-        use glium;
         let game = Game::new(collection_name).expect("Failed to load level set");
 
         let events_loop = glium::glutin::EventsLoop::new();
@@ -88,7 +88,7 @@ impl Gui {
         let display = glium::Display::new(window, context, &events_loop).unwrap();
         display
             .gl_window()
-            .set_cursor(::glium::glutin::MouseCursor::Default);
+            .set_cursor(glium::glutin::MouseCursor::Default);
 
         let textures = Textures::new(&display);
         let font_data = FontData::new(
@@ -111,9 +111,9 @@ impl Gui {
             game.rank(),
             game.name()
         );
-        let params = ::glium::DrawParameters {
+        let params = glium::DrawParameters {
             backface_culling: CULLING,
-            blend: ::glium::Blend::alpha_blending(),
+            blend: glium::Blend::alpha_blending(),
             ..Default::default()
         };
 
@@ -231,7 +231,7 @@ impl Gui {
         let y = ((input_state.cursor_position[1] - offset_y - 0.5) / tile_size).trunc() as isize;
         if x > 0 && y > 0 && x < columns - 1 && y < rows - 1 {
             Command::MoveToPosition(
-                ::backend::Position { x, y },
+                backend::Position { x, y },
                 MayPushCrate(mouse_button == MouseButton::Right),
             )
         } else {
@@ -292,7 +292,7 @@ impl Gui {
                     let pos = lvl.position(i);
                     vertices.extend(texture::quad(pos, columns, rows));
                 }
-                let vertex_buffer = ::glium::VertexBuffer::new(&self.display, &vertices).unwrap();
+                let vb = glium::VertexBuffer::new(&self.display, &vertices).unwrap();
 
                 let texture = match value {
                     Background::Empty => continue,
@@ -304,13 +304,7 @@ impl Gui {
 
                 target
                     .as_surface()
-                    .draw(
-                        &vertex_buffer,
-                        &NO_INDICES,
-                        program,
-                        &uniforms,
-                        &self.params,
-                    )
+                    .draw(&vb, &NO_INDICES, program, &uniforms, &self.params)
                     .unwrap();
             }
         }
@@ -338,17 +332,11 @@ impl Gui {
         target: &mut S,
         vertices: V,
         tex: &Texture2d,
-        program: &::glium::Program,
-    ) -> Result<(), ::glium::DrawError> {
-        let vertex_buffer = ::glium::VertexBuffer::new(&self.display, vertices.as_ref()).unwrap();
+        program: &glium::Program,
+    ) -> Result<(), glium::DrawError> {
+        let vb = glium::VertexBuffer::new(&self.display, vertices.as_ref()).unwrap();
         let uniforms = uniform!{tex: tex, matrix: self.matrix};
-        target.draw(
-            &vertex_buffer,
-            &NO_INDICES,
-            program,
-            &uniforms,
-            &self.params,
-        )
+        target.draw(&vb, &NO_INDICES, program, &uniforms, &self.params)
     }
 
     /// Draw an overlay with some statistics.
@@ -425,7 +413,7 @@ impl Gui {
 
         // Draw background
         let vertices = texture::full_screen();
-        let vertex_buffer = ::glium::VertexBuffer::new(&self.display, &vertices).unwrap();
+        let vb = glium::VertexBuffer::new(&self.display, &vertices).unwrap();
 
         let bg = self.background.as_ref().unwrap();
         let uniforms = uniform!{tex: bg, matrix: IDENTITY};
@@ -436,13 +424,7 @@ impl Gui {
         target.clear_color(0.0, 0.0, 0.0, 1.0); // Prevent artefacts when resizing the window
 
         target
-            .draw(
-                &vertex_buffer,
-                &NO_INDICES,
-                program,
-                &uniforms,
-                &self.params,
-            )
+            .draw(&vb, &NO_INDICES, program, &uniforms, &self.params)
             .unwrap();
 
         // Draw foreground
@@ -485,7 +467,7 @@ impl Gui {
 
     fn render_end_of_level(&mut self) {
         let vertices = texture::full_screen();
-        let vertex_buffer = ::glium::VertexBuffer::new(&self.display, &vertices).unwrap();
+        let vb = glium::VertexBuffer::new(&self.display, &vertices).unwrap();
 
         if self.background.is_none() {
             // Render the end-of-level screen and store it in self.bg
@@ -507,13 +489,7 @@ impl Gui {
                 target.clear_color(0.0, 0.0, 0.0, 1.0);
 
                 target
-                    .draw(
-                        &vertex_buffer,
-                        &NO_INDICES,
-                        program,
-                        &uniforms,
-                        &self.params,
-                    )
+                    .draw(&vb, &NO_INDICES, program, &uniforms, &self.params)
                     .unwrap();
 
                 // Draw foreground
@@ -545,13 +521,7 @@ impl Gui {
             let mut target = self.display.draw();
 
             target
-                .draw(
-                    &vertex_buffer,
-                    &NO_INDICES,
-                    &self.program,
-                    &uniforms,
-                    &self.params,
-                )
+                .draw(&vb, &NO_INDICES, &self.program, &uniforms, &self.params)
                 .unwrap();
             target.finish().unwrap();
         }

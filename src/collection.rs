@@ -257,15 +257,6 @@ impl Collection {
     }
 }
 
-#[derive(Debug)]
-pub enum NextLevelError {
-    /// Tried to move to the next levels when the current one has not been solved.
-    LevelNotFinished,
-
-    /// Cannot move past the last level of a collection.
-    EndOfCollection,
-}
-
 #[cfg(test)]
 mod test {
     use super::*;

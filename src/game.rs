@@ -10,6 +10,15 @@ use save::*;
 use util::SokobanError;
 
 #[derive(Debug)]
+pub enum NextLevelError {
+    /// Tried to move to the next levels when the current one has not been solved.
+    LevelNotFinished,
+
+    /// Cannot move past the last level of a collection.
+    EndOfCollection,
+}
+
+#[derive(Debug)]
 pub struct Game {
     name: String,
 
