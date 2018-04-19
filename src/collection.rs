@@ -40,7 +40,17 @@ impl Collection {
     }
 
     /// Load a level set with the given name, whatever the format might be.
-    pub fn parse(short_name: &str, parse_levels: bool) -> Result<Collection, SokobanError> {
+    pub fn parse(short_name: &str) -> Result<Collection, SokobanError> {
+        Collection::parse_helper(short_name, true)
+    }
+
+    /// Figure out title, description, number of levels, etc. of a collection without parsing each
+    /// level.
+    pub fn parse_metadata(short_name: &str) -> Result<Collection, SokobanError> {
+        Collection::parse_helper(short_name, false)
+    }
+
+    fn parse_helper(short_name: &str, parse_levels: bool) -> Result<Collection, SokobanError> {
         let mut level_path = ASSETS.clone();
         level_path.push("levels");
         level_path.push(short_name);
@@ -262,9 +272,9 @@ mod test {
     use super::*;
     #[test]
     fn load_test_collections() {
-        assert!(Collection::parse("test_2", true).is_ok());
-        assert!(Collection::parse("test_2", false).is_ok());
-        assert!(Collection::parse("test3iuntrenutineaniutea", true).is_err());
-        assert!(Collection::parse("test3iuntrenutineaniutea", false).is_err());
+        assert!(Collection::parse("test_2").is_ok());
+        assert!(Collection::parse("test_2").is_ok());
+        assert!(Collection::parse("test3iuntrenutineaniutea").is_err());
+        assert!(Collection::parse("test3iuntrenutineaniutea").is_err());
     }
 }

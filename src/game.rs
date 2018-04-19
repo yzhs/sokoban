@@ -27,7 +27,7 @@ pub struct Game {
 
 impl Game {
     pub fn new(name: &str) -> Result<Self, SokobanError> {
-        let collection = Collection::parse(name, true)?;
+        let collection = Collection::parse(name)?;
 
         let mut result = Game {
             name: name.into(),
@@ -45,7 +45,7 @@ impl Game {
     /// Load a collection by name.
     pub fn set_collection(&mut self, name: &str) -> Result<(), SokobanError> {
         self.name = name.into();
-        self.collection = Collection::parse(name, true)?;
+        self.collection = Collection::parse(name)?;
         self.current_level = self.collection.first_level().clone();
         self.load(true);
         Ok(())

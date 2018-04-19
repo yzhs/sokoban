@@ -94,7 +94,7 @@ pub fn print_collections_table() {
             use std::ffi::OsStr;
             if ext == OsStr::new("lvl") || ext == OsStr::new("slc") {
                 let name = path.file_stem().and_then(|x| x.to_str()).unwrap();
-                let collection = Collection::parse(name, false).unwrap();
+                let collection = Collection::parse_metadata(name).unwrap();
                 let state = CollectionState::load(collection.short_name());
 
                 let padded_short_name = format!("{:<24}", name);
