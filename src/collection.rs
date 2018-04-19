@@ -57,14 +57,13 @@ impl Collection {
 
         let (level_file, file_format) = {
             level_path.set_extension("slc");
-            match File::open(&level_path) {
-                Ok(f) => (f, FileFormat::Xml),
-                Err(_) => {
-                    level_path.set_extension("lvl");
-                    match File::open(level_path) {
-                        Ok(f) => (f, FileFormat::Ascii),
-                        Err(e) => return Err(SokobanError::from(e)),
-                    }
+            if let Ok(f) = File::open(&level_path) {
+                (f, FileFormat::Xml)
+            } else {
+                level_path.set_extension("lvl");
+                match File::open(level_path) {
+                    Ok(f) => (f, FileFormat::Ascii),
+                    Err(e) => return Err(SokobanError::from(e)),
                 }
             }
         };
