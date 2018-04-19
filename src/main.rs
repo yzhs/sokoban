@@ -1,3 +1,13 @@
+#![cfg_attr(
+    clippy,
+    warn(
+        empty_enum, filter_map, if_not_else, invalid_upcast_comparisons, items_after_statements,
+        mut_mut, nonminimal_bool, option_map_unwrap_or, option_map_unwrap_or_else,
+        pub_enum_variant_names, shadow_same, single_match_else, string_add_assign, unicode_not_nfc,
+        unseparated_literal_suffix, used_underscore_binding, wrong_pub_self_convention
+    )
+)]
+
 // GUI
 #[macro_use]
 extern crate glium;
