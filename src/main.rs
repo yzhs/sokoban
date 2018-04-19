@@ -1,5 +1,5 @@
 #![cfg_attr(
-    clippy,
+    feature = "cargo-clippy",
     warn(
         empty_enum, filter_map, if_not_else, invalid_upcast_comparisons, items_after_statements,
         mut_mut, nonminimal_bool, option_map_unwrap_or, option_map_unwrap_or_else,
