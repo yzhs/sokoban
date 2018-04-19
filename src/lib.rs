@@ -89,7 +89,7 @@ pub fn print_collections_table() {
         Yellow.bold().paint("File name"),
         Yellow.bold().paint("Collection name")
     );
-    println!("{0}{0}{0}{0}{0}", "----------------");
+    println!("--------------------------------------------------------------------------------");
 
     // Find all level set files
     let mut paths: Vec<PathBuf> = fs::read_dir(ASSETS.join("levels"))
