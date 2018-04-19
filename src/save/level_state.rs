@@ -17,6 +17,7 @@ pub enum LevelState {
     Finished {
         #[serde(default)]
         rank: usize,
+
         /// The solution using the least number of moves.
         least_moves: Solution,
 
