@@ -217,7 +217,7 @@ impl Game {
     fn reset_level(&mut self) -> Response {
         let n = self.rank();
         self.current_level = self.collection.levels()[n - 1].clone();
-        Response::ResetLevel
+        self.new_level()
     }
 
     /// If `current_level` is finished, switch to the next level.

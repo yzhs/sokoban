@@ -656,23 +656,24 @@ impl Gui {
                         }
                     }
                 }
-                ResetLevel | NewLevel { .. } => {
-                    if let Response::NewLevel {
-                        rank,
-                        columns,
-                        rows,
-                        worker_position,
-                        worker_direction,
-                    } = response
-                    {
+                NewLevel {
+                    rank,
+                    columns,
+                    rows,
+                    worker_position,
+                    worker_direction,
+                } => {
+                    if rank != self.rank {
                         info!("Loading level #{}", rank);
                         self.rank = rank;
                         self.columns = columns;
                         self.rows = rows;
-                        self.worker_position = worker_position;
-                        self.worker_direction = worker_direction;
                     }
+
+                    self.worker_position = worker_position;
+                    self.worker_direction = worker_direction;
                     self.is_last_level = false;
+
                     self.state = State::Level;
                     self.update_sprites();
                 }

@@ -106,9 +106,6 @@ pub enum Response {
         worker_direction: Direction,
     },
 
-    /// The current level has been reset.
-    ResetLevel,
-
     /// The worker was moved to the given position and facing the given direction
     MoveWorkerTo(Position, Direction),
 
@@ -142,11 +139,7 @@ impl Response {
     pub fn is_error(&self) -> bool {
         use Response::*;
         match *self {
-            LevelFinished(_)
-            | NewLevel { .. }
-            | ResetLevel
-            | MoveWorkerTo(..)
-            | MoveCrateTo(..) => false,
+            LevelFinished(_) | NewLevel { .. } | MoveWorkerTo(..) | MoveCrateTo(..) => false,
             _ => true,
         }
     }
