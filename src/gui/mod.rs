@@ -45,6 +45,13 @@ pub struct Gui {
     /// The main back end data structure.
     game: Game,
 
+    rank: usize,
+    rows: usize,
+    columns: usize,
+
+    worker_position: backend::Position,
+    worker_direction: backend::Direction,
+
     /// Is the current level the last of this collection.
     is_last_level: bool,
 
@@ -118,7 +125,13 @@ impl Gui {
         };
 
         let mut gui = Gui {
+            columns: game.columns(),
+            rows: game.rows(),
+            rank: game.rank(),
+            worker_position: game.worker_position(),
+            worker_direction: game.worker_direction(),
             game,
+
             is_last_level: false,
             state: State::Level,
 
@@ -146,8 +159,8 @@ impl Gui {
 
     /// Compute the tile size.
     fn tile_size(&self) -> f64 {
-        let columns = self.game.columns() as u32;
-        let rows = self.game.rows() as u32;
+        let columns = self.columns as u32;
+        let rows = self.rows as u32;
         f64::from(min(
             self.window_size[0] / columns,
             self.window_size[1] / rows,
@@ -163,7 +176,7 @@ impl Gui {
 
     /// Ratio between the window’s and the level’s aspect ratio.
     fn aspect_ratio_ratio(&self) -> f32 {
-        self.window_aspect_ratio() * self.game.columns() as f32 / self.game.rows() as f32
+        self.window_aspect_ratio() * self.columns as f32 / self.rows as f32
     }
 
     /// Has the current level been solved, i.e. should the end-of-level overlay be rendered?
@@ -211,8 +224,8 @@ fn key_to_direction(key: VirtualKeyCode) -> Direction {
 impl Gui {
     /// Handle a mouse click.
     fn click_to_command(&self, mouse_button: MouseButton, input_state: &InputState) -> Command {
-        let columns = self.game.columns() as isize;
-        let rows = self.game.rows() as isize;
+        let columns = self.columns as isize;
+        let rows = self.rows as isize;
         let tile_size = self.tile_size();
 
         let (offset_x, offset_y) = if self.aspect_ratio_ratio() < 1.0 {
@@ -247,8 +260,8 @@ impl Gui {
         use glium::texture::Texture2d;
         let target;
 
-        let columns = self.game.columns() as u32;
-        let rows = self.game.rows() as u32;
+        let columns = self.columns as u32;
+        let rows = self.rows as u32;
 
         {
             self.matrix = {
@@ -314,8 +327,8 @@ impl Gui {
 
     /// Create sprites for movable entities of the current level.
     fn update_sprites(&mut self) {
-        self.worker = Sprite::new(self.game.worker_position(), texture::TileKind::Worker);
-        self.worker.set_direction(self.game.worker_direction());
+        self.worker = Sprite::new(self.worker_position, texture::TileKind::Worker);
+        self.worker.set_direction(self.worker_direction);
         self.crates = self.game
             .crate_positions()
             .iter()
@@ -371,7 +384,7 @@ impl Gui {
         let stats_text = format!(
             "You have finished the level {} using {} moves, \
              {} of which moved a crate.",
-            self.game.rank(),
+            self.rank,
             self.game.number_of_moves(),
             self.game.number_of_pushes()
         );
@@ -408,8 +421,8 @@ impl Gui {
             self.generate_background();
         }
 
-        let columns = self.game.columns() as u32;
-        let rows = self.game.rows() as u32;
+        let columns = self.columns as u32;
+        let rows = self.rows as u32;
 
         // Draw background
         let vertices = texture::full_screen();
@@ -471,8 +484,8 @@ impl Gui {
 
         if self.background.is_none() {
             // Render the end-of-level screen and store it in self.bg
-            let columns = self.game.columns() as u32;
-            let rows = self.game.rows() as u32;
+            let columns = self.columns as u32;
+            let rows = self.rows as u32;
 
             self.generate_background();
             let width = self.window_size[0];
@@ -643,9 +656,21 @@ impl Gui {
                         }
                     }
                 }
-                ResetLevel | NewLevel(_) => {
-                    if let Response::NewLevel(rank) = response {
+                ResetLevel | NewLevel { .. } => {
+                    if let Response::NewLevel {
+                        rank,
+                        columns,
+                        rows,
+                        worker_position,
+                        worker_direction,
+                    } = response
+                    {
                         info!("Loading level #{}", rank);
+                        self.rank = rank;
+                        self.columns = columns;
+                        self.rows = rows;
+                        self.worker_position = worker_position;
+                        self.worker_direction = worker_direction;
                     }
                     self.is_last_level = false;
                     self.state = State::Level;

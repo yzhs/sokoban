@@ -60,13 +60,23 @@ impl Game {
         Ok(())
     }
 
+    fn new_level(&self) -> Response {
+        Response::NewLevel {
+            rank: self.rank(),
+            columns: self.columns(),
+            rows: self.rows(),
+            worker_position: self.worker_position(),
+            worker_direction: self.worker_direction(),
+        }
+    }
+
     /// Execute a command from the front end. Load new collections or pass control to
     /// `Collection::execute`.
     pub fn execute(&mut self, cmd: &Command) -> Vec<Response> {
         if let Command::LoadCollection(ref name) = *cmd {
             error!("Loading level collection {}.", name);
             self.set_collection(name).unwrap();
-            vec![Response::NewLevel(self.rank())]
+            vec![self.new_level()]
         } else {
             self.execute_helper(cmd, false)
         }
@@ -217,13 +227,13 @@ impl Game {
         if finished {
             if n < self.collection.number_of_levels() {
                 self.current_level = self.collection.levels()[n].clone();
-                Ok(vec![Response::NewLevel(n + 1)])
+                Ok(vec![self.new_level()])
             } else {
                 Err(NextLevelError::EndOfCollection)
             }
         } else if self.state.number_of_levels() >= n && n < self.collection.number_of_levels() {
             self.current_level = self.collection.levels()[n].clone();
-            Ok(vec![Response::NewLevel(n + 1)])
+            Ok(vec![self.new_level()])
         } else {
             Err(NextLevelError::LevelNotFinished)
         }
@@ -236,7 +246,7 @@ impl Game {
             Err(())
         } else {
             self.current_level = self.collection.levels()[n - 2].clone();
-            Ok(vec![Response::NewLevel(n - 1)])
+            Ok(vec![self.new_level()])
         }
     }
 

@@ -98,7 +98,13 @@ pub enum Response {
     LevelFinished(UpdateResponse),
 
     /// A new level has been loaded. The number is the rank in the current level set.
-    NewLevel(usize),
+    NewLevel {
+        rank: usize,
+        columns: usize,
+        rows: usize,
+        worker_position: Position,
+        worker_direction: Direction,
+    },
 
     /// The current level has been reset.
     ResetLevel,
@@ -136,9 +142,11 @@ impl Response {
     pub fn is_error(&self) -> bool {
         use Response::*;
         match *self {
-            LevelFinished(_) | NewLevel(_) | ResetLevel | MoveWorkerTo(..) | MoveCrateTo(..) => {
-                false
-            }
+            LevelFinished(_)
+            | NewLevel { .. }
+            | ResetLevel
+            | MoveWorkerTo(..)
+            | MoveCrateTo(..) => false,
             _ => true,
         }
     }
