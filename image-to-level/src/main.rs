@@ -69,7 +69,7 @@ fn write_collection<P: AsRef<Path>>(dir: P) -> io::Result<()> {
 /// Read a collection in the Sokoban assets directory and create a directory containing one image
 /// for each level of that collection.
 fn write_image_directory<P: AsRef<Path>>(name: P) -> io::Result<()> {
-    let collection = sokoban::Collection::parse(name.as_ref().to_str().unwrap(), true).unwrap();
+    let collection = sokoban::Collection::parse(name.as_ref().to_str().unwrap()).unwrap();
     let mut path = name.as_ref().to_path_buf();
     path.set_extension("");
 
