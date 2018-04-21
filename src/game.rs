@@ -35,20 +35,22 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(name: &str) -> Result<Self, SokobanError> {
-        let collection = Collection::parse(name)?;
+    pub fn load(name: &str) -> Result<Self, SokobanError> {
+        Collection::parse(name).map(Game::new)
+    }
 
+    fn new(collection: Collection) -> Self {
         let mut result = Game {
-            name: name.into(),
+            name: collection.short_name().to_string(),
             current_level: collection.first_level().clone(),
-            collection,
-            state: CollectionState::load(name),
+            state: CollectionState::load(collection.short_name()),
             macros: Macros::new(),
+            collection,
         };
 
-        result.load(true);
+        result.load_state(true);
 
-        Ok(result)
+        result
     }
 
     /// Load a collection by name.
@@ -56,7 +58,7 @@ impl Game {
         self.name = name.into();
         self.collection = Collection::parse(name)?;
         self.current_level = self.collection.first_level().clone();
-        self.load(true);
+        self.load_state(true);
         Ok(())
     }
 
@@ -74,7 +76,7 @@ impl Game {
     /// `Collection::execute`.
     pub fn execute(&mut self, cmd: &Command) -> Vec<Response> {
         if let Command::LoadCollection(ref name) = *cmd {
-            error!("Loading level collection {}.", name);
+            info!("Loading level collection {}.", name);
             self.set_collection(name).unwrap();
             vec![self.new_level()]
         } else {
@@ -251,7 +253,7 @@ impl Game {
     }
 
     /// Load state stored on disc.
-    fn load(&mut self, parse_levels: bool) {
+    fn load_state(&mut self, parse_levels: bool) {
         let state: CollectionState;
         if parse_levels {
             state = CollectionState::load(self.collection.short_name());
@@ -306,7 +308,7 @@ mod tests {
 
     #[test]
     fn switch_levels() {
-        let mut game = Game::new("test").unwrap();
+        let mut game = Game::load("test").unwrap();
         assert!(exec_ok(&mut game, Command::Move(Direction::Right)));
         assert!(exec_ok(&mut game, Command::PreviousLevel));
         assert!(exec_ok(&mut game, Command::NextLevel));
@@ -318,7 +320,7 @@ mod tests {
         use Direction::*;
 
         let name = "original";
-        let mut game = Game::new(name).unwrap();
+        let mut game = Game::load(name).unwrap();
         assert_eq!(game.collection.number_of_levels(), 50);
         assert_eq!(game.collection.short_name(), name);
 

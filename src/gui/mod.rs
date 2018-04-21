@@ -84,7 +84,7 @@ impl Gui {
     /// Initialize the `Gui` struct by setting default values, and loading a collection and
     /// textures.
     pub fn new(collection_name: &str) -> Self {
-        let game = Game::new(collection_name).expect("Failed to load level set");
+        let game = Game::load(collection_name).expect("Failed to load level set");
 
         let events_loop = glium::glutin::EventsLoop::new();
         let window = glium::glutin::WindowBuilder::new()
