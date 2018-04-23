@@ -27,7 +27,7 @@ extern crate sokoban_backend as backend;
 
 mod gui;
 
-use backend::{convert_savegames, print_collections_table, TITLE};
+use backend::{convert_savegames, print_collections_table, print_stats, TITLE};
 
 fn main() {
     use clap::{App, Arg};
@@ -49,6 +49,12 @@ fn main() {
                 .long("list"),
         )
         .arg(
+            Arg::with_name("stats")
+                .help("Print some statistics")
+                .short("s")
+                .long("stats"),
+        )
+        .arg(
             Arg::with_name("convert-savegames")
                 .help("Load and store all savegames to convert them to the latest file format")
                 .long("convert-savegames"),
@@ -60,6 +66,9 @@ fn main() {
         return;
     } else if matches.is_present("list") {
         print_collections_table();
+        return;
+    } else if matches.is_present("stats") {
+        print_stats();
         return;
     }
 

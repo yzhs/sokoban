@@ -24,9 +24,6 @@
 * Add menu to select a specific level in a collection at runtime?
   - Render the levels in thumbnail format?
 
-* Show statistics about how many levels/collections there are/have been solved
-  (--stat?)
-
 * Configuration file
   - Allow users to reconfigure key bindings
   - Automatically save when closing?

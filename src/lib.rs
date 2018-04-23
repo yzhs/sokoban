@@ -52,6 +52,8 @@ mod util;
 use std::fs;
 use std::path::PathBuf;
 
+use ansi_term::Colour::{Blue, Green, White, Yellow};
+
 pub use collection::*;
 pub use command::*;
 pub use direction::*;
@@ -129,8 +131,6 @@ fn gather_stats() -> Vec<CollectionStats> {
 }
 
 pub fn print_collections_table() {
-    use ansi_term::Colour::{Blue, Green, White, Yellow};
-
     let stats = gather_stats();
 
     println!(
@@ -166,4 +166,28 @@ pub fn print_collections_table() {
             );
         }
     }
+}
+
+pub fn print_stats() {
+    let stats = gather_stats();
+
+    let num_collections = stats.len();
+    let num_levels: usize = stats.iter().map(|x| x.total_levels).sum();
+
+    let finished_collections = stats.iter().filter(|x| x.solved()).count();
+    let finished_levels: usize = stats.iter().map(|x| x.solved_levels).sum();
+
+    let collections_started = stats.iter().filter(|x| x.started() && !x.solved()).count();
+
+    println!(
+        "{}",
+        Yellow.bold().paint("          Collections     Levels")
+    );
+    println!("------------------------------------");
+    println!("Total    {:>11} {:>11}", num_collections, num_levels);
+    println!(
+        "Finished {:>11} {:>11}",
+        finished_collections, finished_levels
+    );
+    println!("Started  {:>11}", collections_started);
 }
