@@ -1,36 +1,50 @@
-* Add menu to select collections at runtime
-* Add menu to select a specific level in a collection at runtime?
-  - Render the levels in thumbnail format?
-
+# Code and architecture improvements
 * Clean up UI code
-* Add a background image?
-* Use different kinds of wall tiles to render corners differently from pieces of
-  wall surrounded by other walls
-
-* Show statistics for each level when using --list
-
-* Separate front and back end into threads
-* Communication between front and back end using channels
 
 * Write more tests
   - Module tests in the back end
   - Send Commands to the back end and make sure these lead to the correct
     Responses
   - Test loading and saving games
+
+* Separate front and back end into threads
+
+* Communication between front and back end using channels
+
+# Features
+* Use the atomicwrites crate for replacing existing saves
+
+* Add a background image?
+
+* Use different kinds of wall tiles to render corners differently from pieces of
+  wall surrounded by other walls
+
+* Add menu to select collections at runtime
+
+* Add menu to select a specific level in a collection at runtime?
+  - Render the levels in thumbnail format?
+
+* Show statistics about how many levels/collections there are/have been solved
+  (--stat?)
+
 * Configuration file
   - Allow users to reconfigure key bindings
   - Automatically save when closing?
-* Run length encoding in solution format?
-  - Or maybe encode non-push moves by just specifying the destination
-    coordinates?
+
 * Replay saved game
   - Show all steps
   - Show only the position before and after moving a crate
   - Show only ever n-th state?
+
+* Run length encoding in solution format?
+  - Or maybe encode non-push moves by just specifying the destination
+    coordinates?
+
 * Support different kinds of levels or level formats
   - Run length encoding as an addition to the current format
   - One directory per collection with one file per level?
   - Compressed level files
+
 * Different game modes
   - Multiple workers
   - Narrow walls, i.e. walls between two adjacent tiles
