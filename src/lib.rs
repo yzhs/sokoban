@@ -81,22 +81,31 @@ pub fn convert_savegames() {
     }
 }
 
-pub fn print_collections_table() {
-    use ansi_term::Colour::{Blue, Green, White, Yellow};
+struct CollectionStats {
+    pub short_name: String,
+    pub name: String,
+    pub total_levels: usize,
+    pub solved_levels: usize,
+}
 
-    println!(
-        " {}               {}",
-        Yellow.bold().paint("File name"),
-        Yellow.bold().paint("Collection name")
-    );
-    println!("--------------------------------------------------------------------------------");
+impl CollectionStats {
+    fn solved(&self) -> bool {
+        self.total_levels == self.solved_levels
+    }
+    fn started(&self) -> bool {
+        self.solved_levels > 0
+    }
+}
 
+fn gather_stats() -> Vec<CollectionStats> {
     // Find all level set files
     let mut paths: Vec<PathBuf> = fs::read_dir(ASSETS.join("levels"))
         .unwrap()
         .map(|x| x.unwrap().path().to_owned())
         .collect();
     paths.sort_by(|x, y| ::natord::compare(file_stem(x), file_stem(y)));
+
+    let mut result = vec![];
 
     for path in paths {
         if let Some(ext) = path.extension() {
@@ -106,32 +115,55 @@ pub fn print_collections_table() {
                 let collection = Collection::parse_metadata(name).unwrap();
                 let state = CollectionState::load(collection.short_name());
 
-                let padded_short_name = format!("{:<24}", name);
-                let padded_full_name = format!("{:<36}", collection.name());
-
-                if state.collection_solved {
-                    println!(
-                        " {}{}           {}",
-                        Green.paint(padded_short_name),
-                        Green.bold().paint(padded_full_name),
-                        Green.paint("done")
-                    );
-                } else {
-                    let num_solved = state.number_of_solved_levels();
-                    let solved = if num_solved == 0 {
-                        White.paint("solved")
-                    } else {
-                        Blue.paint("solved")
-                    };
-                    println!(
-                        " {}{}{:>10} {}",
-                        padded_short_name,
-                        White.bold().paint(padded_full_name),
-                        format!("{}/{}", num_solved, collection.number_of_levels()),
-                        solved
-                    );
-                }
+                result.push(CollectionStats {
+                    short_name: name.to_string(),
+                    name: collection.name().to_string(),
+                    total_levels: collection.number_of_levels(),
+                    solved_levels: state.number_of_solved_levels(),
+                });
             }
+        }
+    }
+
+    result
+}
+
+pub fn print_collections_table() {
+    use ansi_term::Colour::{Blue, Green, White, Yellow};
+
+    let stats = gather_stats();
+
+    println!(
+        " {}               {}",
+        Yellow.bold().paint("File name"),
+        Yellow.bold().paint("Collection name")
+    );
+    println!("--------------------------------------------------------------------------------");
+
+    for collection in stats {
+        let padded_short_name = format!("{:<24}", collection.short_name);
+        let padded_full_name = format!("{:<36}", collection.name);
+
+        if collection.solved() {
+            println!(
+                " {}{}           {}",
+                Green.paint(padded_short_name),
+                Green.bold().paint(padded_full_name),
+                Green.paint("done")
+            );
+        } else {
+            let solved = if collection.started() {
+                Blue.paint("solved")
+            } else {
+                White.paint("solved")
+            };
+            println!(
+                " {}{}{:>10} {}",
+                padded_short_name,
+                White.bold().paint(padded_full_name),
+                format!("{}/{}", collection.solved_levels, collection.total_levels),
+                solved
+            );
         }
     }
 }
