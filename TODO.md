@@ -1,3 +1,8 @@
+# Bugs
+* Sokoban crashes when switching to a different virtual screen before start-up
+  is complete. It does not, however, crash when being moved to a different
+  virtual screen.
+
 # Code and architecture improvements
 * Clean up UI code
 
@@ -12,7 +17,7 @@
 * Communication between front and back end using channels
 
 # Features
-* Use the atomicwrites crate for replacing existing saves
+* Use the `atomicwrites` crate for replacing existing saves
 
 * Add a background image?
 
@@ -31,7 +36,7 @@
 * Replay saved game
   - Show all steps
   - Show only the position before and after moving a crate
-  - Show only ever n-th state?
+  - Show only every n-th state?
 
 * Run length encoding in solution format?
   - Or maybe encode non-push moves by just specifying the destination

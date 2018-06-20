@@ -607,7 +607,7 @@ impl InputState {
 
             S if modifiers.ctrl => return Save,
 
-            // Open the main menu
+            // TODO Open the main menu
             Escape => return ResetLevel,
             LAlt | LControl | LMenu | LShift | LWin | RAlt | RControl | RMenu | RShift | RWin => {}
             _ => error!("Unknown key: {:?}", key),
