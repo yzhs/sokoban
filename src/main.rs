@@ -1,10 +1,23 @@
 #![cfg_attr(
     feature = "cargo-clippy",
     warn(
-        empty_enum, filter_map, if_not_else, invalid_upcast_comparisons, items_after_statements,
-        mut_mut, nonminimal_bool, option_map_unwrap_or, option_map_unwrap_or_else,
-        pub_enum_variant_names, shadow_same, single_match_else, string_add_assign, unicode_not_nfc,
-        unseparated_literal_suffix, used_underscore_binding, wrong_pub_self_convention
+        empty_enum,
+        filter_map,
+        if_not_else,
+        invalid_upcast_comparisons,
+        items_after_statements,
+        mut_mut,
+        nonminimal_bool,
+        option_map_unwrap_or,
+        option_map_unwrap_or_else,
+        pub_enum_variant_names,
+        shadow_same,
+        single_match_else,
+        string_add_assign,
+        unicode_not_nfc,
+        unseparated_literal_suffix,
+        used_underscore_binding,
+        wrong_pub_self_convention
     )
 )]
 
@@ -41,25 +54,21 @@ fn main() {
             Arg::with_name("collection")
                 .help("The level collection to load during startup")
                 .index(1),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("list")
                 .help("Print a list of available level sets")
                 .short("l")
                 .long("list"),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("stats")
                 .help("Print some statistics")
                 .short("s")
                 .long("stats"),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("convert-savegames")
                 .help("Load and store all savegames to convert them to the latest file format")
                 .long("convert-savegames"),
-        )
-        .get_matches();
+        ).get_matches();
 
     if matches.is_present("convert-savegames") {
         convert_savegames();

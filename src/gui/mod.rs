@@ -6,7 +6,9 @@ use std::cmp::min;
 use std::collections::VecDeque;
 
 use glium::backend::glutin::Display;
-use glium::glutin::{Event, KeyboardInput, ModifiersState, MouseButton, VirtualKeyCode, WindowEvent};
+use glium::glutin::{
+    Event, KeyboardInput, ModifiersState, MouseButton, VirtualKeyCode, WindowEvent,
+};
 use glium::index::{NoIndices, PrimitiveType};
 use glium::texture::Texture2d;
 use glium::{self, Program, Surface};
@@ -329,7 +331,8 @@ impl Gui {
     fn update_sprites(&mut self) {
         self.worker = Sprite::new(self.worker_position, texture::TileKind::Worker);
         self.worker.set_direction(self.worker_direction);
-        self.crates = self.game
+        self.crates = self
+            .game
             .crate_positions()
             .iter()
             .map(|&pos| Sprite::new(pos, texture::TileKind::Crate))
@@ -741,7 +744,8 @@ impl Gui {
                         input: KeyboardInput { state: Pressed, .. },
                         ..
                     }
-                    | WindowEvent::MouseInput { .. } if self.level_solved() =>
+                    | WindowEvent::MouseInput { .. }
+                        if self.level_solved() =>
                     {
                         cmd = Command::NextLevel
                     }

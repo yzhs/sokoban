@@ -117,7 +117,9 @@ impl Level {
                     inside = true;
                 }
 
-                if inside && bg == Background::Empty && index >= columns
+                if inside
+                    && bg == Background::Empty
+                    && index >= columns
                     && background[index - columns] != Background::Empty
                 {
                     background[index] = Background::Floor;
