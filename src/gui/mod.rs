@@ -222,35 +222,41 @@ fn key_to_direction(key: VirtualKeyCode) -> Direction {
     }
 }
 
-/// Handle user input
 impl Gui {
     /// Handle a mouse click.
     fn click_to_command(&self, mouse_button: MouseButton, input_state: &InputState) -> Command {
-        let columns = self.columns as isize;
-        let rows = self.rows as isize;
-        let tile_size = self.tile_size();
-
-        let (offset_x, offset_y) = if self.aspect_ratio_ratio() < 1.0 {
-            (
-                (f64::from(self.window_size[0]) - columns as f64 * tile_size) / 2.0,
-                0.0,
-            )
-        } else {
-            (
-                0.0,
-                (f64::from(self.window_size[1]) - rows as f64 * tile_size) / 2.0,
-            )
-        };
-
-        let x = ((input_state.cursor_position[0] - offset_x) / tile_size).trunc() as isize;
-        let y = ((input_state.cursor_position[1] - offset_y - 0.5) / tile_size).trunc() as isize;
-        if x > 0 && y > 0 && x < columns - 1 && y < rows - 1 {
+        if let Some((x, y)) = self.cursor_position_to_cell_if_in_bounds(&input_state.cursor_position) {
             Command::MoveToPosition(
                 backend::Position { x, y },
                 MayPushCrate(mouse_button == MouseButton::Right),
             )
         } else {
             Command::Nothing
+        }
+    }
+
+    fn cursor_position_to_cell_if_in_bounds(&self, cursor_position: &[f64]) -> Option<(isize, isize)> {
+        let (offset_x, offset_y) = self.compute_offsets();;
+        let tile_size = self.tile_size();
+
+        let x = ((cursor_position[0] - offset_x) / tile_size).trunc() as isize;
+        let y = ((cursor_position[1] - offset_y - 0.5) / tile_size).trunc() as isize;
+
+        if x > 0 && y > 0 && x < self.columns as isize - 1 && y < self.rows as isize - 1 {
+            Some((x, y))
+        } else {
+            None
+        }
+    }
+
+    fn compute_offsets(&self) -> (f64, f64) {
+        let tile_size = self.tile_size();
+        if self.aspect_ratio_ratio() < 1.0 {
+            let offset_x = (f64::from(self.window_size[0]) - self.columns as f64 * tile_size) / 2.0;
+            (offset_x, 0.0)
+        } else {
+            let offset_y = (f64::from(self.window_size[1]) - self.rows as f64 * tile_size) / 2.0;
+            (0.0, offset_y)
         }
     }
 }
