@@ -425,11 +425,7 @@ impl Gui {
             aspect_ratio,
         );
 
-        let txt = if self.game.is_last_level() {
-            "This was the last level in this colletion. Press Q to quit."
-        } else {
-            "Press any key to go to the next level."
-        };
+        let txt = self.end_of_level_text();;
 
         font_data.draw(
             target,
@@ -439,6 +435,14 @@ impl Gui {
             [-0.5, -0.4],
             aspect_ratio,
         );
+    }
+
+    fn end_of_level_text(&self) -> &str {
+        if self.game.is_last_level() {
+            "This was the last level in this colletion. Press Q to quit."
+        } else {
+            "Press any key to go to the next level."
+        }
     }
 
     /// Render the current level.
