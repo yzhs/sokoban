@@ -75,7 +75,7 @@ pub struct Gui {
     textures: Textures,
 
     /// Pre-rendered static part of the current level, i.e. walls, floors and goals.
-    background: Option<Texture2d>,
+    background_texture: Option<Texture2d>,
 
     worker: Sprite,
     crates: Vec<Sprite>,
@@ -145,7 +145,7 @@ impl Gui {
             program,
             window_size: [800, 600],
             textures,
-            background: None,
+            background_texture: None,
 
             worker,
             crates: vec![],
@@ -225,7 +225,9 @@ fn key_to_direction(key: VirtualKeyCode) -> Direction {
 impl Gui {
     /// Handle a mouse click.
     fn click_to_command(&self, mouse_button: MouseButton, input_state: &InputState) -> Command {
-        if let Some((x, y)) = self.cursor_position_to_cell_if_in_bounds(&input_state.cursor_position) {
+        if let Some((x, y)) =
+            self.cursor_position_to_cell_if_in_bounds(&input_state.cursor_position)
+        {
             Command::MoveToPosition(
                 backend::Position { x, y },
                 MayPushCrate(mouse_button == MouseButton::Right),
@@ -235,7 +237,10 @@ impl Gui {
         }
     }
 
-    fn cursor_position_to_cell_if_in_bounds(&self, cursor_position: &[f64]) -> Option<(isize, isize)> {
+    fn cursor_position_to_cell_if_in_bounds(
+        &self,
+        cursor_position: &[f64],
+    ) -> Option<(isize, isize)> {
         let (offset_x, offset_y) = self.compute_offsets();;
         let tile_size = self.tile_size();
 
@@ -261,66 +266,62 @@ impl Gui {
     }
 }
 
+fn correct_aspect_ratio_matrix(aspect_ratio: f32) -> [[f32; 4]; 4] {
+    let a_r = aspect_ratio;
+    if a_r < 1.0 {
+        [
+            [a_r, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    } else {
+        let a_r = 1.0 / a_r;
+        [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, a_r, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    }
+}
+
+fn generate_vertices_for(level: &Level, cell_type: Background) -> Vec<Vertex> {
+    let columns = level.columns() as u32;
+    let rows = level.rows() as u32;
+    let mut vertices = vec![];
+    for (i, _) in level
+        .background_cells()
+        .iter()
+        .enumerate()
+        .filter(|(_, &cell)| cell == cell_type)
+    {
+        let pos = level.position(i);
+        vertices.extend(texture::quad(pos, columns, rows));
+    }
+    vertices
+}
+
 /// Rendering
 impl Gui {
     /// Render the static tiles of the current level onto a texture.
     fn generate_background(&mut self) {
-        use glium::texture::Texture2d;
-        let target;
+        let target = self.generate_empty_background_texture();
 
-        let columns = self.columns as u32;
-        let rows = self.rows as u32;
+        self.matrix = correct_aspect_ratio_matrix(self.aspect_ratio_ratio());
+        let program = &self.program;
 
+        // We need this block so the last borrow of `self` ends before we need to borrow
+        // `self.background_texture` mutably at the end.
         {
-            self.matrix = {
-                let a_r = self.aspect_ratio_ratio();
-                if a_r < 1.0 {
-                    [
-                        [a_r, 0.0, 0.0, 0.0],
-                        [0.0, 1.0, 0.0, 0.0],
-                        [0.0, 0.0, 1.0, 0.0],
-                        [0.0, 0.0, 0.0, 1.0],
-                    ]
-                } else {
-                    let a_r = 1.0 / a_r;
-                    [
-                        [1.0, 0.0, 0.0, 0.0],
-                        [0.0, a_r, 0.0, 0.0],
-                        [0.0, 0.0, 1.0, 0.0],
-                        [0.0, 0.0, 0.0, 1.0],
-                    ]
-                }
-            };
-            let lvl = self.current_level();
-
-            // Create texture
-            target = {
-                let width = self.window_size[0];
-                let height = self.window_size[1];
-                Texture2d::empty(&self.display, width, height).unwrap()
-            };
-            target.as_surface().clear_color(0.0, 0.0, 0.0, 1.0);
-
-            let program = &self.program;
+            let level = self.current_level();
 
             // Render each of the (square) tiles
-            for &value in &[Background::Floor, Background::Goal, Background::Wall] {
-                let mut vertices = vec![];
-                for (i, &cell) in lvl.background_cells().iter().enumerate() {
-                    if cell != value {
-                        continue;
-                    }
-                    let pos = lvl.position(i);
-                    vertices.extend(texture::quad(pos, columns, rows));
-                }
+            for &background in &[Background::Floor, Background::Goal, Background::Wall] {
+                let vertices = generate_vertices_for(&level, background);
                 let vb = glium::VertexBuffer::new(&self.display, &vertices).unwrap();
 
-                let texture = match value {
-                    Background::Empty => continue,
-                    Background::Floor => &self.textures.floor,
-                    Background::Goal => &self.textures.goal,
-                    Background::Wall => &self.textures.wall,
-                };
+                let texture = self.background_to_texture(background);
                 let uniforms = uniform!{tex: texture, matrix: self.matrix};
 
                 target
@@ -330,7 +331,24 @@ impl Gui {
             }
         }
 
-        self.background = Some(target);
+        self.background_texture = Some(target);
+    }
+
+    fn background_to_texture(&self, background: Background) -> &Texture2d {
+        match background {
+            Background::Empty => unreachable!(),
+            Background::Floor => &self.textures.floor,
+            Background::Goal => &self.textures.goal,
+            Background::Wall => &self.textures.wall,
+        }
+    }
+
+    fn generate_empty_background_texture(&self) -> Texture2d {
+        let width = self.window_size[0];
+        let height = self.window_size[1];
+        let target = Texture2d::empty(&self.display, width, height).unwrap();
+        target.as_surface().clear_color(0.0, 0.0, 0.0, 1.0);
+        target
     }
 
     /// Create sprites for movable entities of the current level.
@@ -345,7 +363,7 @@ impl Gui {
             .collect();
         // TODO simplify hashmap -> iter -> vec -> iter -> vec -> iter -> vec
 
-        self.background = None;
+        self.background_texture = None;
     }
 
     /// Given a vector of vertices describing a list of quads, draw them onto `target`.
@@ -426,7 +444,7 @@ impl Gui {
     /// Render the current level.
     fn render_level(&mut self) {
         // Do we have to update the cache?
-        if self.background.is_none() {
+        if self.background_texture.is_none() {
             self.generate_background();
         }
 
@@ -437,7 +455,7 @@ impl Gui {
         let vertices = texture::full_screen();
         let vb = glium::VertexBuffer::new(&self.display, &vertices).unwrap();
 
-        let bg = self.background.as_ref().unwrap();
+        let bg = self.background_texture.as_ref().unwrap();
         let uniforms = uniform!{tex: bg, matrix: IDENTITY};
         let program = &self.program;
 
@@ -491,7 +509,7 @@ impl Gui {
         let vertices = texture::full_screen();
         let vb = glium::VertexBuffer::new(&self.display, &vertices).unwrap();
 
-        if self.background.is_none() {
+        if self.background_texture.is_none() {
             // Render the end-of-level screen and store it in self.bg
             let columns = self.columns as u32;
             let rows = self.rows as u32;
@@ -503,7 +521,7 @@ impl Gui {
 
             {
                 let mut target = texture.as_surface();
-                let bg = self.background.as_ref().unwrap();
+                let bg = self.background_texture.as_ref().unwrap();
                 let uniforms = uniform!{tex: bg, matrix: IDENTITY};
                 let program = &self.program;
 
@@ -534,11 +552,11 @@ impl Gui {
                 self.draw_end_of_level_overlay(&mut target);
             }
 
-            self.background = Some(texture);
+            self.background_texture = Some(texture);
             self.render_level();
         } else {
             // Fill the screen with the cached image
-            let bg = self.background.as_ref().unwrap();
+            let bg = self.background_texture.as_ref().unwrap();
             let uniforms = uniform!{tex: bg, matrix: IDENTITY};
             let mut target = self.display.draw();
 
@@ -555,7 +573,7 @@ impl Gui {
             State::FinishAnimation => {
                 self.render_level();
                 if !self.worker.is_animated() {
-                    self.background = None;
+                    self.background_texture = None;
                     self.state = State::LevelSolved;
                 }
             }
@@ -777,7 +795,7 @@ impl Gui {
 
                     WindowEvent::Resized(w, h) => {
                         self.window_size = [w, h];
-                        self.background = None;
+                        self.background_texture = None;
                     }
 
                     // WindowEvent::KeyboardInput(_, _, None) | WindowEvent::ReceivedCharacter(_) |
