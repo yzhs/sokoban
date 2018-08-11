@@ -513,6 +513,7 @@ impl Gui {
     }
 
     fn render_end_of_level(&mut self) {
+        // TODO extract functions, reduce duplication with render_level()
         let vertices = texture::full_screen();
         let vb = glium::VertexBuffer::new(&self.display, &vertices).unwrap();
 
@@ -687,6 +688,8 @@ impl Gui {
     /// Handle the queue of responses from the back end, updating the gui status and logging
     /// messages.
     fn handle_responses(&mut self, queue: &mut VecDeque<Response>) {
+        const SKIP_FRAMES: u32 = 16;
+        const QUEUE_LENGTH_THRESHOLD: usize = 100;
         let mut steps = 0;
         while let Some(response) = queue.pop_front() {
             set_animation_duration(queue.len());
@@ -698,8 +701,8 @@ impl Gui {
                 // breaking here is enough.
                 // As this makes very large levels painfully slow, allow multiple steps if the
                 // response queue is long.
-                steps = (steps + 1) % 16;
-                if steps == 0 || queue.len() < 100 {
+                steps = (steps + 1) % SKIP_FRAMES;
+                if steps == 0 || queue.len() < QUEUE_LENGTH_THRESHOLD {
                     break;
                 }
                 // TODO this sort of works, but can we find a better way to skip animation

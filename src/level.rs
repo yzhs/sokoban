@@ -63,6 +63,7 @@ pub struct Level {
 impl Level {
     /// Parse the ASCII representation of a level.
     pub fn parse(num: usize, string: &str) -> Result<Level, SokobanError> {
+        // TODO split into multiple functions
         let rank = num + 1;
         let lines: Vec<_> = string.lines()
             // Skip empty lines and comments
