@@ -447,10 +447,7 @@ impl Gui {
 
     /// Render the current level.
     fn render_level(&mut self) {
-        // Do we have to update the cache?
-        if self.background_texture.is_none() {
-            self.generate_background();
-        }
+        self.generate_background_if_none();
 
         let columns = self.columns as u32;
         let rows = self.rows as u32;
@@ -509,6 +506,12 @@ impl Gui {
         target.finish().unwrap();
     }
 
+    fn generate_background_if_none(&mut self) {
+        if self.background_texture.is_none() {
+            self.generate_background();
+        }
+    }
+
     fn render_end_of_level(&mut self) {
         let vertices = texture::full_screen();
         let vb = glium::VertexBuffer::new(&self.display, &vertices).unwrap();
@@ -559,16 +562,20 @@ impl Gui {
             self.background_texture = Some(texture);
             self.render_level();
         } else {
-            // Fill the screen with the cached image
-            let bg = self.background_texture.as_ref().unwrap();
-            let uniforms = uniform!{tex: bg, matrix: IDENTITY};
-            let mut target = self.display.draw();
-
-            target
-                .draw(&vb, &NO_INDICES, &self.program, &uniforms, &self.params)
-                .unwrap();
-            target.finish().unwrap();
+            self.draw_background(vb);
         }
+    }
+
+    /// Fill the screen with the cached background image
+    fn draw_background(&self, vb: glium::VertexBuffer<Vertex>) {
+        let bg = self.background_texture.as_ref().unwrap();
+        let uniforms = uniform!{tex: bg, matrix: IDENTITY};
+        let mut target = self.display.draw();
+
+        target
+            .draw(&vb, &NO_INDICES, &self.program, &uniforms, &self.params)
+            .unwrap();
+        target.finish().unwrap();
     }
 
     fn render(&mut self) {
