@@ -21,20 +21,7 @@ impl Macros {
         Macros {
             tmp: vec![],
             target_slot: None,
-            slots: [
-                vec![],
-                vec![],
-                vec![],
-                vec![],
-                vec![],
-                vec![],
-                vec![],
-                vec![],
-                vec![],
-                vec![],
-                vec![],
-                vec![],
-            ],
+            slots: Default::default(),
         }
     }
 

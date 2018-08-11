@@ -57,18 +57,22 @@ impl CollectionState {
             .unwrap_or_else(|| Self::new(name))
     }
 
+    fn from_stats(stats: StatsOnlyCollectionState) -> Self {
+        Self {
+            name: stats.name,
+            collection_solved: stats.collection_solved,
+            levels_solved: stats.levels_solved,
+            levels: vec![],
+        }
+    }
+
     fn load_json(path: &Path, stats_only: bool) -> Option<Self> {
         let file = File::open(path.with_extension("json")).ok();
 
         if stats_only {
             let stats: Option<StatsOnlyCollectionState> =
                 file.and_then(|file| ::serde_json::from_reader(file).ok());
-            stats.map(|stats| Self {
-                name: stats.name,
-                collection_solved: stats.collection_solved,
-                levels_solved: stats.levels_solved,
-                levels: vec![],
-            })
+            stats.map(Self::from_stats)
         } else {
             file.and_then(|file| ::serde_json::from_reader(file).ok())
         }
@@ -80,12 +84,7 @@ impl CollectionState {
         if stats_only {
             let stats: Option<StatsOnlyCollectionState> =
                 file.and_then(|file| ::serde_cbor::from_reader(file).ok());
-            stats.map(|stats| Self {
-                name: stats.name,
-                collection_solved: stats.collection_solved,
-                levels_solved: stats.levels_solved,
-                levels: vec![],
-            })
+            stats.map(Self::from_stats)
         } else {
             file.and_then(|file| ::serde_cbor::from_reader(file).ok())
         }
