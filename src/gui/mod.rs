@@ -562,18 +562,18 @@ impl Gui {
             self.background_texture = Some(texture);
             self.render_level();
         } else {
-            self.draw_background(vb);
+            self.draw_background(&vb);
         }
     }
 
     /// Fill the screen with the cached background image
-    fn draw_background(&self, vb: glium::VertexBuffer<Vertex>) {
+    fn draw_background(&self, vb: &glium::VertexBuffer<Vertex>) {
         let bg = self.background_texture.as_ref().unwrap();
         let uniforms = uniform!{tex: bg, matrix: IDENTITY};
         let mut target = self.display.draw();
 
         target
-            .draw(&vb, &NO_INDICES, &self.program, &uniforms, &self.params)
+            .draw(vb, &NO_INDICES, &self.program, &uniforms, &self.params)
             .unwrap();
         target.finish().unwrap();
     }
@@ -601,7 +601,7 @@ struct InputState {
 
 impl InputState {
     /// Handle key press events.
-    fn press_to_command(&mut self, key: VirtualKeyCode, modifiers: &ModifiersState) -> Command {
+    fn press_to_command(&mut self, key: VirtualKeyCode, modifiers: ModifiersState) -> Command {
         use self::Command::*;
         use self::VirtualKeyCode::*;
         match key {
@@ -793,7 +793,7 @@ impl Gui {
                                 ..
                             },
                         ..
-                    } => cmd = input_state.press_to_command(key, &modifiers),
+                    } => cmd = input_state.press_to_command(key, modifiers),
 
                     WindowEvent::CursorMoved {
                         position: (x, y), ..
