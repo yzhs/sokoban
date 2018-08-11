@@ -155,10 +155,17 @@ impl Game {
             Command::Nothing => vec![],
 
             Move(dir) => self.current_level.try_move(dir),
-            MoveAsFarAsPossible{direction: dir, may_push_crate} => {
-                self.current_level.move_until(dir, may_push_crate).unwrap_or_default()
-            }
-            MoveToPosition{position, may_push_crate} => self.current_level.move_to(position, may_push_crate),
+            MoveAsFarAsPossible {
+                direction: dir,
+                may_push_crate,
+            } => self
+                .current_level
+                .move_until(dir, may_push_crate)
+                .unwrap_or_default(),
+            MoveToPosition {
+                position,
+                may_push_crate,
+            } => self.current_level.move_to(position, may_push_crate),
 
             Undo => self.current_level.undo(),
             Redo => self.current_level.redo(),
@@ -327,7 +334,10 @@ mod tests {
         assert!(exec_ok(&mut game, Command::Move(Up)));
         assert!(exec_ok(
             &mut game,
-            Command::MoveAsFarAsPossible{direction: Left, may_push_crate: true},
+            Command::MoveAsFarAsPossible {
+                direction: Left,
+                may_push_crate: true
+            },
         ));
         let res = game.execute(&Command::Move(Left));
         assert!(contains_error(&res));
@@ -335,7 +345,10 @@ mod tests {
         assert!(exec_ok(&mut game, Command::ResetLevel));
         assert!(exec_ok(
             &mut game,
-            Command::MoveToPosition{position: Position::new(8_usize, 4), may_push_crate: false},
+            Command::MoveToPosition {
+                position: Position::new(8_usize, 4),
+                may_push_crate: false
+            },
         ));
         assert_eq!(game.current_level.number_of_moves(), 7);
         assert!(exec_ok(&mut game, Command::Move(Left)));

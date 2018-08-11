@@ -15,11 +15,17 @@ pub enum Command {
     Move(Direction),
 
     /// Move as far as possible in the given direction with or without pushing crates.
-    MoveAsFarAsPossible{direction: Direction, may_push_crate: bool},
+    MoveAsFarAsPossible {
+        direction: Direction,
+        may_push_crate: bool,
+    },
 
     /// Move as far as possible towards the given position in the same row or column while pushing
     /// crates or to any position when not pushing crates.
-    MoveToPosition{position: Position, may_push_crate: bool},
+    MoveToPosition {
+        position: Position,
+        may_push_crate: bool,
+    },
 
     /// Undo the previous move.
     Undo,
@@ -74,10 +80,16 @@ impl Command {
         match *self {
             Move(dir) => dir.to_string(),
             // TODO Find different formats for the next two cases
-            MoveAsFarAsPossible{direction: dir, may_push_crate: true} => format!("_{}", dir),
-            MoveAsFarAsPossible{direction: dir, ..} => format!("_{}", dir),
-            MoveToPosition{position: pos, may_push_crate: true} => format!("[{}, {}]", pos.x, pos.y),
-            MoveToPosition{position: pos, ..} => format!("({}, {})", pos.x, pos.y),
+            MoveAsFarAsPossible {
+                direction: dir,
+                may_push_crate: true,
+            } => format!("_{}", dir),
+            MoveAsFarAsPossible { direction: dir, .. } => format!("_{}", dir),
+            MoveToPosition {
+                position: pos,
+                may_push_crate: true,
+            } => format!("[{}, {}]", pos.x, pos.y),
+            MoveToPosition { position: pos, .. } => format!("({}, {})", pos.x, pos.y),
             Undo => "<".to_string(),
             Redo => ">".to_string(),
             ExecuteMacro(slot) => format!("@{}", slot),
