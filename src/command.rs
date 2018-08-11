@@ -2,9 +2,6 @@ use direction::*;
 use position::*;
 use save::UpdateResponse;
 
-#[derive(Debug, Clone)]
-pub struct MayPushCrate(pub bool);
-
 type Slot = u8;
 type Steps = usize;
 
@@ -18,11 +15,11 @@ pub enum Command {
     Move(Direction),
 
     /// Move as far as possible in the given direction with or without pushing crates.
-    MoveAsFarAsPossible(Direction, MayPushCrate),
+    MoveAsFarAsPossible{direction: Direction, may_push_crate: bool},
 
     /// Move as far as possible towards the given position in the same row or column while pushing
     /// crates or to any position when not pushing crates.
-    MoveToPosition(Position, MayPushCrate),
+    MoveToPosition{position: Position, may_push_crate: bool},
 
     /// Undo the previous move.
     Undo,
@@ -77,10 +74,10 @@ impl Command {
         match *self {
             Move(dir) => dir.to_string(),
             // TODO Find different formats for the next two cases
-            MoveAsFarAsPossible(dir, MayPushCrate(true)) => format!("_{}", dir),
-            MoveAsFarAsPossible(dir, MayPushCrate(false)) => format!("_{}", dir),
-            MoveToPosition(pos, MayPushCrate(true)) => format!("[{}, {}]", pos.x, pos.y),
-            MoveToPosition(pos, MayPushCrate(false)) => format!("({}, {})", pos.x, pos.y),
+            MoveAsFarAsPossible{direction: dir, may_push_crate: true} => format!("_{}", dir),
+            MoveAsFarAsPossible{direction: dir, ..} => format!("_{}", dir),
+            MoveToPosition{position: pos, may_push_crate: true} => format!("[{}, {}]", pos.x, pos.y),
+            MoveToPosition{position: pos, ..} => format!("({}, {})", pos.x, pos.y),
             Undo => "<".to_string(),
             Redo => ">".to_string(),
             ExecuteMacro(slot) => format!("@{}", slot),

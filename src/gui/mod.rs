@@ -228,10 +228,10 @@ impl Gui {
         if let Some((x, y)) =
             self.cursor_position_to_cell_if_in_bounds(&input_state.cursor_position)
         {
-            Command::MoveToPosition(
-                backend::Position { x, y },
-                MayPushCrate(mouse_button == MouseButton::Right),
-            )
+            Command::MoveToPosition{
+                position: backend::Position { x, y },
+                may_push_crate: mouse_button == MouseButton::Right,
+            }
         } else {
             Command::Nothing
         }
@@ -613,7 +613,7 @@ impl InputState {
                 } else if modifiers.ctrl && modifiers.shift {
                     Nothing
                 } else {
-                    MoveAsFarAsPossible(dir, MayPushCrate(modifiers.shift))
+                    MoveAsFarAsPossible{direction: dir, may_push_crate: modifiers.shift}
                 };
             }
 
