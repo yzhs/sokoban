@@ -654,95 +654,102 @@ impl InputState {
     }
 }
 
+fn set_animation_duration(queue_length: usize) {
+    if queue_length > 60 {
+        *sprite::ANIMATION_DURATION.lock().unwrap() = 0.02_f32;
+    } else if queue_length > 20 {
+        *sprite::ANIMATION_DURATION.lock().unwrap() = 0.05_f32;
+    } else {
+        *sprite::ANIMATION_DURATION.lock().unwrap() = 0.08_f32;
+    }
+}
+
+fn log_update_response(response: save::UpdateResponse) {
+    use self::save::UpdateResponse::*;
+    match response {
+        FirstTimeSolved => info!(
+            "You have successfully solved this level for the first time! \
+             Congratulations!"
+        ),
+        Update {
+            moves: true,
+            pushes: true,
+        } => info!("Your solution uses the least moves and pushes!"),
+        Update { moves: true, .. } => info!("Your solution is the best so far in terms of moves!"),
+        Update { pushes: true, .. } => {
+            info!("Your solution is the best so far in terms of pushes!")
+        }
+        Update { .. } => info!("Solved the level without creating a new high score."),
+    }
+}
+
 impl Gui {
     /// Handle the queue of responses from the back end, updating the gui status and logging
     /// messages.
     fn handle_responses(&mut self, queue: &mut VecDeque<Response>) {
         let mut steps = 0;
         while let Some(response) = queue.pop_front() {
-            use self::Response::*;
+            set_animation_duration(queue.len());
 
-            if queue.len() > 60 {
-                *sprite::ANIMATION_DURATION.lock().unwrap() = 0.02_f32;
-            } else if queue.len() > 20 {
-                *sprite::ANIMATION_DURATION.lock().unwrap() = 0.05_f32;
-            } else {
-                *sprite::ANIMATION_DURATION.lock().unwrap() = 0.08_f32;
-            }
-
-            match response {
-                LevelFinished(resp) => {
-                    if !self.level_solved() {
-                        use self::save::UpdateResponse::*;
-                        self.state = State::FinishAnimation;
-                        match resp {
-                            FirstTimeSolved => info!(
-                                "You have successfully solved this level for the first time! \
-                                 Congratulations!"
-                            ),
-                            Update { moves, pushes } => {
-                                if moves && pushes {
-                                    info!("Your solution uses the least moves and pushes!");
-                                } else if moves {
-                                    info!("Your solution is the best so far in terms of moves!");
-                                } else if pushes {
-                                    info!("Your solution is the best so far in terms of pushes!");
-                                } else {
-                                    info!("Solved the level without creating a new high score.")
-                                }
-                            }
-                        }
-                    }
+            let is_move = self.handle_response(&response);
+            if is_move {
+                // Only move worker by one tile, so we can do nice animations.  If a crate is
+                // moved, MoveCrateTo is always *before* the corresponding MoveWorkerTo, so
+                // breaking here is enough.
+                // As this makes very large levels painfully slow, allow multiple steps if the
+                // response queue is long.
+                steps = (steps + 1) % 16;
+                if steps == 0 || queue.len() < 100 {
+                    break;
                 }
-                NewLevel {
-                    rank,
-                    columns,
-                    rows,
-                    worker_position,
-                    worker_direction,
-                } => {
-                    if rank != self.rank {
-                        info!("Loading level #{}", rank);
-                        self.rank = rank;
-                        self.columns = columns;
-                        self.rows = rows;
-                    }
-
-                    self.worker_position = worker_position;
-                    self.worker_direction = worker_direction;
-                    self.is_last_level = false;
-
-                    self.state = State::Level;
-                    self.update_sprites();
-                }
-                MoveWorkerTo(pos, dir) => {
-                    self.worker.move_to(pos);
-                    self.worker.set_direction(dir);
-                    // Only move worker by one tile, so we can do nice animations.  If a crate is
-                    // moved, MoveCrateTo is always *before* the corresponding MoveWorkerTo, so
-                    // breaking here is enough.
-                    // As this makes very large levels painfully slow, allow multiple steps if the
-                    // response queue is long.
-                    steps = (steps + 1) % 16;
-                    if steps == 0 || queue.len() < 100 {
-                        break;
-                    }
-                }
-                MoveCrateTo(id, pos) => self.crates[id].move_to(pos),
-
-                // Errors
-                // CannotMove(WithCrate(true), Obstacle::Wall) => /* A crate hit a wall */
-                // CannotMove(WithCrate(false), Obstacle::Wall) => /* The worker hit a wall */
-                // CannotMove(WithCrate(true), Obstacle::Crate) => /* Two crates collided */
-                // CannotMove(WithCrate(false), Obstacle::Crate) => /* The worker hit a crate */
-                // NothingToUndo => /* Cannot undo move */
-                // NothingToRedo => /* Cannot redo move */
-                // NoPreviousLevel => /* Cannot go backwards past level 1 */
-                // NoPathfindingWhilePushing => /* Path finding pusing crates unimplemented */
-                EndOfCollection => self.is_last_level = true,
-                _ => {}
+                // TODO this sort of works, but can we find a better way to skip animation
+                // steps?
             }
         }
+    }
+
+    fn handle_response(&mut self, response: &Response) -> bool {
+        use self::Response::*;
+        match *response {
+            LevelFinished(resp) if !self.level_solved() => {
+                self.state = State::FinishAnimation;
+                log_update_response(resp);
+            }
+            LevelFinished(_) => {}
+            NewLevel {
+                rank,
+                columns,
+                rows,
+                worker_position,
+                worker_direction,
+            } => {
+                // TODO replace with observer pattern?
+                if rank != self.rank {
+                    info!("Loading level #{}", rank);
+                    self.rank = rank;
+                    self.columns = columns;
+                    self.rows = rows;
+                }
+
+                self.worker_position = worker_position;
+                self.worker_direction = worker_direction;
+                self.is_last_level = false;
+
+                self.state = State::Level;
+                self.update_sprites();
+            }
+            MoveWorkerTo(pos, dir) => {
+                self.worker.move_to(pos);
+                self.worker.set_direction(dir);
+                return true;
+            }
+            MoveCrateTo(id, pos) => self.crates[id].move_to(pos),
+
+            EndOfCollection => self.is_last_level = true,
+            _ => {}
+        }
+
+        false
     }
 
     pub fn main_loop(mut self) {
