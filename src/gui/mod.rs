@@ -693,17 +693,14 @@ impl Gui {
     fn handle_responses(&mut self, queue: &mut VecDeque<Response>) {
         const SKIP_FRAMES: u32 = 16;
         const QUEUE_LENGTH_THRESHOLD: usize = 100;
+
         let mut steps = 0;
+
         while let Some(response) = queue.pop_front() {
             set_animation_duration(queue.len());
 
             let is_move = self.handle_response(&response);
             if is_move {
-                // Only move worker by one tile, so we can do nice animations.  If a crate is
-                // moved, MoveCrateTo is always *before* the corresponding MoveWorkerTo, so
-                // breaking here is enough.
-                // As this makes very large levels painfully slow, allow multiple steps if the
-                // response queue is long.
                 steps = (steps + 1) % SKIP_FRAMES;
                 if steps == 0 || queue.len() < QUEUE_LENGTH_THRESHOLD {
                     break;
@@ -822,8 +819,6 @@ impl Gui {
                         self.background_texture = None;
                     }
 
-                    // WindowEvent::KeyboardInput(_, _, None) | WindowEvent::ReceivedCharacter(_) |
-                    // WindowEvent::MouseInput(Pressed, _) | WindowEvent::MouseWheel(..)
                     _ => (),
                 }
 
