@@ -59,6 +59,19 @@ pub struct Level {
     number_of_moves: usize,
 }
 
+fn char_to_cell(chr: char) -> Option<(Background, Foreground)> {
+    match chr {
+        '#' => Some((Background::Wall, Foreground::None)),
+        ' ' => Some((Background::Empty, Foreground::None)),
+        '$' => Some((Background::Floor, Foreground::Crate)),
+        '@' => Some((Background::Floor, Foreground::Worker)),
+        '.' => Some((Background::Goal, Foreground::None)),
+        '*' => Some((Background::Goal, Foreground::Crate)),
+        '+' => Some((Background::Goal, Foreground::Worker)),
+        _ => None,
+    }
+}
+
 /// Parse level and some basic utility functions. None of these change an existing `Level`.
 impl Level {
     /// Parse the ASCII representation of a level.
@@ -87,16 +100,9 @@ impl Level {
         for (y, line) in lines.iter().enumerate() {
             let mut inside = false;
             for (x, chr) in line.chars().enumerate() {
-                let (bg, fg) = match chr {
-                    '#' => (Background::Wall, Foreground::None),
-                    ' ' => (Background::Empty, Foreground::None),
-                    '$' => (Background::Floor, Foreground::Crate),
-                    '@' => (Background::Floor, Foreground::Worker),
-                    '.' => (Background::Goal, Foreground::None),
-                    '*' => (Background::Goal, Foreground::Crate),
-                    '+' => (Background::Goal, Foreground::Worker),
-                    _ => panic!("Invalid character '{}' in line {}, column {}.", chr, y, x),
-                };
+                let (bg, fg) = char_to_cell(chr).unwrap_or_else(|| {
+                    panic!("Invalid character '{}' in line {}, column {}.", chr, y, x)
+                });
                 let index = y * columns + x;
                 background[index] = bg;
                 found_level_description = true;
