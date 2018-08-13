@@ -72,21 +72,34 @@ fn char_to_cell(chr: char) -> Option<(Background, Foreground)> {
     }
 }
 
-/// Parse level and some basic utility functions. None of these change an existing `Level`.
-impl Level {
-    /// Parse the ASCII representation of a level.
-    pub fn parse(num: usize, string: &str) -> Result<Level, SokobanError> {
-        // TODO split into multiple functions
-        let rank = num + 1;
-        let lines: Vec<_> = string.lines()
-            // Skip empty lines and comments
-            .filter(|x| !x.is_empty() && !x.trim().starts_with(';'))
+struct LevelBuilder {
+    rank: usize,
+    columns: usize,
+    rows: usize,
+    background: Vec<Background>,
+    crates: HashMap<Position, usize>,
+    empty_goals: usize,
+    worker_position: Position,
+}
+
+fn is_empty_or_comment(s: &str) -> bool {
+    s.is_empty() || s.trim().starts_with(';')
+}
+
+impl LevelBuilder {
+    pub fn new(rank: usize, level_string: &str) -> Result<Self, SokobanError> {
+        let lines: Vec<_> = level_string
+            .lines()
+            .filter(|x| !is_empty_or_comment(x))
             .collect();
         let rows = lines.len();
         if rows == 0 {
             return Err(SokobanError::NoLevel(rank));
         }
         let columns = lines.iter().map(|x| x.len()).max().unwrap();
+        if columns == 0 {
+            return Err(SokobanError::NoLevel(rank));
+        }
 
         let mut found_worker = false;
         let mut worker_position = Position { x: 0, y: 0 };
@@ -150,21 +163,54 @@ impl Level {
             return Err(SokobanError::CratesGoalsMismatch(rank, goals_minus_crates));
         }
 
-        // Fix the mistakes of the above heuristic for detecting which cells are on the inside.
+        let swap = |(a, b)| (b, a);
+        let crates = crates.into_iter().enumerate().map(swap).collect();
+        Ok(Self {
+            rank,
+            columns,
+            rows,
+            background,
+            crates,
+            empty_goals,
+            worker_position,
+        })
+    }
+
+    pub fn build(mut self) -> Level {
+        self.correct_outside_cells();
+        Level {
+            rank: self.rank,
+            columns: self.columns,
+            rows: self.rows,
+            background: self.background,
+            crates: self.crates,
+            empty_goals: self.empty_goals,
+            worker_position: self.worker_position,
+
+            number_of_moves: 0,
+            moves: vec![],
+        }
+    }
+
+    /// Fix the mistakes of the heuristic used in `new()` for detecting which cells are on the
+    /// inside.
+    fn correct_outside_cells(&mut self) {
+        let columns = self.columns;
+
         let mut queue = VecDeque::new();
-        let mut visited = vec![false; background.len()];
-        let mut inside = vec![false; background.len()];
+        let mut visited = vec![false; self.background.len()];
+        visited[self.worker_position.to_index(columns)] = true;
 
-        visited[worker_position.to_index(columns)] = true;
-        inside[worker_position.to_index(columns)] = true;
-        queue.push_back(worker_position);
+        let mut inside = visited.clone();
 
-        for crate_pos in &crates {
+        queue.push_back(self.worker_position);
+
+        for crate_pos in self.crates.keys() {
             visited[crate_pos.to_index(columns)] = true;
             queue.push_back(*crate_pos);
         }
 
-        for (i, &bg) in background.iter().enumerate() {
+        for (i, &bg) in self.background.iter().enumerate() {
             match bg {
                 Background::Wall => visited[i] = true,
                 Background::Goal if !visited[i] => {
@@ -180,7 +226,7 @@ impl Level {
         while let Some(pos) = queue.pop_front() {
             use Direction::*;
             let i = pos.to_index(columns);
-            if let Background::Wall = background[i] {
+            if let Background::Wall = self.background[i] {
                 continue;
             } else {
                 inside[i] = true;
@@ -196,30 +242,20 @@ impl Level {
             }
         }
 
-        for (i, bg) in background.iter_mut().enumerate() {
+        for (i, bg) in self.background.iter_mut().enumerate() {
             if !inside[i] && *bg == Background::Floor {
                 *bg = Background::Empty;
             }
         }
+    }
+}
 
-        Ok(Level {
-            rank, // The first level is level 1
-            columns,
-            rows,
-
-            background,
-            crates: crates
-                .into_iter()
-                .enumerate()
-                .map(|(i, x)| (x, i))
-                .collect(),
-
-            empty_goals,
-            worker_position,
-
-            moves: vec![],
-            number_of_moves: 0,
-        })
+/// Parse level and some basic utility functions. None of these change an existing `Level`.
+impl Level {
+    /// Parse the ASCII representation of a level.
+    pub fn parse(num: usize, string: &str) -> Result<Level, SokobanError> {
+        let builder = LevelBuilder::new(num + 1, string)?;
+        Ok(builder.build())
     }
 
     pub fn rank(&self) -> usize {
