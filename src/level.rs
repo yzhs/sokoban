@@ -302,7 +302,6 @@ impl Level {
 
     /// Is there a crate at the given position?
     fn is_crate(&self, pos: Position) -> bool {
-        // Check the cell itself
         self.crates.get(&pos).is_some()
     }
 
@@ -418,15 +417,14 @@ impl Level {
         direction: Direction,
         may_push_crate: bool,
     ) -> Result<Vec<Response>, Response> {
+        // FIXME That is a nasty return type. Find a better one!
         let mut result = vec![];
         let next = self.worker_position.neighbour(direction);
         let next_but_one = next.neighbour(direction);
 
         let moves_crate = if self.is_empty(next) {
-            // Move to empty cell
             false
         } else if self.is_crate(next) && self.is_empty(next_but_one) && may_push_crate {
-            // Push crate into empty next cell
             self.move_object(next, direction, false);
             result.push(Response::MoveCrateTo(
                 self.crates[&next_but_one],
