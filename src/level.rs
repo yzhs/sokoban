@@ -649,6 +649,22 @@ impl Level {
     }
 }
 
+fn cell_to_char(background: Background, foreground: Foreground) -> char {
+    match (background, foreground) {
+        (Background::Wall, Foreground::None) => '#',
+        (Background::Empty, Foreground::None) | (Background::Floor, Foreground::None) => ' ',
+        (Background::Floor, Foreground::Crate) => '$',
+        (Background::Floor, Foreground::Worker) => '@',
+        (Background::Goal, Foreground::None) => '.',
+        (Background::Goal, Foreground::Crate) => '*',
+        (Background::Goal, Foreground::Worker) => '+',
+        _ => panic!(
+            "Invalid combination: {:?} on top of {:?}",
+            foreground, background
+        ),
+    }
+}
+
 impl fmt::Display for Level {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let columns = self.columns();
@@ -666,20 +682,7 @@ impl fmt::Display for Level {
                 } else {
                     Foreground::None
                 };
-                let cell = match (background, foreground) {
-                    (Background::Wall, Foreground::None) => '#',
-                    (Background::Empty, Foreground::None)
-                    | (Background::Floor, Foreground::None) => ' ',
-                    (Background::Floor, Foreground::Crate) => '$',
-                    (Background::Floor, Foreground::Worker) => '@',
-                    (Background::Goal, Foreground::None) => '.',
-                    (Background::Goal, Foreground::Crate) => '*',
-                    (Background::Goal, Foreground::Worker) => '+',
-                    _ => panic!(
-                        "Invalid combination: {:?} on top of {:?}",
-                        foreground, background
-                    ),
-                };
+                let cell = cell_to_char(background, foreground);
                 write!(f, "{}", cell)?;
             }
         }
