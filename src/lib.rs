@@ -1,4 +1,4 @@
-#![feature(ascii_ctype, try_from)]
+#![feature(try_from)]
 #![cfg_attr(test, feature(plugin))]
 #![cfg_attr(test, plugin(quickcheck_macros))]
 #![cfg_attr(
