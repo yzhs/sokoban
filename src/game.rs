@@ -1,9 +1,11 @@
 use std::convert::TryFrom;
+use std::collections::HashMap;
+use std::sync::mpsc::Sender;
 
 use collection::*;
 use command::*;
 use direction::Direction;
-use level::Level;
+use level::{Background, Level};
 use macros::Macros;
 use position::Position;
 use save::*;
@@ -18,7 +20,6 @@ pub enum NextLevelError {
     EndOfCollection,
 }
 
-#[derive(Debug)]
 pub struct Game {
     name: String,
 
@@ -32,6 +33,37 @@ pub struct Game {
 
     /// Macros
     macros: Macros,
+
+    listener: Option<Sender<Event>>,
+}
+
+#[derive(Debug)]
+pub enum Event {
+    InitialLevelState {
+        rank: usize,
+        background: Vec<Background>,
+        worker_position: Position,
+        crates: HashMap<Position, usize>,
+    }
+}
+
+/// Handling events
+impl Game {
+    pub fn subscribe(&mut self, sender: Sender<Event>) {
+        self.listener = Some(sender);
+    }
+
+    fn on_load_level(&self) {
+        if let Some(ref sender) = self.listener {
+            let initial_state = Event::InitialLevelState {
+                rank: self.rank(),
+                background: self.current_level.background.clone(),
+                worker_position: self.worker_position(),
+                crates: self.current_level.crates.clone(),
+            };
+            sender.send(initial_state).unwrap();
+        }
+    }
 }
 
 impl Game {
@@ -46,6 +78,7 @@ impl Game {
             state: CollectionState::load(collection.short_name()),
             macros: Macros::new(),
             collection,
+            listener: None,
         };
 
         result.load_state(true);
@@ -408,6 +441,7 @@ mod tests {
             macros: Macros::new(),
             state: CollectionState::new(""),
             current_level: lvl,
+            listener: None,
         }
     }
 

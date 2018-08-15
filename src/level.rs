@@ -40,10 +40,10 @@ pub struct Level {
     rows: usize,
 
     /// `columns * rows` cells’ backgrounds in row-major order
-    background: Vec<Background>,
+    pub background: Vec<Background>,
 
     /// Positions of all crates
-    crates: HashMap<Position, usize>,
+    pub crates: HashMap<Position, usize>,
 
     /// The number of goals that have to be filled to solve the level
     empty_goals: usize,
