@@ -53,6 +53,11 @@ impl Game {
         self.listener = Some(sender);
     }
 
+    fn set_level(&mut self, level: Level) {
+        self.current_level = level;
+        self.on_load_level();
+    }
+
     fn on_load_level(&self) {
         if let Some(ref sender) = self.listener {
             let initial_state = Event::InitialLevelState {
@@ -90,7 +95,8 @@ impl Game {
     pub fn set_collection(&mut self, name: &str) -> Result<(), SokobanError> {
         self.name = name.into();
         self.collection = Collection::parse(name)?;
-        self.current_level = self.collection.first_level().clone();
+        let level = self.collection.first_level().clone();
+        self.set_level(level);
         self.load_state(true);
         Ok(())
     }
@@ -258,7 +264,8 @@ impl Game {
     /// Replace the current level by a clean copy.
     fn reset_level(&mut self) -> Response {
         let n = self.rank();
-        self.current_level = self.collection.levels()[n - 1].clone();
+        let level = self.collection.levels()[n - 1].clone();
+        self.set_level(level);
         self.new_level()
     }
 
@@ -268,13 +275,15 @@ impl Game {
         let finished = self.current_level.is_finished();
         if finished {
             if n < self.collection.number_of_levels() {
-                self.current_level = self.collection.levels()[n].clone();
+                let level = self.collection.levels()[n].clone();
+                self.set_level(level);
                 Ok(vec![self.new_level()])
             } else {
                 Err(NextLevelError::EndOfCollection)
             }
         } else if self.state.number_of_levels() >= n && n < self.collection.number_of_levels() {
-            self.current_level = self.collection.levels()[n].clone();
+            let level = self.collection.levels()[n].clone();
+            self.set_level(level);
             Ok(vec![self.new_level()])
         } else {
             Err(NextLevelError::LevelNotFinished)
@@ -287,7 +296,8 @@ impl Game {
         if n < 2 {
             Err(())
         } else {
-            self.current_level = self.collection.levels()[n - 2].clone();
+            let level = self.collection.levels()[n - 2].clone();
+            self.set_level(level);
             Ok(vec![self.new_level()])
         }
     }
@@ -310,7 +320,7 @@ impl Game {
                         lvl.execute_moves(number_of_moves, moves);
                     }
                 }
-                self.current_level = lvl;
+                self.set_level(lvl);
             }
         } else {
             state = CollectionState::load_stats(self.collection.short_name());
