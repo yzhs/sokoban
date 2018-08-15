@@ -7,6 +7,13 @@
 * Clean up UI code
 
 * Write more tests
+  - Integration tests:
+    + Run the game without animations and take a screen shot after every move.
+      Compare the resulting images to previously generated ones.
+
+      NOTE: This requires a way of having the window at a fixed size.
+      Preferably, the tests will be performed headless, i.e. without cluttering
+      my X server.
   - Module tests in the back end
   - Send Commands to the back end and make sure these lead to the correct
     Responses
