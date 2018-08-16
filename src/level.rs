@@ -392,7 +392,6 @@ impl Level {
 }
 // }}}
 
-
 /// Emit the appropriate events {{{
 impl Level {
     fn notify(&self, event: Event) {
@@ -413,8 +412,10 @@ impl Level {
     }
 
     fn on_worker_move(&self, from: Position, to: Position, direction: Direction) {
-        let event = Event::MoveWorker{
-            from, to, direction,
+        let event = Event::MoveWorker {
+            from,
+            to,
+            direction,
         };
         self.notify(event);
     }
@@ -446,16 +447,11 @@ impl Level {
 }
 // }}}
 
-
 /// Movement, i.e. everything that *does* change the `self`.
 impl Level {
     /// Move one step in the given direction if that cell is empty or `may_push_crate` is true and
     /// the next cell contains a crate which can be pushed in the given direction.
-    fn move_helper(
-        &mut self,
-        direction: Direction,
-        may_push_crate: bool,
-    ) -> Result<(), ()> {
+    fn move_helper(&mut self, direction: Direction, may_push_crate: bool) -> Result<(), ()> {
         let next = self.worker_position.neighbour(direction);
         let next_but_one = next.neighbour(direction);
 
@@ -472,7 +468,7 @@ impl Level {
                 Obstacle::Wall
             };
             self.notify(Event::CannotMove(WithCrate(b), obj));
-            return Err(())
+            return Err(());
         };
 
         self.move_worker(direction);
@@ -517,7 +513,9 @@ impl Level {
                 }
             }
             Err(None) => {}
-            Err(_) if !may_push_crate => {self.find_path(to);},
+            Err(_) if !may_push_crate => {
+                self.find_path(to);
+            }
             Err(_) => self.notify(Event::NoPathfindingWhilePushing),
         }
     }
@@ -592,11 +590,7 @@ impl Level {
 
     /// Move as far as possible in the given direction (without pushing crates if `may_push_crate`
     /// is `false`).
-    pub fn move_until(
-        &mut self,
-        direction: Direction,
-        may_push_crate: bool,
-    ) -> Result<(), ()> {
+    pub fn move_until(&mut self, direction: Direction, may_push_crate: bool) -> Result<(), ()> {
         while self.move_helper(direction, may_push_crate).is_ok() {
             if may_push_crate && self.is_finished() {
                 break;
@@ -606,7 +600,7 @@ impl Level {
     }
 
     /// Undo the most recent move.
-    pub fn undo(&mut self) -> Result<(),()> {
+    pub fn undo(&mut self) -> Result<(), ()> {
         if self.number_of_moves == 0 {
             self.notify(Event::NothingToUndo);
             return Err(());
@@ -626,7 +620,7 @@ impl Level {
     }
 
     /// If a move has been undone previously, redo it.
-    pub fn redo(&mut self)  -> Result<(),()>{
+    pub fn redo(&mut self) -> Result<(), ()> {
         if self.moves.len() > self.number_of_moves {
             let dir = self.moves[self.number_of_moves].direction;
             self.try_move(dir);
@@ -640,7 +634,7 @@ impl Level {
     /// Given a number of simple moves, i.e. up, down, left, right, as a strign, execute the first
     /// `number_of_moves` of them. If there are more moves than that, they can be executed using
     /// redo.
-    pub fn execute_moves(&mut self, number_of_moves: usize, moves: &str) -> Result<(),()>{
+    pub fn execute_moves(&mut self, number_of_moves: usize, moves: &str) -> Result<(), ()> {
         let moves = ::move_::parse(moves).unwrap();
         // TODO Error handling
         for (i, move_) in moves.iter().enumerate() {

@@ -1,5 +1,5 @@
-use std::convert::TryFrom;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::sync::mpsc::Sender;
 
 use collection::*;
@@ -74,8 +74,12 @@ impl Event {
     pub(crate) fn is_error(&self) -> bool {
         use Event::*;
         match self {
-            InitialLevelState{..} | MoveWorker{..}|MoveCrate{..}|LevelFinished(_)|EndOfCollection|MacroDefined(_)
-                => false,
+            InitialLevelState { .. }
+            | MoveWorker { .. }
+            | MoveCrate { .. }
+            | LevelFinished(_)
+            | EndOfCollection
+            | MacroDefined(_) => false,
             _ => true,
         }
     }
@@ -235,27 +239,38 @@ impl Game {
         match *command {
             Command::Nothing => {}
 
-            Move(dir) => {self.current_level.try_move(dir);}
+            Move(dir) => {
+                self.current_level.try_move(dir);
+            }
             MoveAsFarAsPossible {
                 direction: dir,
                 may_push_crate,
             } => {
-                self
-                .current_level
-                .move_until(dir, may_push_crate)
-                .unwrap_or_default();
+                self.current_level
+                    .move_until(dir, may_push_crate)
+                    .unwrap_or_default();
             }
             MoveToPosition {
                 position,
                 may_push_crate,
-            } => {self.current_level.move_to(position, may_push_crate);},
+            } => {
+                self.current_level.move_to(position, may_push_crate);
+            }
 
-            Undo => {let _ = self.current_level.undo();}
-            Redo => {let _ = self.current_level.redo();}
+            Undo => {
+                let _ = self.current_level.undo();
+            }
+            Redo => {
+                let _ = self.current_level.redo();
+            }
             ResetLevel => self.reset_level(),
 
-            NextLevel => {self.next_level().unwrap_or_default();},
-            PreviousLevel => {self.previous_level().unwrap_or_default();},
+            NextLevel => {
+                self.next_level().unwrap_or_default();
+            }
+            PreviousLevel => {
+                self.previous_level().unwrap_or_default();
+            }
 
             Save => {
                 let _ = self.save().unwrap();
@@ -386,8 +401,8 @@ impl Game {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::mpsc::{Receiver, channel};
     use super::*;
+    use std::sync::mpsc::{channel, Receiver};
 
     fn exec_ok(game: &mut Game, receiver: &Receiver<Event>, cmd: Command) -> bool {
         game.execute(&cmd);
@@ -409,7 +424,11 @@ mod tests {
     #[test]
     fn switch_levels() {
         let (mut game, receiver) = setup_game("test");
-        assert!(exec_ok(&mut game, &receiver, Command::Move(Direction::Right)));
+        assert!(exec_ok(
+            &mut game,
+            &receiver,
+            Command::Move(Direction::Right)
+        ));
         assert!(exec_ok(&mut game, &receiver, Command::PreviousLevel));
         assert!(exec_ok(&mut game, &receiver, Command::NextLevel));
     }
@@ -426,7 +445,8 @@ mod tests {
 
         assert!(exec_ok(&mut game, &receiver, Command::Move(Up)));
         assert!(exec_ok(
-            &mut game, &receiver,
+            &mut game,
+            &receiver,
             Command::MoveAsFarAsPossible {
                 direction: Left,
                 may_push_crate: true
@@ -435,7 +455,8 @@ mod tests {
         assert!(!exec_ok(&mut game, &receiver, Command::Move(Left)));
         assert!(exec_ok(&mut game, &receiver, Command::ResetLevel));
         assert!(exec_ok(
-            &mut game, &receiver,
+            &mut game,
+            &receiver,
             Command::MoveToPosition {
                 position: Position::new(8_usize, 4),
                 may_push_crate: false

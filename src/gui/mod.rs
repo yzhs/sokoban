@@ -4,7 +4,7 @@ mod texture;
 
 use std::cmp::min;
 use std::collections::VecDeque;
-use std::sync::mpsc::{Receiver, channel};
+use std::sync::mpsc::{channel, Receiver};
 
 use glium::backend::glutin::Display;
 use glium::glutin::{
@@ -667,8 +667,7 @@ impl InputState {
 }
 
 fn set_animation_duration(queue_length: usize) {
-    let new_duration = 
-    if queue_length > 60 {
+    let new_duration = if queue_length > 60 {
         0.02_f32
     } else if queue_length > 20 {
         0.05_f32
@@ -722,7 +721,7 @@ impl Gui {
     }
 
     fn handle_response(&mut self, event: ::backend::Event) -> bool {
-        use ::backend::Event::*;
+        use backend::Event::*;
         match event {
             LevelFinished(resp) if !self.level_solved() => {
                 self.state = State::FinishAnimation;
@@ -753,12 +752,16 @@ impl Gui {
                 self.state = State::Level;
                 self.update_sprites();
             }
-            MoveWorker{from: _from, to, direction} => {
+            MoveWorker {
+                from: _from,
+                to,
+                direction,
+            } => {
                 self.worker.move_to(to);
                 self.worker.set_direction(direction);
                 return true;
             }
-            MoveCrate{id, to, ..} => self.crates[id].move_to(to),
+            MoveCrate { id, to, .. } => self.crates[id].move_to(to),
 
             EndOfCollection => self.is_last_level = true,
             _ => {}
