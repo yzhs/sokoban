@@ -455,7 +455,7 @@ impl Level {
 impl Level {
     /// Move one step in the given direction if that cell is empty or `may_push_crate` is true and
     /// the next cell contains a crate which can be pushed in the given direction.
-    fn move_helper(&mut self, direction: Direction, may_push_crate: bool) -> Result<(), ()> {
+    fn move_helper(&mut self, direction: Direction, may_push_crate: bool) -> Result<(), Event> {
         let next = self.worker_position.neighbour(direction);
         let next_but_one = next.neighbour(direction);
 
@@ -471,8 +471,8 @@ impl Level {
             } else {
                 Obstacle::Wall
             };
-            self.notify(Event::CannotMove(WithCrate(b), obj));
-            return Err(());
+            // TODO make sure the result is used when appropriate
+            return Err(Event::CannotMove(WithCrate(b), obj));
         };
 
         self.move_worker(direction);
@@ -509,7 +509,7 @@ impl Level {
                 } else {
                     // Note that this takes care of both movements of just one step and all cases
                     // in which crates may be pushed.
-                    while let Ok(_) = self.move_helper(dir, may_push_crate) {
+                    while self.move_helper(dir, may_push_crate).is_ok() {
                         if self.worker_position == to || may_push_crate && self.is_finished() {
                             break;
                         }
@@ -526,7 +526,7 @@ impl Level {
 
     /// Try to move in the given direction. Return an error if that is not possile.
     pub fn try_move(&mut self, direction: Direction) -> Result<(), ()> {
-        self.move_helper(direction, true)
+        self.move_helper(direction, true).map_err(|_| ())
     }
 
     /// Try to find a shortest path from the workers current position to `to` and execute it if one

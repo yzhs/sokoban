@@ -411,12 +411,16 @@ mod tests {
 
     fn exec_ok(game: &mut Game, receiver: &Receiver<Event>, cmd: Command) -> bool {
         game.execute(&cmd);
+        let mut found_some_event = false;
+
         while let Ok(event) = receiver.try_recv() {
+            found_some_event = true;
             if event.is_error() {
                 return false;
             }
         }
-        true
+
+        found_some_event
     }
 
     fn setup_game(name: &str) -> (Game, Receiver<Event>) {
