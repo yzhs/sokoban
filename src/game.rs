@@ -66,8 +66,10 @@ pub enum Event {
     MacroDefined(usize),
 
     NoPathfindingWhilePushing,
+    CannotMove(WithCrate, Obstacle),
 }
 
+#[cfg(test)]
 impl Event {
     pub(crate) fn is_error(&self) -> bool {
         use Event::*;
@@ -248,8 +250,8 @@ impl Game {
                 may_push_crate,
             } => {self.current_level.move_to(position, may_push_crate);},
 
-            Undo => self.current_level.undo(),
-            Redo => self.current_level.redo(),
+            Undo => {let _ = self.current_level.undo();}
+            Redo => {let _ = self.current_level.redo();}
             ResetLevel => self.reset_level(),
 
             NextLevel => {self.next_level().unwrap_or_default();},
@@ -386,7 +388,6 @@ impl Game {
 mod tests {
     use std::sync::mpsc::{Receiver, channel};
     use super::*;
-    use command::contains_error;
 
     fn exec_ok(game: &mut Game, receiver: &Receiver<Event>, cmd: Command) -> bool {
         game.execute(&cmd);

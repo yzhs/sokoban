@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::sync::mpsc::Sender;
 
-use command::{Obstacle, Response, WithCrate};
+use command::{Obstacle, WithCrate};
 use direction::*;
 use game::Event;
 use move_::Move;
@@ -428,6 +428,14 @@ impl Level {
     fn move_crate_to(&mut self, from: Position, to: Position) {
         let id = self.crates.remove(&from).unwrap();
         self.crates.insert(to, id);
+
+        if self.background(from) == &Background::Goal {
+            self.empty_goals += 1;
+        }
+        if self.background(to) == &Background::Goal {
+            self.empty_goals -= 1;
+        }
+
         self.on_crate_move(id, from, to);
     }
 
@@ -441,39 +449,13 @@ impl Level {
 
 /// Movement, i.e. everything that *does* change the `self`.
 impl Level {
-    /// Move whatever object is in the foreground at the given position in the given direction if
-    /// undo is false, and in the opposite direction otherwise. Return the new position of that
-    /// object, as well as the position of the object behind the original position. This is needed
-    /// to move crates backwards when undoing a push.
-    fn move_object(&mut self, from: Position, direction: Direction, undo: bool) -> Position {
-        let direction = if undo { direction.reverse() } else { direction };
-        let to = from.neighbour(direction);
-
-        // Make sure empty_goals is updated as needed.
-        if self.is_crate(from) {
-            if self.background(from) == &Background::Goal {
-                self.empty_goals += 1;
-            }
-            if self.background(to) == &Background::Goal {
-                self.empty_goals -= 1;
-            }
-            self.move_crate_to(from, to);
-        } else {
-            self.move_worker_to(to, direction);
-        }
-
-        to
-    }
-
     /// Move one step in the given direction if that cell is empty or `may_push_crate` is true and
     /// the next cell contains a crate which can be pushed in the given direction.
     fn move_helper(
         &mut self,
         direction: Direction,
         may_push_crate: bool,
-    ) -> Result<Vec<Response>, Response> {
-        // FIXME That is a nasty return type. Find a better one!
-        let mut result = vec![];
+    ) -> Result<(), ()> {
         let next = self.worker_position.neighbour(direction);
         let next_but_one = next.neighbour(direction);
 
@@ -481,10 +463,6 @@ impl Level {
             false
         } else if self.is_crate(next) && self.is_empty(next_but_one) && may_push_crate {
             self.move_crate(next, direction);
-            result.push(Response::MoveCrateTo(
-                self.crates[&next_but_one],
-                next_but_one,
-            ));
             true
         } else {
             let b = may_push_crate && self.is_crate(next);
@@ -493,7 +471,8 @@ impl Level {
             } else {
                 Obstacle::Wall
             };
-            return Err(Response::CannotMove(WithCrate(b), obj));
+            self.notify(Event::CannotMove(WithCrate(b), obj));
+            return Err(())
         };
 
         self.move_worker(direction);
@@ -516,7 +495,7 @@ impl Level {
             self.moves.push(current_move);
         }
 
-        Ok(result)
+        Ok(())
     }
 
     /// Move the worker towards `to`. If may_push_crate is set, `to` must be in the same row or
@@ -544,22 +523,18 @@ impl Level {
     }
 
     /// Try to move in the given direction. Return an error if that is not possile.
-    pub fn try_move(&mut self, direction: Direction) -> Vec<Response> {
-        match self.move_helper(direction, true) {
-            Ok(resp) => resp,
-            Err(e) => vec![e],
-        }
+    pub fn try_move(&mut self, direction: Direction) -> Result<(), ()> {
+        self.move_helper(direction, true)
     }
 
     /// Try to find a shortest path from the workers current position to `to` and execute it if one
     /// exists.
-    pub fn find_path(&mut self, to: Position) -> Result<Vec<Response>, ()> {
-        let mut result = vec![];
+    pub fn find_path(&mut self, to: Position) -> Result<(), ()> {
         let columns = self.columns();
         let rows = self.rows();
 
         if self.worker_position == to || !self.is_empty(to) {
-            return Ok(result);
+            return Ok(());
         }
 
         let mut distances = vec![::std::usize::MAX; columns * rows];
@@ -603,7 +578,7 @@ impl Level {
                         < distances[self.index(self.worker_position)]
                     {
                         let dir = direction(self.worker_position, neighbour);
-                        result.extend(self.try_move(dir.unwrap()))
+                        self.try_move(dir.unwrap());
                     }
                 }
                 if self.worker_position == to {
@@ -612,7 +587,7 @@ impl Level {
             }
         }
 
-        Ok(result)
+        Ok(())
     }
 
     /// Move as far as possible in the given direction (without pushing crates if `may_push_crate`
@@ -621,22 +596,20 @@ impl Level {
         &mut self,
         direction: Direction,
         may_push_crate: bool,
-    ) -> Result<Vec<Response>, ()> {
-        let mut result = vec![];
-        while let Ok(resp) = self.move_helper(direction, may_push_crate) {
-            result.extend(resp);
+    ) -> Result<(), ()> {
+        while self.move_helper(direction, may_push_crate).is_ok() {
             if may_push_crate && self.is_finished() {
                 break;
             }
         }
-        // TODO handle errors
-        Ok(result)
+        Ok(())
     }
 
     /// Undo the most recent move.
-    pub fn undo(&mut self) {
+    pub fn undo(&mut self) -> Result<(),()> {
         if self.number_of_moves == 0 {
-            return self.notify(Event::NothingToUndo);
+            self.notify(Event::NothingToUndo);
+            return Err(());
         } else {
             self.number_of_moves -= 1;
         }
@@ -648,22 +621,26 @@ impl Level {
         if self.moves[self.number_of_moves].moves_crate {
             self.move_crate(crate_pos, direction.reverse());
         }
+
+        Ok(())
     }
 
     /// If a move has been undone previously, redo it.
-    pub fn redo(&mut self) {
+    pub fn redo(&mut self)  -> Result<(),()>{
         if self.moves.len() > self.number_of_moves {
             let dir = self.moves[self.number_of_moves].direction;
             self.try_move(dir);
+            Ok(())
         } else {
             self.notify(Event::NothingToRedo);
+            Err(())
         }
     }
 
     /// Given a number of simple moves, i.e. up, down, left, right, as a strign, execute the first
     /// `number_of_moves` of them. If there are more moves than that, they can be executed using
     /// redo.
-    pub fn execute_moves(&mut self, number_of_moves: usize, moves: &str) {
+    pub fn execute_moves(&mut self, number_of_moves: usize, moves: &str) -> Result<(),()>{
         let moves = ::move_::parse(moves).unwrap();
         // TODO Error handling
         for (i, move_) in moves.iter().enumerate() {
@@ -672,11 +649,10 @@ impl Level {
                 self.moves = moves.to_owned();
                 break;
             }
-            let res = self.try_move(move_.direction);
-            if res.len() == 1 && res[0].is_error() {
-                error!("{:?}", res[0]);
-            }
+            self.try_move(move_.direction)?;
         }
+
+        Ok(())
     }
 
     /// Convert moves to string, including moves that have been undone.
@@ -733,7 +709,6 @@ impl fmt::Display for Level {
 #[cfg(test)]
 mod test {
     use super::*;
-    use command::contains_error;
 
     #[test]
     fn test_crate_missing() {
@@ -804,11 +779,11 @@ mod test {
             }
         }
 
-        assert!(!contains_error(&lvl.try_move(Right)));
-        assert!(!contains_error(&lvl.try_move(Left)));
-        assert!(contains_error(&lvl.try_move(Left)));
-        assert!(contains_error(&lvl.try_move(Up)));
-        assert!(contains_error(&lvl.try_move(Down)));
+        assert!(!&lvl.try_move(Right).is_err());
+        assert!(!&lvl.try_move(Left).is_err());
+        assert!(&lvl.try_move(Left).is_err());
+        assert!(&lvl.try_move(Up).is_err());
+        assert!(&lvl.try_move(Down).is_err());
     }
 
     #[test]
@@ -823,19 +798,19 @@ mod test {
         assert_eq!(lvl.worker_position.x, 3);
         assert_eq!(lvl.worker_position.y, 1);
         assert_eq!(lvl.worker_direction(), Left);
-        assert!(!contains_error(&lvl.try_move(Right)));
-        assert!(!contains_error(&lvl.try_move(Left)));
-        assert!(!contains_error(&lvl.try_move(Left)));
-        assert!(contains_error(&lvl.try_move(Up)));
-        assert!(contains_error(&lvl.try_move(Down)));
+        assert!(!&lvl.try_move(Right).is_err());
+        assert!(!&lvl.try_move(Left).is_err());
+        assert!(!&lvl.try_move(Left).is_err());
+        assert!(&lvl.try_move(Up).is_err());
+        assert!(&lvl.try_move(Down).is_err());
         assert!(lvl.is_finished());
-        //assert!(!contains_error(&lvl.undo()));
+        assert!(!&lvl.undo().is_err());
         assert!(!lvl.is_finished());
-        assert!(!contains_error(&lvl.try_move(Right)));
+        assert!(!&lvl.try_move(Right).is_err());
         assert_eq!(lvl.worker_direction(), Right);
-        //assert!(contains_error(&lvl.redo()));
-        assert!(!contains_error(&lvl.try_move(Left)));
-        assert!(!contains_error(&lvl.try_move(Left)));
+        assert!(&lvl.redo().is_err());
+        assert!(!&lvl.try_move(Left).is_err());
+        assert!(!&lvl.try_move(Left).is_err());
         assert!(lvl.is_finished());
         assert_eq!(lvl.worker_direction(), Left);
     }

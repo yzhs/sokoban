@@ -16,10 +16,6 @@ const ORIGINAL_LEVEL_1: &str = r#"
     #######
 "#;
 
-fn contains_error(responses: &[Response]) -> bool {
-    responses.iter().any(|x| x.is_error())
-}
-
 fn char_to_direction(c: char) -> Direction {
     use self::Direction::*;
     match c {
@@ -45,7 +41,7 @@ fn test_simple_moves() {
                  llllllluuulluuurDDllddddrrruuuLLulDDDuulldddrRRRRRRRRRRdrUluR";
     for (i, mv) in moves.chars().map(char_to_direction).enumerate() {
         assert!(
-            !contains_error(&lvl.try_move(mv)),
+            !&lvl.try_move(mv).is_err(),
             "Move #{} failed:\n{}\n",
             i,
             lvl
@@ -65,7 +61,7 @@ fn test_path_finding() {
         .enumerate()
     {
         assert!(
-            !contains_error(&lvl.try_move(mv)),
+            !&lvl.try_move(mv).is_err(),
             "Move #{} failed:\n{}\n",
             i,
             lvl
@@ -77,7 +73,7 @@ fn test_path_finding() {
 
     for (i, mv) in "DDuulldddr".chars().map(char_to_direction).enumerate() {
         assert!(
-            !contains_error(&lvl.try_move(mv)),
+            !&lvl.try_move(mv).is_err(),
             "Move #{} failed:\n{}\n",
             i,
             lvl
@@ -98,7 +94,7 @@ fn test_path_finding() {
         .enumerate()
     {
         assert!(
-            !contains_error(&lvl.try_move(mv)),
+            !&lvl.try_move(mv).is_err(),
             "Move #{} failed:\n{}\n",
             i,
             lvl
