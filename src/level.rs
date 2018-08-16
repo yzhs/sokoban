@@ -394,6 +394,10 @@ impl Level {
 
 /// Emit the appropriate events {{{
 impl Level {
+    pub fn subscribe(&mut self, sender: Sender<Event>) {
+        self.listener = Some(sender);
+    }
+
     fn notify(&self, event: Event) {
         if let Some(ref sender) = self.listener {
             sender.send(event).unwrap();

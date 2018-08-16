@@ -88,6 +88,7 @@ impl Event {
 /// Handling events
 impl Game {
     pub fn subscribe(&mut self, sender: Sender<Event>) {
+        self.current_level.subscribe(sender.clone());
         self.listener = Some(sender);
     }
 
@@ -99,6 +100,9 @@ impl Game {
 
     fn set_level(&mut self, level: Level) {
         self.current_level = level;
+        if let Some(ref sender) = self.listener {
+            self.current_level.subscribe(sender.clone());
+        }
         self.on_load_level();
     }
 
