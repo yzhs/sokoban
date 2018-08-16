@@ -1,8 +1,10 @@
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
+use std::sync::mpsc::Sender;
 
 use command::{Obstacle, Response, WithCrate};
 use direction::*;
+use game::Event;
 use move_::Move;
 use position::*;
 use util::*;
@@ -57,8 +59,11 @@ pub struct Level {
 
     /// This describes how many moves have to be performed to arrive at the current state.
     number_of_moves: usize,
+
+    listener: Option<Sender<Event>>,
 }
 
+// Parse level {{{
 fn char_to_cell(chr: char) -> Option<(Background, Foreground)> {
     match chr {
         '#' => Some((Background::Wall, Foreground::None)),
@@ -189,6 +194,8 @@ impl LevelBuilder {
 
             number_of_moves: 0,
             moves: vec![],
+
+            listener: None,
         }
     }
 
@@ -249,8 +256,9 @@ impl LevelBuilder {
         }
     }
 }
+// }}}
 
-/// Parse level and some basic utility functions. None of these change an existing `Level`.
+/// Parse level and some basic utility functions. None of these change an existing `Level`. {{{
 impl Level {
     /// Parse the ASCII representation of a level.
     pub fn parse(num: usize, string: &str) -> Result<Level, SokobanError> {
@@ -382,6 +390,54 @@ impl Level {
         self.background.as_ref()
     }
 }
+// }}}
+
+
+/// Emit the appropriate events {{{
+impl Level {
+    fn notify(&self, event: Event) {
+        if let Some(ref sender) = self.listener {
+            sender.send(event).unwrap();
+        }
+    }
+
+    fn move_worker(&mut self, direction: Direction) {
+        let to = self.worker_position.neighbour(direction);
+        self.move_worker_to(to, direction);
+    }
+
+    fn move_worker_to(&mut self, to: Position, direction: Direction) {
+        let from = self.worker_position;
+        self.worker_position = to;
+        self.on_worker_move(from, to, direction);
+    }
+
+    fn on_worker_move(&self, from: Position, to: Position, direction: Direction) {
+        let event = Event::MoveWorker{
+            from, to, direction,
+        };
+        self.notify(event);
+    }
+
+    fn move_crate(&mut self, from: Position, direction: Direction) {
+        self.move_crate_to(from, from.neighbour(direction));
+    }
+
+    // NOTE We need `from` so we can findout the crate's id. That way, the user interface knows
+    // which crate to animate. Alternatively, the crate's id could be passed in.
+    fn move_crate_to(&mut self, from: Position, to: Position) {
+        let id = self.crates.remove(&from).unwrap();
+        self.crates.insert(to, id);
+        self.on_crate_move(id, from, to);
+    }
+
+    fn on_crate_move(&self, id: usize, from: Position, to: Position) {
+        let event = Event::MoveCrate { id, from, to };
+        self.notify(event);
+    }
+}
+// }}}
+
 
 /// Movement, i.e. everything that *does* change the `self`.
 impl Level {
@@ -391,23 +447,22 @@ impl Level {
     /// to move crates backwards when undoing a push.
     fn move_object(&mut self, from: Position, direction: Direction, undo: bool) -> Position {
         let direction = if undo { direction.reverse() } else { direction };
-        let new = from.neighbour(direction);
+        let to = from.neighbour(direction);
 
         // Make sure empty_goals is updated as needed.
         if self.is_crate(from) {
             if self.background(from) == &Background::Goal {
                 self.empty_goals += 1;
             }
-            if self.background(new) == &Background::Goal {
+            if self.background(to) == &Background::Goal {
                 self.empty_goals -= 1;
             }
-            let id = self.crates.remove(&from).unwrap();
-            self.crates.insert(new, id);
+            self.move_crate_to(from, to);
         } else {
-            self.worker_position = new;
+            self.move_worker_to(to, direction);
         }
 
-        new
+        to
     }
 
     /// Move one step in the given direction if that cell is empty or `may_push_crate` is true and
@@ -425,7 +480,7 @@ impl Level {
         let moves_crate = if self.is_empty(next) {
             false
         } else if self.is_crate(next) && self.is_empty(next_but_one) && may_push_crate {
-            self.move_object(next, direction, false);
+            self.move_crate(next, direction);
             result.push(Response::MoveCrateTo(
                 self.crates[&next_but_one],
                 next_but_one,
@@ -441,11 +496,7 @@ impl Level {
             return Err(Response::CannotMove(WithCrate(b), obj));
         };
 
-        // Move worker to new position
-        let pos = self.worker_position;
-        let worker_pos = self.move_object(pos, direction, false);
-        self.worker_position = worker_pos;
-        result.push(Response::MoveWorkerTo(worker_pos, direction));
+        self.move_worker(direction);
 
         // Bookkeeping for undo and printing a solution
         let current_move = Move {
@@ -470,28 +521,25 @@ impl Level {
 
     /// Move the worker towards `to`. If may_push_crate is set, `to` must be in the same row or
     /// column as the worker. In that case, the worker moves to `to`
-    pub fn move_to(&mut self, to: Position, may_push_crate: bool) -> Vec<Response> {
+    pub fn move_to(&mut self, to: Position, may_push_crate: bool) {
         match direction(self.worker_position, to) {
             Ok(dir) => {
                 let (dx, dy) = to - self.worker_position;
                 if !may_push_crate && dx.abs() + dy.abs() > 1 {
-                    self.find_path(to).unwrap_or_default()
+                    self.find_path(to).unwrap_or_default();
                 } else {
-                    let mut result = vec![];
                     // Note that this takes care of both movements of just one step and all cases
                     // in which crates may be pushed.
-                    while let Ok(resp) = self.move_helper(dir, may_push_crate) {
-                        result.extend(resp);
+                    while let Ok(_) = self.move_helper(dir, may_push_crate) {
                         if self.worker_position == to || may_push_crate && self.is_finished() {
                             break;
                         }
                     }
-                    result
                 }
             }
-            Err(None) => vec![],
-            Err(_) if !may_push_crate => self.find_path(to).unwrap_or_default(),
-            Err(_) => vec![Response::NoPathfindingWhilePushing],
+            Err(None) => {}
+            Err(_) if !may_push_crate => {self.find_path(to);},
+            Err(_) => self.notify(Event::NoPathfindingWhilePushing),
         }
     }
 
@@ -586,35 +634,29 @@ impl Level {
     }
 
     /// Undo the most recent move.
-    pub fn undo(&mut self) -> Vec<Response> {
+    pub fn undo(&mut self) {
         if self.number_of_moves == 0 {
-            return vec![Response::NothingToUndo];
+            return self.notify(Event::NothingToUndo);
         } else {
             self.number_of_moves -= 1;
         }
-        let mut result = vec![];
 
         let direction = self.moves[self.number_of_moves].direction;
-        let pos = self.worker_position;
-        let worker_pos = self.move_object(pos, direction, true);
-        let crate_pos = pos.neighbour(direction);
+        let crate_pos = self.worker_position.neighbour(direction);
+        self.move_worker(direction.reverse());
 
         if self.moves[self.number_of_moves].moves_crate {
-            let new = self.move_object(crate_pos, direction, true);
-            result.push(Response::MoveCrateTo(self.crates[&new], new));
+            self.move_crate(crate_pos, direction.reverse());
         }
-        result.push(Response::MoveWorkerTo(worker_pos, self.worker_direction()));
-
-        result
     }
 
     /// If a move has been undone previously, redo it.
-    pub fn redo(&mut self) -> Vec<Response> {
+    pub fn redo(&mut self) {
         if self.moves.len() > self.number_of_moves {
             let dir = self.moves[self.number_of_moves].direction;
-            self.try_move(dir)
+            self.try_move(dir);
         } else {
-            vec![Response::NothingToRedo]
+            self.notify(Event::NothingToRedo);
         }
     }
 

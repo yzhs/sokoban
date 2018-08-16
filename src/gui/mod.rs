@@ -4,6 +4,7 @@ mod texture;
 
 use std::cmp::min;
 use std::collections::VecDeque;
+use std::sync::mpsc::{Receiver, channel};
 
 use glium::backend::glutin::Display;
 use glium::glutin::{
@@ -79,6 +80,8 @@ pub struct Gui {
 
     worker: Sprite,
     crates: Vec<Sprite>,
+
+    events: Receiver<backend::Event>,
 }
 
 /// Constructor and getters
@@ -86,7 +89,7 @@ impl Gui {
     /// Initialize the `Gui` struct by setting default values, and loading a collection and
     /// textures.
     pub fn new(collection_name: &str) -> Self {
-        let game = Game::load(collection_name).expect("Failed to load level set");
+        let mut game = Game::load(collection_name).expect("Failed to load level set");
 
         let events_loop = glium::glutin::EventsLoop::new();
         let window = glium::glutin::WindowBuilder::new()
@@ -126,6 +129,9 @@ impl Gui {
             ..Default::default()
         };
 
+        let (sender, receiver) = channel();
+        game.subscribe(sender);
+
         let mut gui = Gui {
             columns: game.columns(),
             rows: game.rows(),
@@ -149,6 +155,8 @@ impl Gui {
 
             worker,
             crates: vec![],
+
+            events: receiver,
         };
         gui.update_sprites();
         gui
@@ -692,7 +700,7 @@ fn log_update_response(response: save::UpdateResponse) {
 impl Gui {
     /// Handle the queue of responses from the back end, updating the gui status and logging
     /// messages.
-    fn handle_responses(&mut self, queue: &mut VecDeque<Response>) {
+    fn handle_responses(&mut self, queue: &mut VecDeque<::backend::Event>) {
         const SKIP_FRAMES: u32 = 16;
         const QUEUE_LENGTH_THRESHOLD: usize = 100;
 
@@ -701,7 +709,7 @@ impl Gui {
         while let Some(response) = queue.pop_front() {
             set_animation_duration(queue.len());
 
-            let is_move = self.handle_response(&response);
+            let is_move = self.handle_response(response);
             if is_move {
                 steps = (steps + 1) % SKIP_FRAMES;
                 if steps == 0 || queue.len() < QUEUE_LENGTH_THRESHOLD {
@@ -713,18 +721,20 @@ impl Gui {
         }
     }
 
-    fn handle_response(&mut self, response: &Response) -> bool {
-        use self::Response::*;
-        match *response {
+    fn handle_response(&mut self, event: ::backend::Event) -> bool {
+        use ::backend::Event::*;
+        match event {
             LevelFinished(resp) if !self.level_solved() => {
                 self.state = State::FinishAnimation;
                 log_update_response(resp);
             }
             LevelFinished(_) => {}
-            NewLevel {
+            InitialLevelState {
                 rank,
                 columns,
                 rows,
+                background: _background,
+                crates: _crates,
                 worker_position,
                 worker_direction,
             } => {
@@ -743,12 +753,12 @@ impl Gui {
                 self.state = State::Level;
                 self.update_sprites();
             }
-            MoveWorkerTo(pos, dir) => {
-                self.worker.move_to(pos);
-                self.worker.set_direction(dir);
+            MoveWorker{from: _from, to, direction} => {
+                self.worker.move_to(to);
+                self.worker.set_direction(direction);
                 return true;
             }
-            MoveCrateTo(id, pos) => self.crates[id].move_to(pos),
+            MoveCrate{id, to, ..} => self.crates[id].move_to(to),
 
             EndOfCollection => self.is_last_level = true,
             _ => {}
@@ -828,9 +838,12 @@ impl Gui {
             }
 
             while let Some(cmd) = command_queue.pop_front() {
-                queue.extend(self.game.execute(&cmd));
+                self.game.execute(&cmd);
             }
 
+            while let Ok(event) = self.events.try_recv() {
+                queue.push_back(event);
+            }
             self.handle_responses(&mut queue);
         }
     }

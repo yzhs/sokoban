@@ -41,16 +41,43 @@ pub struct Game {
 pub enum Event {
     InitialLevelState {
         rank: usize,
+        columns: usize,
+        rows: usize,
         background: Vec<Background>,
         worker_position: Position,
+        worker_direction: Direction,
         crates: HashMap<Position, usize>,
-    }
+    },
+    MoveWorker {
+        from: Position,
+        to: Position,
+        direction: Direction,
+    },
+    MoveCrate {
+        id: usize,
+        from: Position,
+        to: Position,
+    },
+    NothingToRedo,
+    NothingToUndo,
+    LevelFinished(UpdateResponse),
+    EndOfCollection,
+
+    MacroDefined(usize),
+
+    NoPathfindingWhilePushing,
 }
 
 /// Handling events
 impl Game {
     pub fn subscribe(&mut self, sender: Sender<Event>) {
         self.listener = Some(sender);
+    }
+
+    fn notify(&self, event: Event) {
+        if let Some(ref sender) = self.listener {
+            sender.send(event).unwrap();
+        }
     }
 
     fn set_level(&mut self, level: Level) {
@@ -62,8 +89,11 @@ impl Game {
         if let Some(ref sender) = self.listener {
             let initial_state = Event::InitialLevelState {
                 rank: self.rank(),
+                columns: self.columns(),
+                rows: self.rows(),
                 background: self.current_level.background.clone(),
                 worker_position: self.worker_position(),
+                worker_direction: Direction::Left,
                 crates: self.current_level.crates.clone(),
             };
             sender.send(initial_state).unwrap();
@@ -96,8 +126,8 @@ impl Game {
         self.name = name.into();
         self.collection = Collection::parse(name)?;
         let level = self.collection.first_level().clone();
-        self.set_level(level);
         self.load_state(true);
+        self.set_level(level);
         Ok(())
     }
 
@@ -113,11 +143,10 @@ impl Game {
 
     /// Execute a command from the front end. Load new collections or pass control to
     /// `Collection::execute`.
-    pub fn execute(&mut self, cmd: &Command) -> Vec<Response> {
+    pub fn execute(&mut self, cmd: &Command) {
         if let Command::LoadCollection(ref name) = *cmd {
             info!("Loading level collection {}.", name);
             self.set_collection(name).unwrap();
-            vec![self.new_level()]
         } else {
             self.execute_helper(cmd, false)
         }
@@ -181,7 +210,7 @@ impl Game {
 
 impl Game {
     /// Execute whatever command we get from the frontend.
-    fn execute_helper(&mut self, command: &Command, executing_macro: bool) -> Vec<Response> {
+    fn execute_helper(&mut self, command: &Command, executing_macro: bool) {
         use Command::*;
 
         // Record everything while recording a macro. If no macro is currently being recorded,
@@ -190,53 +219,50 @@ impl Game {
             self.macros.push(command);
         }
 
-        let mut result = match *command {
-            Command::Nothing => vec![],
+        match *command {
+            Command::Nothing => {}
 
-            Move(dir) => self.current_level.try_move(dir),
+            Move(dir) => {self.current_level.try_move(dir);}
             MoveAsFarAsPossible {
                 direction: dir,
                 may_push_crate,
-            } => self
+            } => {
+                self
                 .current_level
                 .move_until(dir, may_push_crate)
-                .unwrap_or_default(),
+                .unwrap_or_default();
+            }
             MoveToPosition {
                 position,
                 may_push_crate,
-            } => self.current_level.move_to(position, may_push_crate),
+            } => {self.current_level.move_to(position, may_push_crate);},
 
             Undo => self.current_level.undo(),
             Redo => self.current_level.redo(),
-            ResetLevel => vec![self.reset_level()],
+            ResetLevel => self.reset_level(),
 
-            NextLevel => self.next_level().unwrap_or_default(),
-            PreviousLevel => self.previous_level().unwrap_or_default(),
+            NextLevel => {self.next_level().unwrap_or_default();},
+            PreviousLevel => {self.previous_level().unwrap_or_default();},
 
             Save => {
                 let _ = self.save().unwrap();
-                vec![]
             }
 
             RecordMacro(slot) => {
                 self.macros.record(slot);
-                vec![]
             }
             StoreMacro => {
                 let len = self.macros.store();
-                if len == 0 {
-                    vec![]
-                } else {
-                    vec![Response::MacroDefined(self.macros.store())]
+                if len != 0 {
+                    let event = Event::MacroDefined(self.macros.store());
+                    self.notify(event);
                 }
             }
             ExecuteMacro(slot) => {
                 let cmds = self.macros.get(slot).to_owned();
-                let mut result = vec![];
                 for cmd in &cmds {
-                    result.extend(self.execute_helper(cmd, true));
+                    self.execute_helper(cmd, true);
                 }
-                result
             }
 
             // This is handled inside Game and never passed to this method.
@@ -249,24 +275,22 @@ impl Game {
 
             // Save information on old level
             match self.save() {
-                Ok(resp) => result.push(Response::LevelFinished(resp)),
+                Ok(resp) => self.notify(Event::LevelFinished(resp)),
                 Err(e) => {
                     error!("Failed to create data file: {}", e);
-                    result.push(Response::LevelFinished(UpdateResponse::FirstTimeSolved))
+                    self.notify(Event::LevelFinished(UpdateResponse::FirstTimeSolved));
                 }
             }
         }
-        result
     }
 
     // Helpers for Collection::execute
 
     /// Replace the current level by a clean copy.
-    fn reset_level(&mut self) -> Response {
+    fn reset_level(&mut self) {
         let n = self.rank();
         let level = self.collection.levels()[n - 1].clone();
         self.set_level(level);
-        self.new_level()
     }
 
     /// If `current_level` is finished, switch to the next level.
