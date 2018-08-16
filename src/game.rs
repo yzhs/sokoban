@@ -287,6 +287,7 @@ impl Game {
                 }
             }
             ExecuteMacro(slot) => {
+                // NOTE We have to clone the commands so we can borrow self mutably in the loop.
                 let cmds = self.macros.get(slot).to_owned();
                 for cmd in &cmds {
                     self.execute_helper(cmd, true);
