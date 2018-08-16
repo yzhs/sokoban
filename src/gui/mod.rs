@@ -844,9 +844,10 @@ impl Gui {
                 self.game.execute(&cmd);
             }
 
-            while let Ok(event) = self.events.try_recv() {
-                queue.push_back(event);
-            }
+            // We need to move the events from the channel into a deque so we can figure out how
+            // many events are left. This information is needed to adjust the animation speed if a
+            // large number of events is pending.
+            self.events.try_iter().for_each(|event| queue.push_back(event));
             self.handle_responses(&mut queue);
         }
     }
