@@ -68,6 +68,17 @@ pub enum Event {
     NoPathfindingWhilePushing,
 }
 
+impl Event {
+    pub(crate) fn is_error(&self) -> bool {
+        use Event::*;
+        match self {
+            InitialLevelState{..} | MoveWorker{..}|MoveCrate{..}|LevelFinished(_)|EndOfCollection|MacroDefined(_)
+                => false,
+            _ => true,
+        }
+    }
+}
+
 /// Handling events
 impl Game {
     pub fn subscribe(&mut self, sender: Sender<Event>) {
@@ -373,19 +384,33 @@ impl Game {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::mpsc::{Receiver, channel};
     use super::*;
     use command::contains_error;
 
-    fn exec_ok(game: &mut Game, cmd: Command) -> bool {
-        !contains_error(&game.execute(&cmd))
+    fn exec_ok(game: &mut Game, receiver: &Receiver<Event>, cmd: Command) -> bool {
+        game.execute(&cmd);
+        while let Ok(event) = receiver.try_recv() {
+            if event.is_error() {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn setup_game(name: &str) -> (Game, Receiver<Event>) {
+        let mut game = Game::load(name).unwrap();
+        let (sender, receiver) = channel();
+        game.subscribe(sender);
+        (game, receiver)
     }
 
     #[test]
     fn switch_levels() {
-        let mut game = Game::load("test").unwrap();
-        assert!(exec_ok(&mut game, Command::Move(Direction::Right)));
-        assert!(exec_ok(&mut game, Command::PreviousLevel));
-        assert!(exec_ok(&mut game, Command::NextLevel));
+        let (mut game, receiver) = setup_game("test");
+        assert!(exec_ok(&mut game, &receiver, Command::Move(Direction::Right)));
+        assert!(exec_ok(&mut game, &receiver, Command::PreviousLevel));
+        assert!(exec_ok(&mut game, &receiver, Command::NextLevel));
     }
 
     #[test]
@@ -394,38 +419,36 @@ mod tests {
         use Direction::*;
 
         let name = "original";
-        let mut game = Game::load(name).unwrap();
+        let (mut game, receiver) = setup_game("original");
         assert_eq!(game.collection.number_of_levels(), 50);
         assert_eq!(game.collection.short_name(), name);
 
-        assert!(exec_ok(&mut game, Command::Move(Up)));
+        assert!(exec_ok(&mut game, &receiver, Command::Move(Up)));
         assert!(exec_ok(
-            &mut game,
+            &mut game, &receiver,
             Command::MoveAsFarAsPossible {
                 direction: Left,
                 may_push_crate: true
             },
         ));
-        let res = game.execute(&Command::Move(Left));
-        assert!(contains_error(&res));
-
-        assert!(exec_ok(&mut game, Command::ResetLevel));
+        assert!(!exec_ok(&mut game, &receiver, Command::Move(Left)));
+        assert!(exec_ok(&mut game, &receiver, Command::ResetLevel));
         assert!(exec_ok(
-            &mut game,
+            &mut game, &receiver,
             Command::MoveToPosition {
                 position: Position::new(8_usize, 4),
                 may_push_crate: false
             },
         ));
         assert_eq!(game.current_level.number_of_moves(), 7);
-        assert!(exec_ok(&mut game, Command::Move(Left)));
+        assert!(exec_ok(&mut game, &receiver, Command::Move(Left)));
         assert_eq!(game.current_level.number_of_pushes(), 1);
 
         assert_eq!(game.current_level.moves_to_string(), "ullluuuL");
-        assert!(exec_ok(&mut game, Command::Undo));
+        assert!(exec_ok(&mut game, &receiver, Command::Undo));
         assert_eq!(game.current_level.all_moves_to_string(), "ullluuuL");
         assert_eq!(game.current_level.moves_to_string(), "ullluuu");
-        assert!(exec_ok(&mut game, Command::Redo));
+        assert!(exec_ok(&mut game, &receiver, Command::Redo));
         assert_eq!(game.current_level.number_of_pushes(), 1);
     }
 
