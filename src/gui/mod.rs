@@ -659,13 +659,15 @@ impl InputState {
 }
 
 fn set_animation_duration(queue_length: usize) {
+    let new_duration = 
     if queue_length > 60 {
-        *sprite::ANIMATION_DURATION.lock().unwrap() = 0.02_f32;
+        0.02_f32
     } else if queue_length > 20 {
-        *sprite::ANIMATION_DURATION.lock().unwrap() = 0.05_f32;
+        0.05_f32
     } else {
-        *sprite::ANIMATION_DURATION.lock().unwrap() = 0.08_f32;
-    }
+        0.08_f32
+    };
+    *sprite::ANIMATION_DURATION.lock().unwrap() = new_duration;
 }
 
 fn log_update_response(response: save::UpdateResponse) {
