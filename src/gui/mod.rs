@@ -772,8 +772,9 @@ impl Gui {
 
     pub fn main_loop(mut self) {
         let mut queue = VecDeque::new();
-        let mut command_queue = VecDeque::new();
         let mut input_state: InputState = Default::default();
+        let (sender, receiver) = channel();
+        self.game.listen_to(receiver);
 
         loop {
             use glium::glutin::ElementState::*;
@@ -837,17 +838,16 @@ impl Gui {
                     _ => (),
                 }
 
-                command_queue.push_back(cmd);
+                sender.send(cmd).unwrap();
             }
-
-            while let Some(cmd) = command_queue.pop_front() {
-                self.game.execute(&cmd);
-            }
+            self.game.execute();
 
             // We need to move the events from the channel into a deque so we can figure out how
             // many events are left. This information is needed to adjust the animation speed if a
             // large number of events is pending.
-            self.events.try_iter().for_each(|event| queue.push_back(event));
+            self.events
+                .try_iter()
+                .for_each(|event| queue.push_back(event));
             self.handle_responses(&mut queue);
         }
     }

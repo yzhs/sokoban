@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{Receiver, Sender};
 
 use collection::*;
 use command::*;
@@ -34,7 +34,8 @@ pub struct Game {
     /// Macros
     macros: Macros,
 
-    listener: Option<Sender<Event>>,
+    sender: Option<Sender<Event>>,
+    receiver: Option<Receiver<Command>>,
 }
 
 #[derive(Debug)]
@@ -89,25 +90,29 @@ impl Event {
 impl Game {
     pub fn subscribe(&mut self, sender: Sender<Event>) {
         self.current_level.subscribe(sender.clone());
-        self.listener = Some(sender);
+        self.sender = Some(sender);
+    }
+
+    pub fn listen_to(&mut self, receiver: Receiver<Command>) {
+        self.receiver = Some(receiver);
     }
 
     fn notify(&self, event: Event) {
-        if let Some(ref sender) = self.listener {
+        if let Some(ref sender) = self.sender {
             sender.send(event).unwrap();
         }
     }
 
     fn set_level(&mut self, level: Level) {
         self.current_level = level;
-        if let Some(ref sender) = self.listener {
+        if let Some(ref sender) = self.sender {
             self.current_level.subscribe(sender.clone());
         }
         self.on_load_level();
     }
 
     fn on_load_level(&self) {
-        if let Some(ref sender) = self.listener {
+        if let Some(ref sender) = self.sender {
             let initial_state = Event::InitialLevelState {
                 rank: self.rank(),
                 columns: self.columns(),
@@ -134,7 +139,8 @@ impl Game {
             state: CollectionState::load(collection.short_name()),
             macros: Macros::new(),
             collection,
-            listener: None,
+            sender: None,
+            receiver: None,
         };
 
         result.load_state(true);
@@ -164,12 +170,21 @@ impl Game {
 
     /// Execute a command from the front end. Load new collections or pass control to
     /// `Collection::execute`.
-    pub fn execute(&mut self, cmd: &Command) {
-        if let Command::LoadCollection(ref name) = *cmd {
-            info!("Loading level collection {}.", name);
-            self.set_collection(name).unwrap();
-        } else {
-            self.execute_helper(cmd, false)
+    pub fn execute(&mut self) {
+        while let Ok(cmd) = {
+            if let Some(ref receiver) = self.receiver {
+                receiver.try_recv()
+            } else {
+                error!("Trying to get command but no Receiver is available");
+                return;
+            }
+        } {
+            if let Command::LoadCollection(ref name) = cmd {
+                info!("Loading level collection {}.", name);
+                self.set_collection(name).unwrap();
+            } else {
+                self.execute_helper(&cmd, false)
+            }
         }
     }
 
@@ -410,7 +425,7 @@ mod tests {
     use std::sync::mpsc::{channel, Receiver};
 
     fn exec_ok(game: &mut Game, receiver: &Receiver<Event>, cmd: Command) -> bool {
-        game.execute(&cmd);
+        game.execute_helper(&cmd, false);
         let mut found_some_event = false;
 
         while let Ok(event) = receiver.try_recv() {
@@ -529,7 +544,8 @@ mod tests {
             macros: Macros::new(),
             state: CollectionState::new(""),
             current_level: lvl,
-            listener: None,
+            sender: None,
+            receiver: None,
         }
     }
 
@@ -541,10 +557,10 @@ mod tests {
 
         let num_moves = move_dirs.len();
         for dir in move_dirs {
-            game.execute(&Command::Move(dir));
+            game.execute_helper(&Command::Move(dir), false);
         }
         for _ in 0..num_moves {
-            game.execute(&Command::Undo);
+            game.execute_helper(&Command::Undo, false);
         }
 
         let current_lvl = game.current_level();
