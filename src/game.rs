@@ -299,10 +299,10 @@ impl Game {
             }
 
             Undo => {
-                let _ = self.current_level.undo();
+                self.current_level.undo();
             }
             Redo => {
-                let _ = self.current_level.redo();
+                self.current_level.redo();
             }
             ResetLevel => self.reset_current_level(),
 

@@ -601,10 +601,10 @@ impl Level {
     }
 
     /// Undo the most recent move.
-    pub fn undo(&mut self) -> Result<(), ()> {
+    pub fn undo(&mut self) -> bool {
         if self.number_of_moves == 0 {
             self.notify(Event::NothingToUndo);
-            return Err(());
+            return false;
         } else {
             self.number_of_moves -= 1;
         }
@@ -617,18 +617,18 @@ impl Level {
             self.move_crate(crate_pos, direction.reverse());
         }
 
-        Ok(())
+        true
     }
 
     /// If a move has been undone previously, redo it.
-    pub fn redo(&mut self) -> Result<(), ()> {
+    pub fn redo(&mut self) -> bool {
         if self.moves.len() > self.number_of_moves {
             let dir = self.moves[self.number_of_moves].direction;
             self.try_move(dir);
-            Ok(())
+            true
         } else {
             self.notify(Event::NothingToRedo);
-            Err(())
+            false
         }
     }
 
@@ -799,11 +799,11 @@ mod test {
         assert!(&lvl.try_move(Up).is_err());
         assert!(&lvl.try_move(Down).is_err());
         assert!(lvl.is_finished());
-        assert!(!&lvl.undo().is_err());
+        assert!(lvl.undo());
         assert!(!lvl.is_finished());
         assert!(!&lvl.try_move(Right).is_err());
         assert_eq!(lvl.worker_direction(), Right);
-        assert!(&lvl.redo().is_err());
+        assert!(!lvl.redo());
         assert!(!&lvl.try_move(Left).is_err());
         assert!(!&lvl.try_move(Left).is_err());
         assert!(lvl.is_finished());
