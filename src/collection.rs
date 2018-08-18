@@ -266,8 +266,8 @@ mod test {
     #[test]
     fn load_test_collections() {
         assert!(Collection::parse("test_2").is_ok());
-        assert!(Collection::parse("test_2").is_ok());
+        assert!(Collection::parse_metadata("test_2").is_ok());
         assert!(Collection::parse("test3iuntrenutineaniutea").is_err());
-        assert!(Collection::parse("test3iuntrenutineaniutea").is_err());
+        assert!(Collection::parse_metadata("test3iuntrenutineaniutea").is_err());
     }
 }
