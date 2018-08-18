@@ -276,11 +276,9 @@ impl Game {
             MoveAsFarAsPossible {
                 direction: dir,
                 may_push_crate,
-            } => {
-                let _ = self
-                    .current_level
-                    .move_as_far_as_possible(dir, may_push_crate);
-            }
+            } => self
+                .current_level
+                .move_as_far_as_possible(dir, may_push_crate),
             MoveToPosition {
                 position,
                 may_push_crate,
