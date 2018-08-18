@@ -271,7 +271,9 @@ impl Game {
             Nothing => {}
 
             Move(dir) => {
-                self.current_level.try_move(dir);
+                if let Err(event) = self.current_level.try_move(dir) {
+                    self.listeners.notify_move(event);
+                }
             }
             MoveAsFarAsPossible {
                 direction: dir,
@@ -406,7 +408,8 @@ impl Game {
                         ..
                     } = state.levels[n]
                     {
-                        lvl.execute_moves(number_of_moves, moves);
+                        let is_ok = lvl.execute_moves(number_of_moves, moves).is_ok();
+                        assert!(is_ok);
                     }
                 }
                 self.set_current_level(lvl);

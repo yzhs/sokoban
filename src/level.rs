@@ -505,7 +505,7 @@ impl Level {
             Ok(dir) => {
                 let (dx, dy) = to - self.worker_position;
                 if !may_push_crate && dx.abs() + dy.abs() > 1 {
-                    self.find_path(to).unwrap_or_default();
+                    self.find_path(to);
                 } else {
                     // Note that this takes care of both movements of just one step and all cases
                     // in which crates may be pushed.
@@ -517,26 +517,24 @@ impl Level {
                 }
             }
             Err(None) => {}
-            Err(_) if !may_push_crate => {
-                self.find_path(to);
-            }
+            Err(_) if !may_push_crate => self.find_path(to),
             Err(_) => self.notify(Event::NoPathfindingWhilePushing),
         }
     }
 
     /// Try to move in the given direction. Return an error if that is not possile.
-    pub fn try_move(&mut self, direction: Direction) -> Result<(), ()> {
-        self.move_helper(direction, true).map_err(|_| ())
+    pub fn try_move(&mut self, direction: Direction) -> Result<(), Event> {
+        self.move_helper(direction, true)
     }
 
     /// Try to find a shortest path from the workers current position to `to` and execute it if one
     /// exists.
-    pub fn find_path(&mut self, to: Position) -> Result<(), ()> {
+    pub fn find_path(&mut self, to: Position) {
         let columns = self.columns();
         let rows = self.rows();
 
         if self.worker_position == to || !self.is_empty(to) {
-            return Ok(());
+            return;
         }
 
         let mut distances = vec![::std::usize::MAX; columns * rows];
@@ -580,7 +578,8 @@ impl Level {
                         < distances[self.index(self.worker_position)]
                     {
                         let dir = direction(self.worker_position, neighbour);
-                        self.try_move(dir.unwrap());
+                        let is_ok = self.try_move(dir.unwrap()).is_ok();
+                        assert!(is_ok);
                     }
                 }
                 if self.worker_position == to {
@@ -588,8 +587,6 @@ impl Level {
                 }
             }
         }
-
-        Ok(())
     }
 
     /// Move as far as possible in the given direction (without pushing crates if `may_push_crate`
@@ -624,7 +621,8 @@ impl Level {
     pub fn redo(&mut self) -> bool {
         if self.moves.len() > self.number_of_moves {
             let dir = self.moves[self.number_of_moves].direction;
-            self.try_move(dir);
+            let is_ok = self.try_move(dir).is_ok();
+            assert!(is_ok);
             true
         } else {
             self.notify(Event::NothingToRedo);
@@ -635,7 +633,7 @@ impl Level {
     /// Given a number of simple moves, i.e. up, down, left, right, as a strign, execute the first
     /// `number_of_moves` of them. If there are more moves than that, they can be executed using
     /// redo.
-    pub fn execute_moves(&mut self, number_of_moves: usize, moves: &str) -> Result<(), ()> {
+    pub fn execute_moves(&mut self, number_of_moves: usize, moves: &str) -> Result<(), Event> {
         let moves = ::move_::parse(moves).unwrap();
         // TODO Error handling
         for (i, move_) in moves.iter().enumerate() {
