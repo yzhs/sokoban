@@ -310,7 +310,7 @@ impl Game {
                 let _ = self.next_level().unwrap();
             }
             PreviousLevel => {
-                self.previous_level().unwrap_or_default();
+                let _ = self.previous_level().unwrap();
             }
 
             Save => {
@@ -392,14 +392,14 @@ impl Game {
     }
 
     /// Go to the previous level unless this is already the first level in this collection.
-    fn previous_level(&mut self) -> Result<Vec<Response>, ()> {
+    fn previous_level(&mut self) -> Result<(), ()> {
         let n = self.rank();
         if n < 2 {
             Err(())
         } else {
-            let level = self.collection.levels()[n - 2].clone();
-            self.set_level(level);
-            Ok(vec![self.new_level()])
+            let previous_level = self.get_level(n - 1);
+            self.set_current_level(previous_level);
+            Ok(())
         }
     }
 
