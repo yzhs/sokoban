@@ -287,9 +287,9 @@ impl Game {
                 direction: dir,
                 may_push_crate,
             } => {
-                self.current_level
-                    .move_until(dir, may_push_crate)
-                    .unwrap_or_default();
+                let _ = self
+                    .current_level
+                    .move_as_far_as_possible(dir, may_push_crate);
             }
             MoveToPosition {
                 position,

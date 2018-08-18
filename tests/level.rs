@@ -81,10 +81,10 @@ fn test_path_finding() {
     }
 
     let pos = lvl.worker_position();
-    let _ = lvl.move_until(Right, false);
+    let _ = lvl.move_as_far_as_possible(Right, false);
     assert_eq!(pos, lvl.worker_position());
 
-    let _ = lvl.move_until(Right, true);
+    let _ = lvl.move_as_far_as_possible(Right, true);
     for (i, mv) in "drUluR\
                     lldlllllluuulLulDDDuulldddrRRRRRRRRRRRurD\
                     lllllllluuulluuulDDDDDuulldddrRRRRRRRRRRR\

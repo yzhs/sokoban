@@ -594,13 +594,10 @@ impl Level {
 
     /// Move as far as possible in the given direction (without pushing crates if `may_push_crate`
     /// is `false`).
-    pub fn move_until(&mut self, direction: Direction, may_push_crate: bool) -> Result<(), ()> {
-        while self.move_helper(direction, may_push_crate).is_ok() {
-            if may_push_crate && self.is_finished() {
-                break;
-            }
-        }
-        Ok(())
+    pub fn move_as_far_as_possible(&mut self, direction: Direction, may_push_crate: bool) {
+        while self.move_helper(direction, may_push_crate).is_ok()
+            && !(may_push_crate && self.is_finished())
+        {}
     }
 
     /// Undo the most recent move.
