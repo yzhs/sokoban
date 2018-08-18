@@ -276,11 +276,11 @@ impl Game {
                 }
             }
             MoveAsFarAsPossible {
-                direction: dir,
+                direction,
                 may_push_crate,
             } => self
                 .current_level
-                .move_as_far_as_possible(dir, may_push_crate),
+                .move_as_far_as_possible(direction, may_push_crate),
             MoveToPosition {
                 position,
                 may_push_crate,
