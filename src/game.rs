@@ -41,7 +41,6 @@ pub struct Game {
 
 #[derive(Default)]
 struct Listeners {
-    commands: Vec<Sender<Command>>,
     moves: Vec<Sender<Event>>,
 }
 
@@ -56,16 +55,8 @@ impl Listeners {
         Default::default()
     }
 
-    pub fn notify_command(&self, command: Command) {
-        notify_helper(&self.commands, command);
-    }
-
     pub fn notify_move(&self, event: Event) {
         notify_helper(&self.moves, event);
-    }
-
-    pub fn subscribe_commands(&mut self, listener: Sender<Command>) {
-        self.commands.push(listener);
     }
 
     pub fn subscribe_moves(&mut self, listener: Sender<Event>) {
@@ -126,10 +117,6 @@ impl Game {
     pub fn subscribe_moves(&mut self, listener: Sender<Event>) {
         self.current_level.subscribe(listener.clone());
         self.listeners.subscribe_moves(listener);
-    }
-
-    pub fn subscribe_commands(&mut self, listener: Sender<Command>) {
-        self.listeners.subscribe_commands(listener);
     }
 
     pub fn listen_to(&mut self, receiver: Receiver<Command>) {
