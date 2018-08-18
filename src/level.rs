@@ -4,7 +4,7 @@ use std::sync::mpsc::Sender;
 
 use command::{Obstacle, WithCrate};
 use direction::*;
-use game::Event;
+use event::Event;
 use move_::Move;
 use position::*;
 use util::*;

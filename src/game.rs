@@ -1,11 +1,11 @@
-use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::sync::mpsc::{Receiver, Sender};
 
 use collection::*;
 use command::*;
 use direction::Direction;
-use level::{Background, Level};
+use event::*;
+use level::Level;
 use macros::Macros;
 use position::Position;
 use save::*;
@@ -61,55 +61,6 @@ impl Listeners {
 
     pub fn subscribe_moves(&mut self, listener: Sender<Event>) {
         self.moves.push(listener);
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum Event {
-    InitialLevelState {
-        rank: usize,
-        columns: usize,
-        rows: usize,
-        background: Vec<Background>,
-        worker_position: Position,
-        worker_direction: Direction,
-        crates: HashMap<Position, usize>,
-    },
-    MoveWorker {
-        from: Position,
-        to: Position,
-        direction: Direction,
-    },
-    MoveCrate {
-        id: usize,
-        from: Position,
-        to: Position,
-    },
-    NothingToRedo,
-    NothingToUndo,
-    LevelFinished(UpdateResponse),
-    EndOfCollection,
-
-    MacroDefined,
-
-    NoPathfindingWhilePushing,
-    CannotMove(WithCrate, Obstacle),
-    NoPathFound,
-}
-
-#[cfg(test)]
-impl Event {
-    pub(crate) fn is_error(&self) -> bool {
-        use Event::*;
-        match self {
-            InitialLevelState { .. }
-            | MoveWorker { .. }
-            | MoveCrate { .. }
-            | LevelFinished(_)
-            | EndOfCollection
-            | MacroDefined => false,
-            _ => true,
-        }
     }
 }
 
