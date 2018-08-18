@@ -323,6 +323,7 @@ impl Gui {
         // `self.background_texture` mutably at the end.
         {
             let level = self.current_level();
+            let mut surface = target.as_surface();
 
             // Render each of the (square) tiles
             for &background in &[Background::Floor, Background::Goal, Background::Wall] {
@@ -332,8 +333,7 @@ impl Gui {
                 let texture = self.background_to_texture(background);
                 let uniforms = uniform!{tex: texture, matrix: self.matrix};
 
-                target
-                    .as_surface()
+                surface
                     .draw(&vb, &NO_INDICES, program, &uniforms, &self.params)
                     .unwrap();
             }
@@ -453,14 +453,8 @@ impl Gui {
         }
     }
 
-    /// Render the current level.
-    fn render_level(&mut self) {
-        self.generate_background_if_none();
-
-        let columns = self.columns as u32;
-        let rows = self.rows as u32;
-
-        // Draw background
+    /// Fill the screen with the cached background image
+    fn draw_background<S: glium::Surface>(&self, target: &mut S) {
         let vertices = texture::full_screen();
         let vb = glium::VertexBuffer::new(&self.display, &vertices).unwrap();
 
@@ -468,30 +462,31 @@ impl Gui {
         let uniforms = uniform!{tex: bg, matrix: IDENTITY};
         let program = &self.program;
 
-        let mut target = self.display.draw();
-
         target.clear_color(0.0, 0.0, 0.0, 1.0); // Prevent artefacts when resizing the window
 
         target
             .draw(&vb, &NO_INDICES, program, &uniforms, &self.params)
             .unwrap();
+    }
 
-        // Draw foreground
-        {
-            let mut draw = |vs, tex| self.draw_quads(&mut target, vs, tex, program).unwrap();
+    fn draw_foreground<S: glium::Surface>(&self, target: &mut S) {
+        let columns = self.columns as u32;
+        let rows = self.rows as u32;
 
-            // Draw the crates
-            let mut vertices = vec![];
-            for sprite in &self.crates {
-                vertices.extend(sprite.quad(columns, rows));
-            }
-            draw(vertices, &self.textures.crate_);
+        let mut draw = |vs, tex| self.draw_quads(target, vs, tex, &self.program).unwrap();
 
-            // Draw the worker
-            draw(self.worker.quad(columns, rows), &self.textures.worker);
+        // Draw the crates
+        let mut vertices = vec![];
+        for sprite in &self.crates {
+            vertices.extend(sprite.quad(columns, rows));
         }
+        draw(vertices, &self.textures.crate_);
 
-        // Display text overlay
+        // Draw the worker
+        draw(self.worker.quad(columns, rows), &self.textures.worker);
+    }
+
+    fn draw_statistics_overlay<S: glium::Surface>(&self, target: &mut S) {
         let aspect_ratio = self.window_aspect_ratio();
         // TODO show collection name
         // Show some statistics
@@ -503,13 +498,24 @@ impl Gui {
         );
 
         self.font_data.draw(
-            &mut target,
+            target,
             &text,
             FontStyle::Mono,
             0.04,
             [0.5, -0.9],
             aspect_ratio,
         );
+    }
+
+    /// Render the current level.
+    fn render_level(&mut self) {
+        self.generate_background_if_none();
+
+        let mut target = self.display.draw();
+
+        self.draw_background(&mut target);
+        self.draw_foreground(&mut target);
+        self.draw_statistics_overlay(&mut target);
 
         target.finish().unwrap();
     }
@@ -522,47 +528,17 @@ impl Gui {
 
     fn render_end_of_level(&mut self) {
         // TODO extract functions, reduce duplication with render_level()
-        let vertices = texture::full_screen();
-        let vb = glium::VertexBuffer::new(&self.display, &vertices).unwrap();
-
         if self.background_texture.is_none() {
-            // Render the end-of-level screen and store it in self.bg
-            let columns = self.columns as u32;
-            let rows = self.rows as u32;
-
             self.generate_background();
+
             let width = self.window_size[0];
             let height = self.window_size[1];
             let texture = Texture2d::empty(&self.display, width, height).unwrap();
 
             {
                 let mut target = texture.as_surface();
-                let bg = self.background_texture.as_ref().unwrap();
-                let uniforms = uniform!{tex: bg, matrix: IDENTITY};
-                let program = &self.program;
-
-                // Prevent artefacts when resizing the window
-                target.clear_color(0.0, 0.0, 0.0, 1.0);
-
-                target
-                    .draw(&vb, &NO_INDICES, program, &uniforms, &self.params)
-                    .unwrap();
-
-                // Draw foreground
-                {
-                    let mut draw =
-                        |vs, tex| self.draw_quads(&mut target, vs, tex, program).unwrap();
-
-                    // Draw the crates
-                    let mut vertices = vec![];
-                    for sprite in &self.crates {
-                        vertices.extend(sprite.quad(columns, rows));
-                    }
-                    draw(vertices, &self.textures.crate_);
-
-                    // Draw the worker
-                    draw(self.worker.quad(columns, rows), &self.textures.worker);
-                }
+                self.draw_background(&mut target);
+                self.draw_foreground(&mut target);
 
                 // Display text overlay
                 self.draw_end_of_level_overlay(&mut target);
@@ -571,20 +547,10 @@ impl Gui {
             self.background_texture = Some(texture);
             self.render_level();
         } else {
-            self.draw_background(&vb);
+            let mut target = self.display.draw();
+            self.draw_background(&mut target);
+            target.finish().unwrap();
         }
-    }
-
-    /// Fill the screen with the cached background image
-    fn draw_background(&self, vb: &glium::VertexBuffer<Vertex>) {
-        let bg = self.background_texture.as_ref().unwrap();
-        let uniforms = uniform!{tex: bg, matrix: IDENTITY};
-        let mut target = self.display.draw();
-
-        target
-            .draw(vb, &NO_INDICES, &self.program, &uniforms, &self.params)
-            .unwrap();
-        target.finish().unwrap();
     }
 
     fn render(&mut self) {
