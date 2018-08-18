@@ -324,6 +324,7 @@ impl Game {
                 self.state.collection_solved = true;
             }
 
+            // TODO Emit the events in one of the move() functions?
             // Save information on old level
             match self.save() {
                 Ok(resp) => self.listeners.notify_move(Event::LevelFinished(resp)),
