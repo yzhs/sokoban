@@ -296,12 +296,8 @@ impl Game {
             }
             ResetLevel => self.reset_current_level(),
 
-            NextLevel => {
-                let _ = self.next_level().unwrap();
-            }
-            PreviousLevel => {
-                let _ = self.previous_level().unwrap();
-            }
+            NextLevel => self.next_level().unwrap(),
+            PreviousLevel => self.previous_level().unwrap(),
 
             Save => {
                 let _ = self.save().unwrap();
