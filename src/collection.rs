@@ -1,3 +1,5 @@
+//! This module contains code to parse all supported collection formats.
+
 use std::fs::File;
 use std::io::Read;
 
@@ -9,7 +11,8 @@ enum FileFormat {
     Xml,
 }
 
-/// A collection of levels.
+/// A collection of levels. This type contains logic for parsing a collection file. Other than
+/// that, it is simply a list of Levels together with some metadata.
 #[derive(Debug)]
 pub struct Collection {
     /// The full name of the collection.
