@@ -398,7 +398,7 @@ impl Level {
         self.listeners.push(sender);
     }
 
-    fn notify(&self, event: Event) {
+    fn notify(&self, event: &Event) {
         for sender in &self.listeners {
             sender.send(event.clone()).unwrap();
         }
@@ -421,7 +421,7 @@ impl Level {
             to,
             direction,
         };
-        self.notify(event);
+        self.notify(&event);
     }
 
     fn move_crate(&mut self, from: Position, direction: Direction) {
@@ -446,7 +446,7 @@ impl Level {
 
     fn on_crate_move(&self, id: usize, from: Position, to: Position) {
         let event = Event::MoveCrate { id, from, to };
-        self.notify(event);
+        self.notify(&event);
     }
 }
 // }}}
@@ -518,7 +518,7 @@ impl Level {
             }
             Err(None) => {}
             Err(_) if !may_push_crate => self.find_path(to),
-            Err(_) => self.notify(Event::NoPathfindingWhilePushing),
+            Err(_) => self.notify(&Event::NoPathfindingWhilePushing),
         }
     }
 
@@ -563,7 +563,7 @@ impl Level {
         }
 
         if !path_exists {
-            return self.notify(Event::NoPathFound);
+            return self.notify(&Event::NoPathFound);
         }
 
         // Move worker along the path
@@ -589,7 +589,7 @@ impl Level {
     /// Undo the most recent move.
     pub fn undo(&mut self) -> bool {
         if self.number_of_moves == 0 {
-            self.notify(Event::NothingToUndo);
+            self.notify(&Event::NothingToUndo);
             return false;
         } else {
             self.number_of_moves -= 1;
@@ -614,7 +614,7 @@ impl Level {
             assert!(is_ok);
             true
         } else {
-            self.notify(Event::NothingToRedo);
+            self.notify(&Event::NothingToRedo);
             false
         }
     }

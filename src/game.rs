@@ -44,7 +44,7 @@ struct Listeners {
     moves: Vec<Sender<Event>>,
 }
 
-fn notify_helper<T: Clone + Send>(listeners: &[Sender<T>], message: T) {
+fn notify_helper<T: Clone + Send>(listeners: &[Sender<T>], message: &T) {
     for listener in listeners {
         listener.send(message.clone()).unwrap();
     }
@@ -55,7 +55,7 @@ impl Listeners {
         Default::default()
     }
 
-    pub fn notify_move(&self, event: Event) {
+    pub fn notify_move(&self, event: &Event) {
         notify_helper(&self.moves, event);
     }
 
@@ -142,7 +142,7 @@ impl Game {
             worker_direction: Direction::Left,
             crates: self.current_level.crates.clone(),
         };
-        self.listeners.notify_move(initial_state);
+        self.listeners.notify_move(&initial_state);
     }
 }
 
@@ -273,7 +273,7 @@ impl Game {
 
             Move(dir) => {
                 if let Err(event) = self.current_level.try_move(dir) {
-                    self.listeners.notify_move(event);
+                    self.listeners.notify_move(&event);
                 }
             }
             MoveAsFarAsPossible {
@@ -310,7 +310,7 @@ impl Game {
             StoreMacro => {
                 let len = self.macros.stop_recording();
                 if len != 0 {
-                    self.listeners.notify_move(Event::MacroDefined);
+                    self.listeners.notify_move(&Event::MacroDefined);
                 }
             }
             ExecuteMacro(slot) => self.execute_macro(slot),
@@ -326,11 +326,11 @@ impl Game {
             // TODO Emit the events in one of the move() functions?
             // Save information on old level
             match self.save() {
-                Ok(resp) => self.listeners.notify_move(Event::LevelFinished(resp)),
+                Ok(resp) => self.listeners.notify_move(&Event::LevelFinished(resp)),
                 Err(e) => {
                     error!("Failed to create data file: {}", e);
                     self.listeners
-                        .notify_move(Event::LevelFinished(UpdateResponse::FirstTimeSolved));
+                        .notify_move(&Event::LevelFinished(UpdateResponse::FirstTimeSolved));
                 }
             }
         }

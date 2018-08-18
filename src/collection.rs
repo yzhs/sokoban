@@ -250,7 +250,7 @@ impl Collection {
         &self.levels[0]
     }
 
-    /// Get all levels. This is needed for image-to-level
+    /// Get all levels.
     pub fn levels(&self) -> &[Level] {
         self.levels.as_ref()
     }
