@@ -34,11 +34,46 @@ pub struct Game {
     /// Macros
     macros: Macros,
 
-    sender: Option<Sender<Event>>,
+    listeners: Listeners,
+
     receiver: Option<Receiver<Command>>,
 }
 
-#[derive(Debug)]
+#[derive(Default)]
+struct Listeners {
+    commands: Vec<Sender<Command>>,
+    moves: Vec<Sender<Event>>,
+}
+
+fn notify_helper<T: Clone + Send>(listeners: &[Sender<T>], message: T) {
+    for listener in listeners {
+        listener.send(message.clone()).unwrap();
+    }
+}
+
+impl Listeners {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn notify_command(&self, command: Command) {
+        notify_helper(&self.commands, command);
+    }
+
+    pub fn notify_move(&self, event: Event) {
+        notify_helper(&self.moves, event);
+    }
+
+    pub fn subscribe_commands(&mut self, listener: Sender<Command>) {
+        self.commands.push(listener);
+    }
+
+    pub fn subscribe_moves(&mut self, listener: Sender<Event>) {
+        self.moves.push(listener);
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum Event {
     InitialLevelState {
         rank: usize,
@@ -88,42 +123,38 @@ impl Event {
 
 /// Handling events
 impl Game {
-    pub fn subscribe(&mut self, sender: Sender<Event>) {
-        self.current_level.subscribe(sender.clone());
-        self.sender = Some(sender);
+    pub fn subscribe_moves(&mut self, listener: Sender<Event>) {
+        self.current_level.subscribe(listener.clone());
+        self.listeners.subscribe_moves(listener);
+    }
+
+    pub fn subscribe_commands(&mut self, listener: Sender<Command>) {
+        self.listeners.subscribe_commands(listener);
     }
 
     pub fn listen_to(&mut self, receiver: Receiver<Command>) {
         self.receiver = Some(receiver);
     }
 
-    fn notify(&self, event: Event) {
-        if let Some(ref sender) = self.sender {
-            sender.send(event).unwrap();
-        }
-    }
-
     fn set_level(&mut self, level: Level) {
         self.current_level = level;
-        if let Some(ref sender) = self.sender {
-            self.current_level.subscribe(sender.clone());
+        for listener in &self.listeners.moves {
+            self.current_level.subscribe(listener.clone());
         }
         self.on_load_level();
     }
 
     fn on_load_level(&self) {
-        if let Some(ref sender) = self.sender {
-            let initial_state = Event::InitialLevelState {
-                rank: self.rank(),
-                columns: self.columns(),
-                rows: self.rows(),
-                background: self.current_level.background.clone(),
-                worker_position: self.worker_position(),
-                worker_direction: Direction::Left,
-                crates: self.current_level.crates.clone(),
-            };
-            sender.send(initial_state).unwrap();
-        }
+        let initial_state = Event::InitialLevelState {
+            rank: self.rank(),
+            columns: self.columns(),
+            rows: self.rows(),
+            background: self.current_level.background.clone(),
+            worker_position: self.worker_position(),
+            worker_direction: Direction::Left,
+            crates: self.current_level.crates.clone(),
+        };
+        self.listeners.notify_move(initial_state);
     }
 }
 
@@ -139,7 +170,7 @@ impl Game {
             state: CollectionState::load(collection.short_name()),
             macros: Macros::new(),
             collection,
-            sender: None,
+            listeners: Listeners::new(),
             receiver: None,
         };
 
@@ -302,7 +333,7 @@ impl Game {
                 let len = self.macros.store();
                 if len != 0 {
                     let event = Event::MacroDefined(self.macros.store());
-                    self.notify(event);
+                    self.listeners.notify_move(event);
                 }
             }
             ExecuteMacro(slot) => {
@@ -323,10 +354,11 @@ impl Game {
 
             // Save information on old level
             match self.save() {
-                Ok(resp) => self.notify(Event::LevelFinished(resp)),
+                Ok(resp) => self.listeners.notify_move(Event::LevelFinished(resp)),
                 Err(e) => {
                     error!("Failed to create data file: {}", e);
-                    self.notify(Event::LevelFinished(UpdateResponse::FirstTimeSolved));
+                    self.listeners
+                        .notify_move(Event::LevelFinished(UpdateResponse::FirstTimeSolved));
                 }
             }
         }
@@ -441,7 +473,7 @@ mod tests {
     fn setup_game(name: &str) -> (Game, Receiver<Event>) {
         let mut game = Game::load(name).unwrap();
         let (sender, receiver) = channel();
-        game.subscribe(sender);
+        game.subscribe_moves(sender);
         (game, receiver)
     }
 
@@ -544,7 +576,7 @@ mod tests {
             macros: Macros::new(),
             state: CollectionState::new(""),
             current_level: lvl,
-            sender: None,
+            listeners: Listeners::new(),
             receiver: None,
         }
     }

@@ -60,7 +60,7 @@ pub struct Level {
     /// This describes how many moves have to be performed to arrive at the current state.
     number_of_moves: usize,
 
-    listener: Option<Sender<Event>>,
+    listeners: Vec<Sender<Event>>,
 }
 
 // Parse level {{{
@@ -195,7 +195,7 @@ impl LevelBuilder {
             number_of_moves: 0,
             moves: vec![],
 
-            listener: None,
+            listeners: vec![],
         }
     }
 
@@ -395,12 +395,12 @@ impl Level {
 /// Emit the appropriate events {{{
 impl Level {
     pub fn subscribe(&mut self, sender: Sender<Event>) {
-        self.listener = Some(sender);
+        self.listeners.push(sender);
     }
 
     fn notify(&self, event: Event) {
-        if let Some(ref sender) = self.listener {
-            sender.send(event).unwrap();
+        for sender in &self.listeners {
+            sender.send(event.clone()).unwrap();
         }
     }
 

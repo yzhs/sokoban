@@ -155,11 +155,11 @@ impl Response {
 }
 
 /// Did the player try to move a crate?
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct WithCrate(pub bool);
 
 /// What blacked a movement?
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Obstacle {
     Wall,
     Crate,

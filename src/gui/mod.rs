@@ -130,7 +130,7 @@ impl Gui {
         };
 
         let (sender, receiver) = channel();
-        game.subscribe(sender);
+        game.subscribe_moves(sender);
 
         let mut gui = Gui {
             columns: game.columns(),
