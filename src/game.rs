@@ -307,7 +307,7 @@ impl Game {
             ResetLevel => self.reset_current_level(),
 
             NextLevel => {
-                self.next_level().unwrap_or_default();
+                let _ = self.next_level().unwrap();
             }
             PreviousLevel => {
                 self.previous_level().unwrap_or_default();
@@ -372,23 +372,22 @@ impl Game {
     }
 
     /// If `current_level` is finished, switch to the next level.
-    fn next_level(&mut self) -> Result<Vec<Response>, NextLevelError> {
+    fn next_level(&mut self) -> Result<(), NextLevelError> {
         let n = self.rank();
-        let finished = self.current_level.is_finished();
-        if finished {
-            if n < self.collection.number_of_levels() {
-                let level = self.collection.levels()[n].clone();
-                self.set_level(level);
-                Ok(vec![self.new_level()])
-            } else {
-                Err(NextLevelError::EndOfCollection)
-            }
-        } else if self.state.number_of_levels() >= n && n < self.collection.number_of_levels() {
-            let level = self.collection.levels()[n].clone();
-            self.set_level(level);
-            Ok(vec![self.new_level()])
-        } else {
+
+        let is_last_level = n >= self.collection.number_of_levels();
+        let current_level_is_solved_now = self.current_level.is_finished();
+        let current_level_has_been_solved_before =
+            self.state.number_of_levels() >= n && n < self.collection.number_of_levels();
+
+        if !is_last_level && (current_level_is_solved_now || current_level_has_been_solved_before) {
+            let next_level = self.get_level(self.rank() + 1);
+            self.set_current_level(next_level);
+            Ok(())
+        } else if is_last_level {
             Err(NextLevelError::LevelNotFinished)
+        } else {
+            Err(NextLevelError::EndOfCollection)
         }
     }
 
