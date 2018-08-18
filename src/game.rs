@@ -90,7 +90,7 @@ pub enum Event {
     LevelFinished(UpdateResponse),
     EndOfCollection,
 
-    MacroDefined(usize),
+    MacroDefined,
 
     NoPathfindingWhilePushing,
     CannotMove(WithCrate, Obstacle),
@@ -106,7 +106,7 @@ impl Event {
             | MoveCrate { .. }
             | LevelFinished(_)
             | EndOfCollection
-            | MacroDefined(_) => false,
+            | MacroDefined => false,
             _ => true,
         }
     }
@@ -313,8 +313,7 @@ impl Game {
             StoreMacro => {
                 let len = self.macros.stop_recording();
                 if len != 0 {
-                    let event = Event::MacroDefined(self.macros.store());
-                    self.listeners.notify_move(event);
+                    self.listeners.notify_move(Event::MacroDefined);
                 }
             }
             ExecuteMacro(slot) => self.execute_macro(slot),
