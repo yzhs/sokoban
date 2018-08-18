@@ -314,7 +314,7 @@ impl Game {
             }
 
             RecordMacro(slot) => {
-                self.macros.record(slot);
+                self.macros.start_recording(slot);
             }
             StoreMacro => {
                 let len = self.macros.store();

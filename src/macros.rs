@@ -26,7 +26,7 @@ impl Macros {
     }
 
     /// Select the target slot.
-    pub fn record(&mut self, slot: u8) {
+    pub fn start_recording(&mut self, slot: u8) {
         // In case we were already recording a macro, store it. In addition, `self.tmp` is
         // cleared.
         self.store();
@@ -34,7 +34,7 @@ impl Macros {
     }
 
     /// Append a command to the macro currently being recorded. Return true if and only if a
-    /// target slot has been selected, that is, if `record` has been called before.
+    /// target slot has been selected, that is, if `start_recording` has been called before.
     pub fn push(&mut self, cmd: &Command) -> bool {
         if self.target_slot.is_some() {
             // TODO We currently unroll macros to prevent any recursive calls. Should we allow some?
