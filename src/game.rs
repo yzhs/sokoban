@@ -123,7 +123,7 @@ impl Game {
         self.receiver = Some(receiver);
     }
 
-    fn set_level(&mut self, level: Level) {
+    fn set_current_level(&mut self, level: Level) {
         self.current_level = level;
         for listener in &self.listeners.moves {
             self.current_level.subscribe(listener.clone());
@@ -172,7 +172,7 @@ impl Game {
         self.collection = Collection::parse(name)?;
         let level = self.collection.first_level().clone();
         self.load_state(true);
-        self.set_level(level);
+        self.set_current_level(level);
         Ok(())
     }
 
@@ -263,18 +263,22 @@ impl Game {
 }
 
 impl Game {
-    /// Execute whatever command we get from the frontend.
-    fn execute_helper(&mut self, command: &Command, executing_macro: bool) {
-        use Command::*;
-
+    fn send_command_to_macros(&mut self, command: &Command, executing_macro: bool) {
         // Record everything while recording a macro. If no macro is currently being recorded,
         // Macros::push will just do nothing.
         if !executing_macro && !command.changes_macros() && !command.is_empty() {
             self.macros.push(command);
         }
+    }
+
+    /// Execute whatever command we get from the frontend.
+    fn execute_helper(&mut self, command: &Command, executing_macro: bool) {
+        use Command::*;
+
+        self.send_command_to_macros(command, executing_macro);
 
         match *command {
-            Command::Nothing => {}
+            Nothing => {}
 
             Move(dir) => {
                 self.current_level.try_move(dir);
@@ -300,7 +304,7 @@ impl Game {
             Redo => {
                 let _ = self.current_level.redo();
             }
-            ResetLevel => self.reset_level(),
+            ResetLevel => self.reset_current_level(),
 
             NextLevel => {
                 self.next_level().unwrap_or_default();
@@ -323,13 +327,7 @@ impl Game {
                     self.listeners.notify_move(event);
                 }
             }
-            ExecuteMacro(slot) => {
-                // NOTE We have to clone the commands so we can borrow self mutably in the loop.
-                let cmds = self.macros.get(slot).to_owned();
-                for cmd in &cmds {
-                    self.execute_helper(cmd, true);
-                }
-            }
+            ExecuteMacro(slot) => self.execute_macro(slot),
 
             // This is handled inside Game and never passed to this method.
             LoadCollection(_) => unreachable!(),
@@ -351,13 +349,26 @@ impl Game {
         }
     }
 
+    fn execute_macro(&mut self, slot: u8) {
+        // NOTE We have to clone the commands so we can borrow self mutably in the loop.
+        let cmds = self.macros.get(slot).to_owned();
+        cmds.iter().for_each(|cmd| self.execute_macro_command(cmd));
+    }
+
+    fn execute_macro_command(&mut self, command: &Command) {
+        self.execute_helper(command, true);
+    }
+
     // Helpers for Collection::execute
 
+    fn get_level(&self, rank: usize) -> Level {
+        self.collection.levels()[rank - 1].clone()
+    }
+
     /// Replace the current level by a clean copy.
-    fn reset_level(&mut self) {
-        let n = self.rank();
-        let level = self.collection.levels()[n - 1].clone();
-        self.set_level(level);
+    fn reset_current_level(&mut self) {
+        let current_level = self.get_level(self.rank());
+        self.set_current_level(current_level);
     }
 
     /// If `current_level` is finished, switch to the next level.
@@ -411,7 +422,7 @@ impl Game {
                         lvl.execute_moves(number_of_moves, moves);
                     }
                 }
-                self.set_level(lvl);
+                self.set_current_level(lvl);
             }
         } else {
             state = CollectionState::load_stats(self.collection.short_name());
