@@ -311,7 +311,7 @@ impl Game {
                 self.macros.start_recording(slot);
             }
             StoreMacro => {
-                let len = self.macros.store();
+                let len = self.macros.stop_recording();
                 if len != 0 {
                     let event = Event::MacroDefined(self.macros.store());
                     self.listeners.notify_move(event);

@@ -29,7 +29,7 @@ impl Macros {
     pub fn start_recording(&mut self, slot: u8) {
         // In case we were already recording a macro, store it. In addition, `self.tmp` is
         // cleared.
-        self.store();
+        self.stop_recording();
         self.target_slot = Some(slot);
     }
 
@@ -47,7 +47,7 @@ impl Macros {
     }
 
     /// We are done recording the macro and can store it in the desired slot.
-    pub fn store(&mut self) -> usize {
+    pub fn stop_recording(&mut self) -> usize {
         if let Some(slot) = self.target_slot {
             let tmp = self.tmp.clone();
             self.tmp.clear();
