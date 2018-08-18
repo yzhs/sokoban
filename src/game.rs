@@ -176,16 +176,6 @@ impl Game {
         Ok(())
     }
 
-    fn new_level(&self) -> Response {
-        Response::NewLevel {
-            rank: self.rank(),
-            columns: self.columns(),
-            rows: self.rows(),
-            worker_position: self.worker_position(),
-            worker_direction: self.worker_direction(),
-        }
-    }
-
     /// Execute a command from the front end. Load new collections or pass control to
     /// `Collection::execute`.
     pub fn execute(&mut self) {
