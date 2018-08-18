@@ -528,7 +528,7 @@ impl Level {
     }
 
     /// Try to find a shortest path from the workers current position to `to` and execute it if one
-    /// exists.
+    /// exists. Otherwise, emit `Event::NoPathFound`.
     pub fn find_path(&mut self, to: Position) {
         let columns = self.columns();
         let rows = self.rows();
@@ -540,50 +540,39 @@ impl Level {
         let mut distances = vec![::std::usize::MAX; columns * rows];
         distances[self.index(to)] = 0;
 
-        let mut found_path = false;
+        let mut path_exists = false;
         let mut queue = VecDeque::with_capacity(500);
         queue.push_back(to);
 
         while let Some(pos) = queue.pop_front() {
-            // Have wo found a path?
             if pos == self.worker_position {
-                found_path = true;
+                path_exists = true;
                 break;
             }
 
             // Is there a neighbour of pos to which we do not currently know the shortest path?
             for neighbour in self.empty_neighbours(pos) {
                 let new_dist = distances[self.index(pos)] + 1;
+                let neighbour_dist = &mut distances[self.index(neighbour)];
 
-                if distances[self.index(neighbour)] > new_dist {
-                    distances[self.index(neighbour)] = new_dist;
-                    if neighbour == self.worker_position {
-                        // If we get to the source, by the construction of the algorithm, we have
-                        // found a shortest path, so we may as well stop the search.
-                        queue.truncate(0);
-                        found_path = true;
-                        break;
-                    } else {
-                        queue.push_back(neighbour);
-                    }
+                if *neighbour_dist > new_dist {
+                    *neighbour_dist = new_dist;
+                    queue.push_back(neighbour);
                 }
             }
         }
 
-        if found_path {
-            // Move worker along the path
-            loop {
-                for neighbour in self.empty_neighbours(self.worker_position) {
-                    if distances[self.index(neighbour)]
-                        < distances[self.index(self.worker_position)]
-                    {
-                        let dir = direction(self.worker_position, neighbour);
-                        let is_ok = self.try_move(dir.unwrap()).is_ok();
-                        assert!(is_ok);
-                    }
-                }
-                if self.worker_position == to {
-                    break;
+        if !path_exists {
+            return self.notify(Event::NoPathFound);
+        }
+
+        // Move worker along the path
+        while self.worker_position != to {
+            for neighbour in self.empty_neighbours(self.worker_position) {
+                if distances[self.index(neighbour)] < distances[self.index(self.worker_position)] {
+                    let dir = direction(self.worker_position, neighbour);
+                    let is_ok = self.try_move(dir.unwrap()).is_ok();
+                    assert!(is_ok);
                 }
             }
         }

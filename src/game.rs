@@ -94,6 +94,7 @@ pub enum Event {
 
     NoPathfindingWhilePushing,
     CannotMove(WithCrate, Obstacle),
+    NoPathFound,
 }
 
 #[cfg(test)]
