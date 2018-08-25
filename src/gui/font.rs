@@ -71,6 +71,6 @@ impl FontData {
             ],
         ];
 
-        let _ = draw(&text_display, &self.system, target, matrix, WHITE);
+        draw(&text_display, &self.system, target, matrix, WHITE);
     }
 }
