@@ -50,6 +50,8 @@ extern crate quick_xml;
 
 #[cfg(test)]
 extern crate quickcheck;
+#[cfg(test)]
+extern crate rand;
 
 mod collection;
 mod command;

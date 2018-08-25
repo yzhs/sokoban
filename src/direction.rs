@@ -89,6 +89,8 @@ mod test {
 #[cfg(test)]
 impl Arbitrary for Direction {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        extern crate rand;
+        use rand::Rng;
         *g.choose(&DIRECTIONS).unwrap()
     }
 }
