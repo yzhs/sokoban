@@ -414,18 +414,6 @@ mod tests {
     }
 
     #[test]
-    fn switch_levels() {
-        let (mut game, receiver) = setup_game("test");
-        assert!(exec_ok(
-            &mut game,
-            &receiver,
-            Command::Move(Direction::Right)
-        ));
-        assert!(exec_ok(&mut game, &receiver, Command::PreviousLevel));
-        assert!(exec_ok(&mut game, &receiver, Command::NextLevel));
-    }
-
-    #[test]
     fn load_original() {
         use position::Position;
         use Direction::*;
