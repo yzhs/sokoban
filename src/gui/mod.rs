@@ -417,7 +417,7 @@ impl Gui {
             target,
             "Congratulations!",
             FontStyle::Heading,
-            0.1,
+            0.08,
             [-0.5, 0.2],
             aspect_ratio,
         );
@@ -434,7 +434,7 @@ impl Gui {
             target,
             &stats_text,
             FontStyle::Text,
-            0.05,
+            0.035,
             [-0.5, -0.2],
             aspect_ratio,
         );
@@ -445,7 +445,7 @@ impl Gui {
             target,
             txt,
             FontStyle::Text,
-            0.05,
+            0.035,
             [-0.5, -0.4],
             aspect_ratio,
         );
@@ -507,8 +507,8 @@ impl Gui {
             target,
             &text,
             FontStyle::Mono,
-            0.04,
-            [0.5, -0.9],
+            0.025,
+            [0.2, -0.9],
             aspect_ratio,
         );
     }
