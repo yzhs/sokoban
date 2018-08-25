@@ -40,7 +40,7 @@ extern crate sokoban_backend as backend;
 
 mod gui;
 
-use backend::{convert_savegames, print_collections_table, print_stats, TITLE};
+use backend::{convert_savegames, print_collections_table, print_stats, Collection, TITLE};
 
 fn main() {
     use clap::{App, Arg};
@@ -81,13 +81,14 @@ fn main() {
         return;
     }
 
-    let collection = match matches.value_of("collection") {
+    let collection_name = match matches.value_of("collection") {
         None | Some("") => {
             std::env::var("SOKOBAN_COLLECTION").unwrap_or_else(|_| "original".to_string())
         }
         Some(c) => c.to_string(),
     };
 
-    let gui = Gui::new(&collection);
+    let collection = Collection::parse(&collection_name).expect("Failed to load level set");
+    let gui = Gui::new(collection);
     gui.main_loop();
 }

@@ -98,11 +98,7 @@ impl Game {
 }
 
 impl Game {
-    pub fn load(name: &str) -> Result<Self, SokobanError> {
-        Collection::parse(name).map(Game::new)
-    }
-
-    fn new(collection: Collection) -> Self {
+    pub fn new(collection: Collection) -> Self {
         let mut result = Game {
             name: collection.short_name().to_string(),
             current_level: collection.first_level().clone(),
@@ -407,7 +403,7 @@ mod tests {
     }
 
     fn setup_game(name: &str) -> (Game, Receiver<Event>) {
-        let mut game = Game::load(name).unwrap();
+        let mut game = Game::new(Collection::parse(name).unwrap());
         let (sender, receiver) = channel();
         game.subscribe_moves(sender);
         (game, receiver)
