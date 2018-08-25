@@ -9,6 +9,7 @@ use std::thread;
 use std::time;
 
 use glium::backend::glutin::Display;
+use glium::glutin::dpi;
 use glium::glutin::{
     Event, KeyboardInput, ModifiersState, MouseButton, VirtualKeyCode, WindowEvent,
 };
@@ -97,7 +98,7 @@ impl Gui {
 
         let events_loop = glium::glutin::EventsLoop::new();
         let window = glium::glutin::WindowBuilder::new()
-            .with_dimensions(800, 600)
+            .with_dimensions(dpi::LogicalSize::new(800.0, 600.0))
             .with_title(TITLE.to_string() + " - " + game.name());
 
         let context = glium::glutin::ContextBuilder::new();
@@ -630,7 +631,7 @@ impl InputState {
 
             // TODO Open the main menu
             Escape => return ResetLevel,
-            LAlt | LControl | LMenu | LShift | LWin | RAlt | RControl | RMenu | RShift | RWin => {}
+            LAlt | LControl | LShift | LWin | RAlt | RControl | RShift | RWin => {}
             _ => error!("Unknown key: {:?}", key),
         }
         Nothing
@@ -766,7 +767,7 @@ impl Gui {
                 let mut cmd = Command::Nothing;
 
                 match event {
-                    WindowEvent::Closed
+                    WindowEvent::CloseRequested
                     | WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
@@ -798,7 +799,8 @@ impl Gui {
                     } => cmd = input_state.press_to_command(key, modifiers),
 
                     WindowEvent::CursorMoved {
-                        position: (x, y), ..
+                        position: dpi::LogicalPosition { x, y },
+                        ..
                     } => input_state.cursor_position = [x, y],
                     WindowEvent::MouseInput {
                         state: Released,
@@ -806,8 +808,9 @@ impl Gui {
                         ..
                     } => cmd = self.click_to_command(btn, &input_state),
 
-                    WindowEvent::Resized(w, h) => {
-                        self.window_size = [w, h];
+                    WindowEvent::Resized(new_size) => {
+                        let (width, height) = new_size.into();
+                        self.window_size = [width, height];
                         self.background_texture = None;
                         self.need_to_redraw = true;
                     }

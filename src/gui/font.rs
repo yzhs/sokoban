@@ -3,7 +3,7 @@ use std::path::Path;
 
 use glium::backend::glutin::Display;
 use glium::Surface;
-use glium_text_rusttype::{draw, FontTexture, TextDisplay, TextSystem};
+use glium_text::{draw, FontTexture, TextDisplay, TextSystem};
 
 const WHITE: (f32, f32, f32, f32) = (1.0, 1.0, 1.0, 1.0);
 
@@ -29,22 +29,10 @@ impl FontData {
         font_path: P,
         mono_path: Q,
     ) -> Self {
-        let chars = FontTexture::ascii_character_list();
         let system = TextSystem::new(display);
-        let text_font =
-            FontTexture::new(display, File::open(&font_path).unwrap(), 32, chars.clone()).unwrap();
-        let heading_font = FontTexture::new(
-            display,
-            File::open(&font_path).unwrap(),
-            64,
-            "Congratulis!".chars(),
-        ).unwrap();
-        let mono_font = FontTexture::new(
-            display,
-            File::open(&mono_path).unwrap(),
-            32,
-            "Levl: ,StpsPuh0123456789".chars(),
-        ).unwrap();
+        let text_font = FontTexture::new(display, File::open(&font_path).unwrap(), 32).unwrap();
+        let heading_font = FontTexture::new(display, File::open(&font_path).unwrap(), 64).unwrap();
+        let mono_font = FontTexture::new(display, File::open(&mono_path).unwrap(), 32).unwrap();
 
         FontData {
             system,

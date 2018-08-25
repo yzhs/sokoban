@@ -24,7 +24,7 @@
 // GUI
 #[macro_use]
 extern crate glium;
-extern crate glium_text_rusttype;
+extern crate glium_text;
 extern crate image;
 
 // Logging
