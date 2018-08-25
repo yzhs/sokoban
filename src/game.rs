@@ -419,7 +419,7 @@ mod tests {
         use Direction::*;
 
         let name = "original";
-        let (mut game, receiver) = setup_game("original");
+        let (mut game, receiver) = setup_game(name);
         assert_eq!(game.collection.number_of_levels(), 50);
         assert_eq!(game.collection.short_name(), name);
 
