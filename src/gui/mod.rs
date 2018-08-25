@@ -497,7 +497,7 @@ impl Gui {
         // TODO show collection name
         // Show some statistics
         let text = format!(
-            "Level: {}, Steps: {}, Pushes: {}",
+            "Level: {:>4}, Steps: {:>4}, Pushes: {:>4}",
             self.game.rank(),
             self.game.number_of_moves(),
             self.game.number_of_pushes()
