@@ -5,6 +5,8 @@ mod texture;
 use std::cmp::min;
 use std::collections::VecDeque;
 use std::sync::mpsc::{channel, Receiver};
+use std::thread;
+use std::time;
 
 use glium::backend::glutin::Display;
 use glium::glutin::{
@@ -81,6 +83,8 @@ pub struct Gui {
     worker: Sprite,
     crates: Vec<Sprite>,
 
+    need_to_redraw: bool,
+
     events: Receiver<backend::Event>,
 }
 
@@ -155,6 +159,7 @@ impl Gui {
 
             worker,
             crates: vec![],
+            need_to_redraw: true,
 
             events: receiver,
         };
@@ -744,7 +749,12 @@ impl Gui {
 
         loop {
             use glium::glutin::ElementState::*;
-            self.render();
+            if self.need_to_redraw {
+                self.render();
+                self.need_to_redraw = false;
+            } else {
+                thread::sleep(time::Duration::from_millis(16));
+            }
 
             let mut events = vec![];
             self.events_loop.poll_events(|ev: Event| match ev {
@@ -799,7 +809,10 @@ impl Gui {
                     WindowEvent::Resized(w, h) => {
                         self.window_size = [w, h];
                         self.background_texture = None;
+                        self.need_to_redraw = true;
                     }
+
+                    WindowEvent::Refresh => self.need_to_redraw = true,
 
                     _ => (),
                 }
