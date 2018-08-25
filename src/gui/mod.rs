@@ -561,7 +561,12 @@ impl Gui {
 
     fn render(&mut self) {
         match self.state {
-            State::Level => self.render_level(),
+            State::Level => {
+                self.render_level();
+                if !self.worker.is_animated() {
+                    self.need_to_redraw = false;
+                }
+            }
             State::FinishAnimation => {
                 self.render_level();
                 if !self.worker.is_animated() {
@@ -698,6 +703,7 @@ impl Gui {
             LevelFinished(resp) if !self.level_solved() => {
                 self.state = State::FinishAnimation;
                 log_update_response(resp);
+                self.need_to_redraw = true;
             }
             LevelFinished(_) => {}
             InitialLevelState {
@@ -723,6 +729,7 @@ impl Gui {
 
                 self.state = State::Level;
                 self.update_sprites();
+                self.need_to_redraw = true;
             }
             MoveWorker {
                 from: _from,
@@ -731,11 +738,18 @@ impl Gui {
             } => {
                 self.worker.move_to(to);
                 self.worker.set_direction(direction);
+                self.need_to_redraw = true;
                 return true;
             }
-            MoveCrate { id, to, .. } => self.crates[id].move_to(to),
+            MoveCrate { id, to, .. } => {
+                self.crates[id].move_to(to);
+                self.need_to_redraw = true;
+            }
 
-            EndOfCollection => self.is_last_level = true,
+            EndOfCollection => {
+                self.is_last_level = true;
+                self.need_to_redraw = true;
+            }
             _ => {}
         }
 
@@ -752,7 +766,6 @@ impl Gui {
             use glium::glutin::ElementState::*;
             if self.need_to_redraw {
                 self.render();
-                self.need_to_redraw = false;
             } else {
                 thread::sleep(time::Duration::from_millis(16));
             }
