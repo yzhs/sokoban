@@ -59,16 +59,13 @@ impl FontData {
             FontStyle::Mono => &self.mono_font,
         };
         let text_display = TextDisplay::new(&self.system, font, text);
+        let x = offset[0] * scale * text_display.get_width();
+        let y = offset[1];
         let matrix = [
             [scale, 0.0, 0.0, 0.0],
             [0.0, scale / aspect_ratio, 0.0, 0.0],
             [0.0, 0.0, 1.0, 0.0],
-            [
-                offset[0] * scale * text_display.get_width(),
-                offset[1],
-                0.0,
-                1.0_f32,
-            ],
+            [x, y, 0.0, 1.0_f32],
         ];
 
         draw(&text_display, &self.system, target, matrix, WHITE);
