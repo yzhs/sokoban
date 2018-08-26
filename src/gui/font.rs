@@ -30,9 +30,9 @@ impl FontData {
         mono_path: Q,
     ) -> Self {
         let system = TextSystem::new(display);
-        let text_font = FontTexture::new(display, File::open(&font_path).unwrap(), 16).unwrap();
-        let heading_font = FontTexture::new(display, File::open(&font_path).unwrap(), 48).unwrap();
-        let mono_font = FontTexture::new(display, File::open(&mono_path).unwrap(), 16).unwrap();
+        let text_font = FontTexture::new(display, File::open(&font_path).unwrap(), 32).unwrap();
+        let heading_font = FontTexture::new(display, File::open(&font_path).unwrap(), 64).unwrap();
+        let mono_font = FontTexture::new(display, File::open(&mono_path).unwrap(), 32).unwrap();
 
         FontData {
             system,
