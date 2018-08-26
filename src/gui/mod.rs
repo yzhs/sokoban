@@ -1,9 +1,11 @@
 mod font;
 mod sprite;
+mod text_objects;
 mod texture;
 
 use std::cmp::min;
 use std::collections::VecDeque;
+use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver};
 use std::thread;
 use std::time;
@@ -21,6 +23,7 @@ use backend;
 use backend::*;
 use gui::font::{FontData, FontStyle};
 use gui::sprite::*;
+use gui::text_objects::*;
 use gui::texture::*;
 
 /// All we ever do is draw rectangles created from two triangles each, so we don’t need any other
@@ -67,7 +70,10 @@ pub struct Gui {
     display: Display,
     events_loop: glium::glutin::EventsLoop,
     params: glium::DrawParameters<'static>,
-    font_data: FontData,
+    font_data: Rc<FontData>,
+    text_object_manager: TextObjectManager,
+    stats_text_handle: TextObjectHandle,
+
     matrix: [[f32; 4]; 4],
 
     program: Program,
@@ -108,11 +114,11 @@ impl Gui {
             .set_cursor(glium::glutin::MouseCursor::Default);
 
         let textures = Textures::new(&display);
-        let font_data = FontData::new(
+        let font_data = Rc::new(FontData::new(
             &display,
             ASSETS.join("FiraSans-Regular.ttf"),
             ASSETS.join("FiraMono-Regular.ttf"),
-        );
+        ));
         let program = Program::from_source(
             &display,
             texture::VERTEX_SHADER,
@@ -137,6 +143,12 @@ impl Gui {
         let (sender, receiver) = channel();
         game.subscribe_moves(sender);
 
+        let mut text_object_manager = TextObjectManager::new(font_data.clone());
+        let position = [0.2, -0.9];
+        let scale = 0.025;
+        let stats_text_handle =
+            text_object_manager.create_text_object(position, scale, FontStyle::Mono, "");
+
         let mut gui = Gui {
             columns: game.columns(),
             rows: game.rows(),
@@ -152,6 +164,9 @@ impl Gui {
             events_loop,
             params,
             font_data,
+            text_object_manager,
+            stats_text_handle,
+
             matrix: IDENTITY,
             program,
             window_size: [800, 600],
@@ -164,7 +179,10 @@ impl Gui {
 
             events: receiver,
         };
+
+        gui.update_statistics_text();
         gui.update_sprites();
+
         gui
     }
 
@@ -492,25 +510,37 @@ impl Gui {
         draw(self.worker.quad(columns, rows), &self.textures.worker);
     }
 
-    fn draw_statistics_overlay<S: glium::Surface>(&self, target: &mut S) {
-        let aspect_ratio = self.window_aspect_ratio();
-        // TODO show collection name
-        // Show some statistics
-        let text = format!(
+    fn statistics_text(&self) -> String {
+        format!(
             "Level: {:>4}, Steps: {:>4}, Pushes: {:>4}",
             self.game.rank(),
             self.game.number_of_moves(),
             self.game.number_of_pushes()
-        );
+        )
+    }
 
-        self.font_data.draw(
-            target,
-            &text,
-            FontStyle::Mono,
-            0.025,
-            [0.2, -0.9],
-            aspect_ratio,
-        );
+    fn update_statistics_text(&mut self) {
+        let text = self.statistics_text();
+        self.text_object_manager
+            .set_text(self.stats_text_handle, text);
+    }
+
+    fn draw_statistics_overlay<S: glium::Surface>(&mut self, target: &mut S) {
+        let aspect_ratio = self.window_aspect_ratio();
+        // TODO show collection name
+        // Show some statistics
+
+        self.text_object_manager
+            .draw_text_objects(target, aspect_ratio);
+
+        // self.font_data.draw(
+        // target,
+        // &text,
+        // FontStyle::Mono,
+        // 0.025,
+        // [0.2, -0.9],
+        // aspect_ratio,
+        // );
     }
 
     /// Render the current level.
@@ -687,6 +717,7 @@ impl Gui {
 
             let is_move = self.handle_response(response);
             if is_move {
+                self.update_statistics_text();
                 steps = (steps + 1) % SKIP_FRAMES;
                 if steps == 0 || queue.len() < QUEUE_LENGTH_THRESHOLD {
                     break;

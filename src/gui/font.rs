@@ -1,11 +1,12 @@
 use std::fs::File;
 use std::path::Path;
+use std::rc::Rc;
 
 use glium::backend::glutin::Display;
 use glium::Surface;
 use glium_text::{draw, FontTexture, TextDisplay, TextSystem};
 
-const WHITE: (f32, f32, f32, f32) = (1.0, 1.0, 1.0, 1.0);
+pub const WHITE: (f32, f32, f32, f32) = (1.0, 1.0, 1.0, 1.0);
 
 #[derive(Clone, Copy)]
 pub enum FontStyle {
@@ -16,10 +17,10 @@ pub enum FontStyle {
 
 /// Collection of glyph textures.
 pub struct FontData {
-    system: TextSystem,
-    heading_font: FontTexture,
-    text_font: FontTexture,
-    mono_font: FontTexture,
+    pub system: TextSystem,
+    heading_font: Rc<FontTexture>,
+    text_font: Rc<FontTexture>,
+    mono_font: Rc<FontTexture>,
 }
 
 impl FontData {
@@ -30,9 +31,12 @@ impl FontData {
         mono_path: Q,
     ) -> Self {
         let system = TextSystem::new(display);
-        let text_font = FontTexture::new(display, File::open(&font_path).unwrap(), 32).unwrap();
-        let heading_font = FontTexture::new(display, File::open(&font_path).unwrap(), 64).unwrap();
-        let mono_font = FontTexture::new(display, File::open(&mono_path).unwrap(), 32).unwrap();
+        let text_font =
+            Rc::new(FontTexture::new(display, File::open(&font_path).unwrap(), 32).unwrap());
+        let heading_font =
+            Rc::new(FontTexture::new(display, File::open(&font_path).unwrap(), 64).unwrap());
+        let mono_font =
+            Rc::new(FontTexture::new(display, File::open(&mono_path).unwrap(), 32).unwrap());
 
         FontData {
             system,
@@ -40,6 +44,43 @@ impl FontData {
             text_font,
             mono_font,
         }
+    }
+
+    fn font_type_to_font(&self, font_type: FontStyle) -> Rc<FontTexture> {
+        match font_type {
+            FontStyle::Heading => self.heading_font.clone(),
+            FontStyle::Text => self.text_font.clone(),
+            FontStyle::Mono => self.mono_font.clone(),
+        }
+    }
+
+    pub fn create_text_display(
+        &self,
+        font_type: FontStyle,
+        text: &str,
+    ) -> TextDisplay<Rc<FontTexture>> {
+        let font = self.font_type_to_font(font_type);
+        TextDisplay::new(&self.system, font, text)
+    }
+
+    pub fn draw_text_display<S: Surface>(
+        &self,
+        target: &mut S,
+        text_display: &TextDisplay<Rc<FontTexture>>,
+        scale: f32,
+        position: [f32; 2],
+        aspect_ratio: f32,
+    ) {
+        let x = position[0] * scale * text_display.get_width();
+        let y = position[1];
+        let matrix = [
+            [scale, 0.0, 0.0, 0.0],
+            [0.0, scale / aspect_ratio, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [x, y, 0.0, 1.0_f32],
+        ];
+
+        draw(text_display, &self.system, target, matrix, WHITE);
     }
 
     /// Draw text in the specified font. Scale by `scale` and move to a given position. Correct
@@ -53,21 +94,7 @@ impl FontData {
         offset: [f32; 2],
         aspect_ratio: f32,
     ) {
-        let font = match font_type {
-            FontStyle::Heading => &self.heading_font,
-            FontStyle::Text => &self.text_font,
-            FontStyle::Mono => &self.mono_font,
-        };
-        let text_display = TextDisplay::new(&self.system, font, text);
-        let x = offset[0] * scale * text_display.get_width();
-        let y = offset[1];
-        let matrix = [
-            [scale, 0.0, 0.0, 0.0],
-            [0.0, scale / aspect_ratio, 0.0, 0.0],
-            [0.0, 0.0, 1.0, 0.0],
-            [x, y, 0.0, 1.0_f32],
-        ];
-
-        draw(&text_display, &self.system, target, matrix, WHITE);
+        let text_display = self.create_text_display(font_type, text);
+        self.draw_text_display(target, &text_display, scale, offset, aspect_ratio);
     }
 }
