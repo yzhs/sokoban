@@ -528,20 +528,8 @@ impl Gui {
 
     fn draw_statistics_overlay<S: glium::Surface>(&mut self, target: &mut S) {
         let aspect_ratio = self.window_aspect_ratio();
-        // TODO show collection name
-        // Show some statistics
-
         self.text_object_manager
             .draw_text_objects(target, aspect_ratio);
-
-        // self.font_data.draw(
-        // target,
-        // &text,
-        // FontStyle::Mono,
-        // 0.025,
-        // [0.2, -0.9],
-        // aspect_ratio,
-        // );
     }
 
     /// Render the current level.
