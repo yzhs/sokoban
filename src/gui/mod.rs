@@ -13,7 +13,7 @@ use std::time;
 use glium::backend::glutin::Display;
 use glium::glutin::dpi;
 use glium::glutin::{
-    Event, KeyboardInput, ModifiersState, MouseButton, VirtualKeyCode, WindowEvent,
+    self, Event, KeyboardInput, ModifiersState, MouseButton, VirtualKeyCode, WindowEvent,
 };
 use glium::index::{NoIndices, PrimitiveType};
 use glium::texture::Texture2d;
@@ -68,7 +68,7 @@ pub struct Gui {
 
     // Graphics
     display: Display,
-    events_loop: glium::glutin::EventsLoop,
+    events_loop: glutin::EventsLoop,
     params: glium::DrawParameters<'static>,
     font_data: Rc<FontData>,
     text_object_manager: TextObjectManager,
@@ -95,23 +95,28 @@ pub struct Gui {
     events: Receiver<backend::Event>,
 }
 
+fn init_stats_text(font_data: &Rc<FontData>) -> (TextObjectManager, TextObjectHandle) {
+    let mut text_object_manager = TextObjectManager::new(font_data.clone());
+    let position = [0.2, -0.9];
+    let scale = 0.025;
+    let stats_text_handle =
+        text_object_manager.create_text_object(position, scale, FontStyle::Mono, "");
+    (text_object_manager, stats_text_handle)
+}
+
 /// Constructor and getters
 impl Gui {
     /// Initialize the `Gui` struct by setting default values, and loading a collection and
     /// textures.
-    pub fn new(collection: Collection) -> Self {
-        let mut game = Game::new(collection);
-
-        let events_loop = glium::glutin::EventsLoop::new();
-        let window = glium::glutin::WindowBuilder::new()
+    pub fn new(mut game: Game) -> Self {
+        let window = glutin::WindowBuilder::new()
             .with_dimensions(dpi::LogicalSize::new(800.0, 600.0))
             .with_title(TITLE.to_string() + " - " + game.name());
 
-        let context = glium::glutin::ContextBuilder::new();
+        let events_loop = glutin::EventsLoop::new();
+        let context = glutin::ContextBuilder::new();
         let display = glium::Display::new(window, context, &events_loop).unwrap();
-        display
-            .gl_window()
-            .set_cursor(glium::glutin::MouseCursor::Default);
+        display.gl_window().set_cursor(glutin::MouseCursor::Default);
 
         let textures = Textures::new(&display);
         let font_data = Rc::new(FontData::new(
@@ -125,29 +130,25 @@ impl Gui {
             texture::FRAGMENT_SHADER,
             None,
         ).unwrap();
-
-        let worker = Sprite::new(game.worker_position(), texture::TileKind::Worker);
-        // FIXME code duplicated from Gui::update_sprites()
-
-        info!(
-            "Loading level #{} of collection {}",
-            game.rank(),
-            game.name()
-        );
         let params = glium::DrawParameters {
             backface_culling: CULLING,
             blend: glium::Blend::alpha_blending(),
             ..Default::default()
         };
 
+        let (text_object_manager, stats_text_handle) = init_stats_text(&font_data);
+
+        let worker = Sprite::new(game.worker_position(), texture::TileKind::Worker);
+        // FIXME code duplicated from Gui::update_sprites()
+
         let (sender, receiver) = channel();
         game.subscribe_moves(sender);
 
-        let mut text_object_manager = TextObjectManager::new(font_data.clone());
-        let position = [0.2, -0.9];
-        let scale = 0.025;
-        let stats_text_handle =
-            text_object_manager.create_text_object(position, scale, FontStyle::Mono, "");
+        info!(
+            "Loading level #{} of collection {}",
+            game.rank(),
+            game.name()
+        );
 
         let mut gui = Gui {
             columns: game.columns(),

@@ -42,7 +42,7 @@ mod gui;
 
 use std::env;
 
-use backend::{convert_savegames, print_collections_table, print_stats, Collection, TITLE};
+use backend::{convert_savegames, print_collections_table, print_stats, Collection, Game, TITLE};
 
 fn main() {
     use clap::{App, Arg};
@@ -95,6 +95,7 @@ fn main() {
     env::set_var("WINIT_HIDPI_FACTOR", "1");
 
     let collection = Collection::parse(&collection_name).expect("Failed to load level set");
-    let gui = Gui::new(collection);
+    let game = Game::new(collection);
+    let gui = Gui::new(game);
     gui.main_loop();
 }
