@@ -28,7 +28,7 @@ struct TextObject {
 
 impl TextObject {
     pub fn new(
-        font_data: Rc<FontData>,
+        font_data: &Rc<FontData>,
         position: [f32; 2],
         scale: f32,
         font_type: FontStyle,
@@ -42,8 +42,8 @@ impl TextObject {
         }
     }
 
-    pub fn set_text(&mut self, text: String) {
-        self.text_display.set_text(&text);
+    pub fn set_text(&mut self, text: &str) {
+        self.text_display.set_text(text);
     }
 }
 
@@ -58,12 +58,12 @@ impl TextObjectManager {
         text: &str,
     ) -> TextObjectHandle {
         let handle = self.text_objects.len();
-        let text_object = TextObject::new(self.font_data.clone(), position, scale, font_type, text);
+        let text_object = TextObject::new(&self.font_data, position, scale, font_type, text);
         self.text_objects.push(text_object);
         handle
     }
 
-    pub fn set_text(&mut self, handle: TextObjectHandle, text: String) {
+    pub fn set_text(&mut self, handle: TextObjectHandle, text: &str) {
         self.text_objects[handle].set_text(text);
     }
 

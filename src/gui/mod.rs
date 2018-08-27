@@ -522,7 +522,7 @@ impl Gui {
     fn update_statistics_text(&mut self) {
         let text = self.statistics_text();
         self.text_object_manager
-            .set_text(self.stats_text_handle, text);
+            .set_text(self.stats_text_handle, &text);
     }
 
     fn draw_statistics_overlay<S: glium::Surface>(&mut self, target: &mut S) {
