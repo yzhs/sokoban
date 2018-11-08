@@ -311,8 +311,7 @@ impl Game {
 
         let is_last_level = n >= self.collection.number_of_levels();
         let current_level_is_solved_now = self.current_level.is_finished();
-        let current_level_has_been_solved_before =
-            self.state.number_of_levels() >= n && n < self.collection.number_of_levels();
+        let current_level_has_been_solved_before = n <= self.state.number_of_levels();
 
         if !is_last_level && (current_level_is_solved_now || current_level_has_been_solved_before) {
             let next_level = self.get_level(self.rank() + 1);
