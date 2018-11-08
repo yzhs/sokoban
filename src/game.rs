@@ -319,9 +319,9 @@ impl Game {
             self.set_current_level(next_level);
             Ok(())
         } else if is_last_level {
-            Err(NextLevelError::LevelNotFinished)
-        } else {
             Err(NextLevelError::EndOfCollection)
+        } else {
+            Err(NextLevelError::LevelNotFinished)
         }
     }
 
