@@ -213,12 +213,14 @@ impl Game {
     fn execute_helper(&mut self, command: &Command, executing_macro: bool) {
         use Command::*;
 
-        self.send_command_to_macros(command, executing_macro);
+        let is_finished = self.current_level.is_finished();
+
+        if !is_finished {
+            self.send_command_to_macros(command, executing_macro);
+        }
 
         match *command {
-            Nothing => {}
-
-            Move(dir) => {
+            Move(dir) if !is_finished => {
                 if let Err(event) = self.current_level.try_move(dir) {
                     self.listeners.notify_move(&event);
                 }
@@ -226,20 +228,20 @@ impl Game {
             MoveAsFarAsPossible {
                 direction,
                 may_push_crate,
-            } => self
+            } if !is_finished => self
                 .current_level
                 .move_as_far_as_possible(direction, may_push_crate),
             MoveToPosition {
                 position,
                 may_push_crate,
-            } => {
+            } if !is_finished => {
                 self.current_level.move_to(position, may_push_crate);
             }
 
-            Undo => {
+            Undo if !is_finished => {
                 self.current_level.undo();
             }
-            Redo => {
+            Redo if !is_finished => {
                 self.current_level.redo();
             }
             ResetLevel => self.reset_current_level(),
@@ -264,6 +266,8 @@ impl Game {
 
             // This is handled inside Game and never passed to this method.
             LoadCollection(_) => unreachable!(),
+
+            _ => {}
         };
         if self.current_level.is_finished() {
             if self.rank() == self.collection.number_of_levels() {
