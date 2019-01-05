@@ -1,27 +1,24 @@
 #![feature(try_from)]
 #![cfg_attr(test, feature(plugin))]
 #![cfg_attr(test, plugin(quickcheck_macros))]
-#![cfg_attr(
-    feature = "cargo-clippy",
-    warn(
-        empty_enum,
-        filter_map,
-        if_not_else,
-        invalid_upcast_comparisons,
-        items_after_statements,
-        mut_mut,
-        nonminimal_bool,
-        option_map_unwrap_or,
-        option_map_unwrap_or_else,
-        pub_enum_variant_names,
-        shadow_same,
-        single_match_else,
-        string_add_assign,
-        unicode_not_nfc,
-        unseparated_literal_suffix,
-        used_underscore_binding,
-        wrong_pub_self_convention
-    )
+#![warn(
+    clippy::empty_enum,
+    clippy::filter_map,
+    clippy::if_not_else,
+    clippy::invalid_upcast_comparisons,
+    clippy::items_after_statements,
+    clippy::mut_mut,
+    clippy::nonminimal_bool,
+    clippy::option_map_unwrap_or,
+    clippy::option_map_unwrap_or_else,
+    clippy::pub_enum_variant_names,
+    clippy::shadow_same,
+    clippy::single_match_else,
+    clippy::string_add_assign,
+    clippy::unicode_not_nfc,
+    clippy::unseparated_literal_suffix,
+    clippy::used_underscore_binding,
+    clippy::wrong_pub_self_convention
 )]
 
 /// Colored output

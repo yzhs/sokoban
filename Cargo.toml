@@ -34,7 +34,6 @@ quickcheck_macros = "0.7"
 rand = "0.5"
 
 [features]
-cargo-clippy = []
 default = []
 
 [lib]

@@ -15,7 +15,6 @@ pub struct Macros {
     slots: [Vec<Command>; 12],
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(new_without_default_derive))]
 impl Macros {
     pub fn new() -> Self {
         Macros {
