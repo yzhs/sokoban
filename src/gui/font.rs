@@ -1,9 +1,6 @@
-use std::fs::File;
-use std::path::Path;
-use std::rc::Rc;
+use std::{fs::File, path::Path, rc::Rc};
 
-use glium::backend::glutin::Display;
-use glium::Surface;
+use glium::{backend::glutin::Display, Surface};
 use glium_text::{draw, FontTexture, TextDisplay, TextSystem};
 
 pub const WHITE: (f32, f32, f32, f32) = (1.0, 1.0, 1.0, 1.0);

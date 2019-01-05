@@ -1,7 +1,4 @@
-use glium;
-use glium::backend::Facade;
-use glium::texture::Texture2d;
-use image;
+use glium::{self, backend::Facade, texture::Texture2d};
 
 use crate::backend::{Direction, Position, ASSETS};
 

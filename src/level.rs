@@ -1,6 +1,8 @@
-use std::collections::{HashMap, VecDeque};
-use std::fmt;
-use std::sync::mpsc::Sender;
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt,
+    sync::mpsc::Sender,
+};
 
 use crate::command::{Obstacle, WithCrate};
 use crate::direction::*;

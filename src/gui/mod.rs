@@ -4,19 +4,22 @@ mod sprite;
 mod text_objects;
 mod texture;
 
-use std::cmp::min;
-use std::collections::VecDeque;
-use std::rc::Rc;
-use std::sync::mpsc::{channel, Receiver};
-use std::thread;
-use std::time;
+use std::{
+    cmp::min,
+    collections::VecDeque,
+    rc::Rc,
+    sync::mpsc::{channel, Receiver},
+    thread, time,
+};
 
-use glium::backend::glutin::Display;
-use glium::glutin::dpi;
-use glium::glutin::{self, Event, KeyboardInput, MouseButton, VirtualKeyCode, WindowEvent};
-use glium::index::{NoIndices, PrimitiveType};
-use glium::texture::Texture2d;
-use glium::{self, Program, Surface};
+use glium::{
+    self,
+    backend::glutin::Display,
+    glutin::{self, dpi, Event, KeyboardInput, MouseButton, VirtualKeyCode, WindowEvent},
+    index::{NoIndices, PrimitiveType},
+    texture::Texture2d,
+    Program, Surface,
+};
 
 use crate::backend;
 use crate::backend::*;

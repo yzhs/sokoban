@@ -1,6 +1,8 @@
-use std::cell::Cell;
-use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::{
+    cell::Cell,
+    sync::{Arc, Mutex},
+    time::Instant,
+};
 
 use crate::backend::{Direction, Position};
 use crate::gui::texture::*;
