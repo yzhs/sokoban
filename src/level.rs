@@ -409,6 +409,13 @@ impl Level {
         self.move_worker_to(to, direction);
     }
 
+    fn move_worker_back(&mut self, direction: Direction) {
+        let to = self.worker_position.neighbour(direction.reverse());
+        let from = self.worker_position;
+        self.worker_position = to;
+        self.on_worker_move(from, to, direction);
+    }
+
     fn move_worker_to(&mut self, to: Position, direction: Direction) {
         let from = self.worker_position;
         self.worker_position = to;
@@ -597,7 +604,7 @@ impl Level {
 
         let direction = self.moves[self.number_of_moves].direction;
         let crate_pos = self.worker_position.neighbour(direction);
-        self.move_worker(direction.reverse());
+        self.move_worker_back(direction);
 
         if self.moves[self.number_of_moves].moves_crate {
             self.move_crate(crate_pos, direction.reverse());
