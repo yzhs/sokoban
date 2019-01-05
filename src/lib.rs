@@ -21,34 +21,19 @@
     clippy::wrong_pub_self_convention
 )]
 
-/// Colored output
-extern crate colog;
 #[macro_use]
 extern crate log;
 #[macro_use]
 extern crate failure;
 
-extern crate serde;
-extern crate serde_cbor;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
 
-extern crate app_dirs;
-extern crate find_folder;
 #[macro_use]
 extern crate lazy_static;
 
-extern crate ansi_term;
-/// Sort strings respecting numeric value, i.e. "9" before "10"
-extern crate natord;
 /// XML parser
 extern crate quick_xml;
-
-#[cfg(test)]
-extern crate quickcheck;
-#[cfg(test)]
-extern crate rand;
 
 mod collection;
 mod command;

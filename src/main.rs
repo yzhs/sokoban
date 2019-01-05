@@ -21,19 +21,17 @@
 // GUI
 #[macro_use]
 extern crate glium;
-extern crate glium_text;
-extern crate image;
 
 // Logging
-extern crate colog;
+use colog;
 #[macro_use]
 extern crate log;
 
-extern crate clap; // Argument handling
+// Argument handling
 #[macro_use]
 extern crate lazy_static; // Mutable globals
 
-extern crate sokoban_backend as backend;
+use sokoban_backend as backend;
 
 mod gui;
 

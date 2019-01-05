@@ -43,7 +43,7 @@ pub fn parse(s: &str) -> Result<Vec<Move>, char> {
 }
 
 impl fmt::Display for Move {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.to_char())
     }
 }

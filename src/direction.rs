@@ -54,7 +54,7 @@ pub fn direction(from: Position, to: Position) -> Result<Direction, Option<Posit
 }
 
 impl fmt::Display for Direction {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::Direction::*;
         write!(
             f,
@@ -89,7 +89,7 @@ mod test {
 #[cfg(test)]
 impl Arbitrary for Direction {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        extern crate rand;
+        use rand;
         use rand::Rng;
         *g.choose(&DIRECTIONS).unwrap()
     }

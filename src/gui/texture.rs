@@ -15,7 +15,7 @@ pub struct Textures {
 
 impl Textures {
     /// Load all textures.
-    pub fn new(factory: &Facade) -> Self {
+    pub fn new(factory: &dyn Facade) -> Self {
         let crate_ = load(factory, "crate");
         let floor = load(factory, "floor");
         let goal = load(factory, "goal");
@@ -33,7 +33,7 @@ impl Textures {
 }
 
 /// Load an image from the assets directory and turn it into a `Texture2d`.
-pub fn load(display: &Facade, name: &str) -> Texture2d {
+pub fn load(display: &dyn Facade, name: &str) -> Texture2d {
     let mut path = ASSETS.join("images");
     path.push(name);
     path.set_extension("png");

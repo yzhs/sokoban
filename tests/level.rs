@@ -1,4 +1,4 @@
-extern crate sokoban_backend as backend;
+use sokoban_backend as backend;
 
 use crate::backend::*;
 

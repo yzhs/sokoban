@@ -671,7 +671,7 @@ fn cell_to_char(background: Background, foreground: Foreground) -> char {
 }
 
 impl fmt::Display for Level {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let columns = self.columns();
         for i in 0..self.rows() {
             if i != 0 {
