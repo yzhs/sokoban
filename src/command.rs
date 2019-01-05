@@ -1,9 +1,7 @@
 use direction::*;
 use position::*;
-use save::UpdateResponse;
 
 type Slot = u8;
-type Steps = usize;
 
 /// Anything the user can ask the back end to do.
 #[derive(Debug, Clone)]
@@ -99,61 +97,6 @@ impl Command {
     }
 }
 
-/// This encodes whatever the GUI needs to update according to the command just executed.
-#[derive(Debug)]
-pub enum Response {
-    /// The current level has just been solved. Additionally, signify whether, and if so which,
-    /// high score has been improved upon.
-    LevelFinished(UpdateResponse),
-
-    /// A new level has been loaded. The number is the rank in the current level set.
-    NewLevel {
-        rank: usize,
-        columns: usize,
-        rows: usize,
-        worker_position: Position,
-        worker_direction: Direction,
-    },
-
-    /// The worker was moved to the given position and facing the given direction
-    MoveWorkerTo(Position, Direction),
-
-    /// The crate with the given index was pushed from to this new position.
-    MoveCrateTo(usize, Position),
-
-    /// A macro consisting of the given number of commands has just been defined.
-    MacroDefined(Steps),
-
-    // Errors
-    /// Tried to move but hit an obstacle
-    CannotMove(WithCrate, Obstacle),
-
-    /// Tried to undo when no move has been made.
-    NothingToUndo,
-
-    /// Failed to redo a move.
-    NothingToRedo,
-
-    /// Tried to go to the non-existant level 0.
-    NoPreviousLevel,
-
-    /// Cannot load next level, the current level is the last one.
-    EndOfCollection,
-
-    /// Cannot find a path when crates may be moved.
-    NoPathfindingWhilePushing,
-}
-
-impl Response {
-    pub fn is_error(&self) -> bool {
-        use Response::*;
-        match *self {
-            LevelFinished(_) | NewLevel { .. } | MoveWorkerTo(..) | MoveCrateTo(..) => false,
-            _ => true,
-        }
-    }
-}
-
 /// Did the player try to move a crate?
 #[derive(Clone, Debug)]
 pub struct WithCrate(pub bool);
@@ -164,9 +107,4 @@ pub enum Obstacle {
     Wall,
     Crate,
     // TODO multiple workers might block each other
-}
-
-#[cfg(test)]
-pub fn contains_error(responses: &[Response]) -> bool {
-    responses.iter().any(|x| x.is_error())
 }
