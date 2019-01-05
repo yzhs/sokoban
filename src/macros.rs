@@ -2,7 +2,7 @@ use crate::command::Command;
 
 /// A collection of macros, one for each of the F? keys, together with methods for recording and
 /// accessing them.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Macros {
     /// If a macro is currently being recorded, this is where its commands are stored.
     tmp: Vec<Command>,
@@ -17,11 +17,7 @@ pub struct Macros {
 
 impl Macros {
     pub fn new() -> Self {
-        Macros {
-            tmp: vec![],
-            target_slot: None,
-            slots: Default::default(),
-        }
+        Self::default()
     }
 
     /// Select the target slot.
