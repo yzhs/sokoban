@@ -13,9 +13,7 @@ use std::time;
 
 use glium::backend::glutin::Display;
 use glium::glutin::dpi;
-use glium::glutin::{
-    self, Event, KeyboardInput, MouseButton, VirtualKeyCode, WindowEvent,
-};
+use glium::glutin::{self, Event, KeyboardInput, MouseButton, VirtualKeyCode, WindowEvent};
 use glium::index::{NoIndices, PrimitiveType};
 use glium::texture::Texture2d;
 use glium::{self, Program, Surface};
@@ -131,7 +129,8 @@ impl Gui {
             texture::VERTEX_SHADER,
             texture::FRAGMENT_SHADER,
             None,
-        ).unwrap();
+        )
+        .unwrap();
         let params = glium::DrawParameters {
             backface_culling: CULLING,
             blend: glium::Blend::alpha_blending(),
@@ -326,7 +325,7 @@ impl Gui {
                 let vb = glium::VertexBuffer::new(&self.display, &vertices).unwrap();
 
                 let texture = self.background_to_texture(background);
-                let uniforms = uniform!{tex: texture, matrix: self.matrix};
+                let uniforms = uniform! {tex: texture, matrix: self.matrix};
 
                 surface
                     .draw(&vb, &NO_INDICES, program, &uniforms, &self.params)
@@ -378,7 +377,7 @@ impl Gui {
         program: &glium::Program,
     ) -> Result<(), glium::DrawError> {
         let vb = glium::VertexBuffer::new(&self.display, vertices.as_ref()).unwrap();
-        let uniforms = uniform!{tex: tex, matrix: self.matrix};
+        let uniforms = uniform! {tex: tex, matrix: self.matrix};
         target.draw(&vb, &NO_INDICES, program, &uniforms, &self.params)
     }
 
@@ -396,7 +395,8 @@ impl Gui {
             // The texture is ignored by the given fragment shader, so we can take any here
             &self.textures.worker, // FIXME find a cleaner solution
             &program,
-        ).unwrap();
+        )
+        .unwrap();
 
         let aspect_ratio = self.window_aspect_ratio();
 
@@ -454,7 +454,7 @@ impl Gui {
         let vb = glium::VertexBuffer::new(&self.display, &vertices).unwrap();
 
         let bg = self.background_texture.as_ref().unwrap();
-        let uniforms = uniform!{tex: bg, matrix: IDENTITY};
+        let uniforms = uniform! {tex: bg, matrix: IDENTITY};
         let program = &self.program;
 
         target.clear_color(0.0, 0.0, 0.0, 1.0); // Prevent artefacts when resizing the window

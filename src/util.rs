@@ -11,7 +11,7 @@ const APP_INFO: AppInfo = AppInfo {
     author: "yzhs",
 };
 
-lazy_static!{
+lazy_static! {
     pub static ref DATA_DIR: PathBuf = app_dir(AppDataType::UserData, &APP_INFO, "").unwrap();
 
     /// Path to the assets directory

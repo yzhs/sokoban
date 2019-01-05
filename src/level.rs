@@ -756,7 +756,8 @@ mod test {
             "####\n\
              #@ #\n\
              ####\n",
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(lvl.worker_position.x, 1);
         assert_eq!(lvl.worker_position.y, 1);
 
@@ -783,7 +784,8 @@ mod test {
             "#######\n\
              #.$@$.#\n\
              #######\n",
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(lvl.worker_position.x, 3);
         assert_eq!(lvl.worker_position.y, 1);
         assert_eq!(lvl.worker_direction(), Left);
@@ -821,7 +823,8 @@ mod test {
             "#######\n\
              #.$@$.#\n\
              #######\n",
-        ).unwrap();
+        )
+        .unwrap();
         assert!(!lvl.is_interior(Position { x: -1, y: 0 }));
         assert!(!lvl.is_interior(Position { x: 1, y: -3 }));
     }

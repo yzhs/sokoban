@@ -56,21 +56,25 @@ fn main() {
             Arg::with_name("collection")
                 .help("The level collection to load during startup")
                 .index(1),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("list")
                 .help("Print a list of available level sets")
                 .short("l")
                 .long("list"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("stats")
                 .help("Print some statistics")
                 .short("s")
                 .long("stats"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("convert-savegames")
                 .help("Load and store all savegames to convert them to the latest file format")
                 .long("convert-savegames"),
-        ).get_matches();
+        )
+        .get_matches();
 
     if matches.is_present("convert-savegames") {
         convert_savegames();
