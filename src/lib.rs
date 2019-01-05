@@ -32,9 +32,6 @@ extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
 
-/// XML parser
-extern crate quick_xml;
-
 mod collection;
 mod command;
 mod direction;
