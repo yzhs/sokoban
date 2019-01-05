@@ -428,7 +428,7 @@ impl Level {
         self.move_crate_to(from, from.neighbour(direction));
     }
 
-    // NOTE We need `from` so we can findout the crate's id. That way, the user interface knows
+    // NOTE We need `from` so we can find out the crate's id. That way, the user interface knows
     // which crate to animate. Alternatively, the crate's id could be passed in.
     fn move_crate_to(&mut self, from: Position, to: Position) {
         let id = self.crates.remove(&from).unwrap();
@@ -522,7 +522,7 @@ impl Level {
         }
     }
 
-    /// Try to move in the given direction. Return an error if that is not possile.
+    /// Try to move in the given direction. Return an error if that is not possible.
     pub fn try_move(&mut self, direction: Direction) -> Result<(), Event> {
         self.move_helper(direction, true)
     }
@@ -619,7 +619,7 @@ impl Level {
         }
     }
 
-    /// Given a number of simple moves, i.e. up, down, left, right, as a strign, execute the first
+    /// Given a number of simple moves, i.e. up, down, left, right, as a string, execute the first
     /// `number_of_moves` of them. If there are more moves than that, they can be executed using
     /// redo.
     pub fn execute_moves(&mut self, number_of_moves: usize, moves: &str) -> Result<(), Event> {
