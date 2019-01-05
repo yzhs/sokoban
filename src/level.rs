@@ -2,12 +2,12 @@ use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::sync::mpsc::Sender;
 
-use command::{Obstacle, WithCrate};
-use direction::*;
-use event::Event;
-use move_::Move;
-use position::*;
-use util::*;
+use crate::command::{Obstacle, WithCrate};
+use crate::direction::*;
+use crate::event::Event;
+use crate::move_::Move;
+use crate::position::*;
+use crate::util::*;
 
 /// Static part of a cell.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -231,7 +231,7 @@ impl LevelBuilder {
 
         // Flood fill from all positions added above
         while let Some(pos) = queue.pop_front() {
-            use Direction::*;
+            use crate::Direction::*;
             let i = pos.to_index(columns);
             if let Background::Wall = self.background[i] {
                 continue;
@@ -630,7 +630,7 @@ impl Level {
     /// `number_of_moves` of them. If there are more moves than that, they can be executed using
     /// redo.
     pub fn execute_moves(&mut self, number_of_moves: usize, moves: &str) -> Result<(), Event> {
-        let moves = ::move_::parse(moves).unwrap();
+        let moves = crate::move_::parse(moves).unwrap();
         // TODO Error handling
         for (i, move_) in moves.iter().enumerate() {
             // Some moves might have been undone, so we do not redo them just now.

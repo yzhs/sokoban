@@ -1,4 +1,4 @@
-use command::Command;
+use crate::command::Command;
 
 /// A collection of macros, one for each of the F? keys, together with methods for recording and
 /// accessing them.

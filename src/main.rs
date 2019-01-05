@@ -42,11 +42,11 @@ mod gui;
 
 use std::env;
 
-use backend::{convert_savegames, print_collections_table, print_stats, Collection, Game, TITLE};
+use crate::backend::{convert_savegames, print_collections_table, print_stats, Collection, Game, TITLE};
 
 fn main() {
     use clap::{App, Arg};
-    use gui::Gui;
+    use crate::gui::Gui;
     colog::init();
 
     let matches = App::new(TITLE)

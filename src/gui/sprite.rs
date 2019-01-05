@@ -2,8 +2,8 @@ use std::cell::Cell;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use backend::{Direction, Position};
-use gui::texture::*;
+use crate::backend::{Direction, Position};
+use crate::gui::texture::*;
 
 lazy_static! {
     /// How long it should take to animate one step.

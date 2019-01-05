@@ -1,5 +1,5 @@
-use direction::*;
-use position::*;
+use crate::direction::*;
+use crate::position::*;
 
 type Slot = u8;
 
@@ -74,7 +74,7 @@ impl Command {
     }
 
     pub fn to_string(&self) -> String {
-        use Command::*;
+        use crate::Command::*;
         match *self {
             Move(dir) => dir.to_string(),
             // TODO Find different formats for the next two cases

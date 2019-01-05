@@ -1,15 +1,15 @@
 use std::convert::TryFrom;
 use std::sync::mpsc::{Receiver, Sender};
 
-use collection::*;
-use command::*;
-use direction::Direction;
-use event::*;
-use level::Level;
-use macros::Macros;
-use position::Position;
-use save::*;
-use util::SokobanError;
+use crate::collection::*;
+use crate::command::*;
+use crate::direction::Direction;
+use crate::event::*;
+use crate::level::Level;
+use crate::macros::Macros;
+use crate::position::Position;
+use crate::save::*;
+use crate::util::SokobanError;
 
 #[derive(Debug)]
 pub enum NextLevelError {
@@ -211,7 +211,7 @@ impl Game {
 
     /// Execute whatever command we get from the frontend.
     fn execute_helper(&mut self, command: &Command, executing_macro: bool) {
-        use Command::*;
+        use crate::Command::*;
 
         let is_finished = self.current_level.is_finished();
 
@@ -414,8 +414,8 @@ mod tests {
 
     #[test]
     fn load_original() {
-        use position::Position;
-        use Direction::*;
+        use crate::position::Position;
+        use crate::Direction::*;
 
         let name = "original";
         let (mut game, receiver) = setup_game(name);

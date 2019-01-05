@@ -70,17 +70,17 @@ use std::path::PathBuf;
 
 use ansi_term::Colour::{Blue, Green, White, Yellow};
 
-pub use collection::*;
-pub use command::*;
-pub use direction::*;
-pub use event::*;
-pub use game::*;
-pub use level::*;
-pub use macros::*;
-pub use move_::*;
-pub use position::*;
-use save::CollectionState;
-pub use util::*;
+pub use crate::collection::*;
+pub use crate::command::*;
+pub use crate::direction::*;
+pub use crate::event::*;
+pub use crate::game::*;
+pub use crate::level::*;
+pub use crate::macros::*;
+pub use crate::move_::*;
+pub use crate::position::*;
+use crate::save::CollectionState;
+pub use crate::util::*;
 
 fn file_stem(p: &PathBuf) -> &str {
     p.file_stem().unwrap().to_str().unwrap()

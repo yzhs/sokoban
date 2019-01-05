@@ -18,13 +18,13 @@ use glium::index::{NoIndices, PrimitiveType};
 use glium::texture::Texture2d;
 use glium::{self, Program, Surface};
 
-use backend;
-use backend::*;
-use gui::font::{FontData, FontStyle};
-use gui::inputstate::*;
-use gui::sprite::*;
-use gui::text_objects::*;
-use gui::texture::*;
+use crate::backend;
+use crate::backend::*;
+use crate::gui::font::{FontData, FontStyle};
+use crate::gui::inputstate::*;
+use crate::gui::sprite::*;
+use crate::gui::text_objects::*;
+use crate::gui::texture::*;
 
 /// All we ever do is draw rectangles created from two triangles each, so we don’t need any other
 /// `PrimitiveType`.
@@ -601,7 +601,7 @@ fn log_update_response(response: save::UpdateResponse) {
 impl Gui {
     /// Handle the queue of responses from the back end, updating the gui status and logging
     /// messages.
-    fn handle_responses(&mut self, queue: &mut VecDeque<::backend::Event>) {
+    fn handle_responses(&mut self, queue: &mut VecDeque<crate::backend::Event>) {
         const SKIP_FRAMES: u32 = 16;
         const QUEUE_LENGTH_THRESHOLD: usize = 100;
 
@@ -623,8 +623,8 @@ impl Gui {
         }
     }
 
-    fn handle_response(&mut self, event: ::backend::Event) -> bool {
-        use backend::Event::*;
+    fn handle_response(&mut self, event: crate::backend::Event) -> bool {
+        use crate::backend::Event::*;
         match event {
             LevelFinished(resp) if !self.level_solved() => {
                 self.state = State::FinishAnimation;

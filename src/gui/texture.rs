@@ -3,7 +3,7 @@ use glium::backend::Facade;
 use glium::texture::Texture2d;
 use image;
 
-use backend::{Direction, Position, ASSETS};
+use crate::backend::{Direction, Position, ASSETS};
 
 pub struct Textures {
     pub crate_: Texture2d,

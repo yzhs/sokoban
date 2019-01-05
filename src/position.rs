@@ -1,6 +1,6 @@
 use std::ops::Sub;
 
-use direction::Direction;
+use crate::direction::Direction;
 
 /// A position in a Sokoban level given as (x,y) coordinates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use super::solution::*;
-use level::*;
+use crate::level::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LevelState {

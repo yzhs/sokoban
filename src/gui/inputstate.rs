@@ -1,6 +1,6 @@
 use glium::glutin::{ModifiersState, VirtualKeyCode};
 
-use backend::*;
+use crate::backend::*;
 
 #[derive(Default)]
 pub struct InputState {

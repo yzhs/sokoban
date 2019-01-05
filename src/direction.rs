@@ -3,7 +3,7 @@ use std::fmt;
 #[cfg(test)]
 use quickcheck::{Arbitrary, Gen};
 
-use position::Position;
+use crate::position::Position;
 
 /// Any of the directions needed for Sokoban.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -40,7 +40,7 @@ pub const DIRECTIONS: [Direction; 4] = [
 /// in the same row nor the same column, return `Err(Some(to))`. Otherwise, return `Ok(dirction)`.
 pub fn direction(from: Position, to: Position) -> Result<Direction, Option<Position>> {
     // TODO better errors?
-    use direction::Direction::*;
+    use crate::direction::Direction::*;
     let (dx, dy) = to - from;
     if dx == 0 && dy == 0 {
         Err(None)

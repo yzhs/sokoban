@@ -1,6 +1,6 @@
 extern crate sokoban_backend as backend;
 
-use backend::*;
+use crate::backend::*;
 
 const ORIGINAL_LEVEL_1: &str = r#"
     #####

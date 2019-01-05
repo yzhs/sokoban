@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use command::*;
-use direction::Direction;
-use level::Background;
-use position::Position;
-use save::*;
+use crate::command::*;
+use crate::direction::Direction;
+use crate::level::Background;
+use crate::position::Position;
+use crate::save::*;
 
 #[derive(Clone, Debug)]
 pub enum Event {
@@ -42,7 +42,7 @@ pub enum Event {
 #[cfg(test)]
 impl Event {
     pub(crate) fn is_error(&self) -> bool {
-        use Event::*;
+        use crate::Event::*;
         match self {
             InitialLevelState { .. }
             | MoveWorker { .. }

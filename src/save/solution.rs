@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 
-use level::*;
+use crate::level::*;
 
 /// One particular solution of a level.
 #[derive(Debug, Clone, Serialize, Deserialize)]

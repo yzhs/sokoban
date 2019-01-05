@@ -3,7 +3,7 @@ use std::rc::Rc;
 use glium::Surface;
 use glium_text::{self, FontTexture, TextDisplay};
 
-use gui::font::*;
+use crate::gui::font::*;
 
 pub struct TextObjectManager {
     font_data: Rc<FontData>,

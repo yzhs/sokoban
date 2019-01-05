@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use std::fmt;
 
-use direction::Direction;
+use crate::direction::Direction;
 
 /// This structure contains everything needed to do or undo a Sokoban move.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -52,7 +52,7 @@ impl TryFrom<char> for Move {
     type Error = char;
 
     fn try_from(c: char) -> Result<Move, char> {
-        use Direction::*;
+        use crate::Direction::*;
         let dir = match c {
             'l' | 'L' => Left,
             'r' | 'R' => Right,
@@ -71,7 +71,7 @@ mod test {
 
     #[test]
     fn to_from() {
-        for &dir in &::direction::DIRECTIONS {
+        for &dir in &crate::direction::DIRECTIONS {
             let mv = Move::new(dir, true);
             assert_eq!(Ok(mv.clone()), Move::try_from(mv.to_char()));
             let mv = Move::new(dir, false);

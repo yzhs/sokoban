@@ -3,8 +3,8 @@
 use std::fs::File;
 use std::io::Read;
 
-use level::*;
-use util::*;
+use crate::level::*;
+use crate::util::*;
 
 enum FileFormat {
     Ascii,
