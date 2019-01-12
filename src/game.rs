@@ -238,7 +238,7 @@ impl Game {
                 self.current_level.move_to(position, may_push_crate);
             }
 
-            MoveCrateToTarget { from, to } => {
+            MoveCrateToTarget { from, to } if self.current_level.crates.contains_key(&from) => {
                 info!(
                     "Trying to move crate at position ({},{}) to position ({},{})",
                     from.x, from.y, to.x, to.y
@@ -278,6 +278,7 @@ impl Game {
             | Move(_)
             | MoveAsFarAsPossible { .. }
             | MoveToPosition { .. }
+            | MoveCrateToTarget { .. }
             | Undo
             | Redo => {}
         };
