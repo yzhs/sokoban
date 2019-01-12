@@ -29,6 +29,11 @@ impl Background {
     }
 }
 
+pub struct Path {
+    pub start: Position,
+    pub steps: Vec<Move>,
+}
+
 /// Dynamic part of a cell.
 #[derive(Debug, Clone, Copy, PartialEq, Hash)]
 enum Foreground {
@@ -514,7 +519,8 @@ impl Level {
             Ok(dir) => {
                 let (dx, dy) = to - self.worker_position;
                 if !may_push_crate && dx.abs() + dy.abs() > 1 {
-                    self.find_path(to);
+                    let path = self.find_path(to);
+                    self.follow_path(path);
                 } else {
                     // Note that this takes care of both movements of just one step and all cases
                     // in which crates may be pushed.
@@ -526,7 +532,10 @@ impl Level {
                 }
             }
             Err(None) => {}
-            Err(_) if !may_push_crate => self.find_path(to),
+            Err(_) if !may_push_crate => {
+                let path = self.find_path(to);
+                self.follow_path(path);
+            }
             Err(_) => self.notify(&Event::NoPathfindingWhilePushing),
         }
     }
@@ -536,14 +545,25 @@ impl Level {
         self.move_helper(direction, true)
     }
 
+    /// Follow the given path, if any.
+    pub fn follow_path(&mut self, path: Option<Path>) {
+        if let Some(path) = path {
+            assert_eq!(self.worker_position, path.start);
+            for Move { direction, .. } in path.steps {
+                let is_ok = self.try_move(direction).is_ok();
+                assert!(is_ok);
+            }
+        }
+    }
+
     /// Try to find a shortest path from the workers current position to `to` and execute it if one
     /// exists. Otherwise, emit `Event::NoPathFound`.
-    pub fn find_path(&mut self, to: Position) {
+    pub fn find_path(&mut self, to: Position) -> Option<Path> {
         let columns = self.columns();
         let rows = self.rows();
 
         if self.worker_position == to || !self.is_empty(to) {
-            return;
+            return None;
         }
 
         let mut distances = vec![::std::usize::MAX; columns * rows];
@@ -572,19 +592,28 @@ impl Level {
         }
 
         if !path_exists {
-            return self.notify(&Event::NoPathFound);
+            self.notify(&Event::NoPathFound);
+            return None;
         }
 
+        let mut path = Path {
+            start: self.worker_position,
+            steps: vec![],
+        };
+
         // Move worker along the path
-        while self.worker_position != to {
-            for neighbour in self.empty_neighbours(self.worker_position) {
-                if distances[self.index(neighbour)] < distances[self.index(self.worker_position)] {
-                    let dir = direction(self.worker_position, neighbour);
-                    let is_ok = self.try_move(dir.unwrap()).is_ok();
-                    assert!(is_ok);
+        let mut pos =self.worker_position;
+        while pos != to {
+            for neighbour in self.empty_neighbours(pos) {
+                if distances[self.index(neighbour)] < distances[self.index(pos)] {
+                    let dir = direction(pos, neighbour).unwrap();
+                    pos = neighbour;
+                    path.steps.push(Move{direction: dir, moves_crate: false});
                 }
             }
         }
+
+        Some(path)
     }
 
     /// Move as far as possible in the given direction (without pushing crates if `may_push_crate`
