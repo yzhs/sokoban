@@ -25,6 +25,9 @@ pub enum Command {
         may_push_crate: bool,
     },
 
+    /// Try to push the crate at position `from` to position `to`.
+    MoveCrateToTarget { from: Position, to: Position },
+
     /// Undo the previous move.
     Undo,
 
@@ -88,6 +91,9 @@ impl Command {
                 may_push_crate: true,
             } => format!("[{}, {}]", pos.x, pos.y),
             MoveToPosition { position: pos, .. } => format!("({}, {})", pos.x, pos.y),
+            MoveCrateToTarget { from, to } => {
+                format!("![({},{}),({},{})]", from.x, from.y, to.x, to.y)
+            }
             Undo => "<".to_string(),
             Redo => ">".to_string(),
             ExecuteMacro(slot) => format!("@{}", slot),

@@ -15,7 +15,7 @@ use std::{
 use glium::{
     self,
     backend::glutin::Display,
-    glutin::{self, dpi, Event, KeyboardInput, MouseButton, VirtualKeyCode, WindowEvent},
+    glutin::{self, dpi, Event, KeyboardInput, ModifiersState, MouseButton, VirtualKeyCode, WindowEvent},
     index::{NoIndices, PrimitiveType},
     texture::Texture2d,
     Program, Surface,
@@ -229,13 +229,30 @@ impl Gui {
 
 impl Gui {
     /// Handle a mouse click.
-    fn click_to_command(&self, mouse_button: MouseButton, input_state: &InputState) -> Command {
+    fn click_to_command(
+        &self,
+        mouse_button: MouseButton,
+        modifiers: ModifiersState,
+        input_state: &mut InputState,
+    ) -> Command {
         if let Some((x, y)) =
             self.cursor_position_to_cell_if_in_bounds(&input_state.cursor_position)
         {
-            Command::MoveToPosition {
-                position: backend::Position { x, y },
-                may_push_crate: mouse_button == MouseButton::Right,
+            let target = backend::Position { x, y };
+            if mouse_button == MouseButton::Left && modifiers.alt {
+                if let Some(from) = input_state.clicked_crate {
+                    let result = Command::MoveCrateToTarget{from, to: target};
+                    input_state.clicked_crate = None;
+                    result
+                } else {
+                    input_state.clicked_crate = Some(target);
+                    Command::Nothing
+                }
+            } else {
+                Command::MoveToPosition {
+                    position: target,
+                    may_push_crate: mouse_button == MouseButton::Right,
+                }
             }
         } else {
             Command::Nothing
@@ -747,8 +764,9 @@ impl Gui {
                     WindowEvent::MouseInput {
                         state: Released,
                         button: btn,
+                        modifiers,
                         ..
-                    } => cmd = self.click_to_command(btn, &input_state),
+                    } => cmd = self.click_to_command(btn, modifiers, &mut input_state),
 
                     WindowEvent::Resized(new_size) => {
                         let (width, height) = new_size.into();

@@ -238,6 +238,13 @@ impl Game {
                 self.current_level.move_to(position, may_push_crate);
             }
 
+            MoveCrateToTarget { from, to } => {
+                info!(
+                    "Trying to move crate at position ({},{}) to position ({},{})",
+                    from.x, from.y, to.x, to.y
+                );
+            }
+
             Undo if !is_finished => {
                 self.current_level.undo();
             }
@@ -267,7 +274,12 @@ impl Game {
             // This is handled inside Game and never passed to this method.
             LoadCollection(_) => unreachable!(),
 
-            _ => {}
+            Nothing
+            | Move(_)
+            | MoveAsFarAsPossible { .. }
+            | MoveToPosition { .. }
+            | Undo
+            | Redo => {}
         };
         if self.current_level.is_finished() {
             if self.rank() == self.collection.number_of_levels() {

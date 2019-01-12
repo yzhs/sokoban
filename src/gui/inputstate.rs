@@ -1,11 +1,13 @@
 use glium::glutin::{ModifiersState, VirtualKeyCode};
 
-use crate::backend::*;
+use crate::backend::{Command, Direction, Position};
 
 #[derive(Default)]
 pub struct InputState {
     pub recording_macro: bool,
     pub cursor_position: [f64; 2],
+
+    pub clicked_crate: Option<Position>,
 }
 
 impl InputState {
