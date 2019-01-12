@@ -15,7 +15,9 @@ use std::{
 use glium::{
     self,
     backend::glutin::Display,
-    glutin::{self, dpi, Event, KeyboardInput, ModifiersState, MouseButton, VirtualKeyCode, WindowEvent},
+    glutin::{
+        self, dpi, Event, KeyboardInput, ModifiersState, MouseButton, VirtualKeyCode, WindowEvent,
+    },
     index::{NoIndices, PrimitiveType},
     texture::Texture2d,
     Program, Surface,
@@ -241,7 +243,7 @@ impl Gui {
             let target = backend::Position { x, y };
             if mouse_button == MouseButton::Left && modifiers.alt {
                 if let Some(from) = input_state.clicked_crate {
-                    let result = Command::MoveCrateToTarget{from, to: target};
+                    let result = Command::MoveCrateToTarget { from, to: target };
                     input_state.clicked_crate = None;
                     result
                 } else {
