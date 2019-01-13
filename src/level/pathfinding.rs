@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 
 use crate::direction::*;
 use crate::event::Event;
@@ -75,6 +75,35 @@ impl Level {
         Some(path)
     }
 
+    fn build_graph(&self, starting_from: Position) -> Graph<Position> {
+        let mut neighbours: HashMap<Position, Vec<_>> = HashMap::new();
+
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::new();
+        queue.push_back(starting_from);
+
+        while let Some(pos) = queue.pop_front() {
+            if visited.contains(&pos) {
+                continue;
+            }
+            visited.insert(pos);
+
+            for neighbour in self.empty_neighbours(pos) {
+                let dir = direction(neighbour, pos).unwrap();
+                let opposite_neighbour = pos.neighbour(dir);
+
+                if !self.is_empty(opposite_neighbour) {
+                    continue;
+                }
+
+                queue.push_back(neighbour);
+                neighbours.entry(pos).or_default().push(neighbour);
+            }
+        }
+
+        Graph { neighbours }
+    }
+
     pub fn find_path_with_crate(&mut self, from: Position, to: Position) -> Option<Path> {
         if from == to || !self.crates.contains_key(&from) || !self.is_empty(to) {
             warn!(
@@ -91,7 +120,8 @@ impl Level {
             return None;
         }
 
-        None
+        let graph = self.build_graph(from);
+        graph.find_path(from, to)
     }
 
     /// Follow the given path, if any.
@@ -103,6 +133,17 @@ impl Level {
                 assert!(is_ok);
             }
         }
+    }
+}
+
+/// A directed graph.
+struct Graph<T> {
+    neighbours: HashMap<T, Vec<T>>,
+}
+
+impl Graph<Position> {
+    pub fn find_path(&self, from: Position, to: Position) -> Option<Path> {
+        None
     }
 }
 
