@@ -170,7 +170,7 @@ impl Graph<Position> {
         }
 
         Some(Path {
-            start: from,
+            start: from.left(),
             steps: vec![],
         })
     }
@@ -212,5 +212,21 @@ mod tests {
         let from = Position { x: 1, y: 1 };
 
         assert!(sut.find_path_with_crate(from, from).is_none());
+    }
+
+    #[test]
+    fn find_simplest_nontrivial_path() {
+        let s = "#####\n\
+                 #@$.#\n\
+                 #####";
+        let mut sut = Level::parse(0, s).unwrap();
+        let from = Position { x: 2, y: 1 };
+        let to = Position { x: 3, y: 1 };
+
+        let path = sut.find_path_with_crate(from, to);
+
+        assert!(path.is_some());
+        let path = path.unwrap();
+        assert_eq!(path.start, Position { x: 1, y: 1 });
     }
 }
