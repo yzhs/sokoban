@@ -163,11 +163,7 @@ struct Graph<T> {
 }
 
 impl Graph<Position> {
-    pub fn find_path(&self, from: Position, to: Position) -> Option<Path> {
-        if !self.neighbours.contains_key(&to) {
-            return None;
-        }
-
+    fn find_paths_starting_at(&self, from: Position) -> HashMap<Position, Vec<Position>> {
         let mut predecessors: HashMap<Position, Vec<Position>> = HashMap::new();
 
         let mut visited = HashSet::new();
@@ -188,9 +184,39 @@ impl Graph<Position> {
             }
         }
 
+        predecessors
+    }
+
+    pub fn find_path(&self, from: Position, to: Position) -> Option<Path> {
+        if !self.neighbours.contains_key(&to) {
+            return None;
+        }
+
+        let predecessors = self.find_paths_starting_at(from);
+
+        let mut positions = vec![to];
+
+        loop {
+            let pos = positions[positions.len() - 1];
+            if pos == from {
+                break;
+            }
+
+            positions.push(predecessors[&pos][0]);
+        }
+
+        let mut steps = vec![];
+        for i in 2..positions.len() {
+            let direction = direction(positions[i - 2], positions[i - 1]).unwrap();
+            steps.push(Move {
+                direction,
+                moves_crate: true,
+            });
+        }
+
         Some(Path {
             start: from.left(),
-            steps: vec![],
+            steps,
         })
     }
 }
