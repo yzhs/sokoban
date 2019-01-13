@@ -94,7 +94,7 @@ impl Level {
                 let dir = direction(neighbour, pos).unwrap();
                 let opposite_neighbour = pos.neighbour(dir);
 
-                if !self.is_empty(opposite_neighbour) {
+                if !self.is_empty(opposite_neighbour) && opposite_neighbour != starting_from {
                     continue;
                 }
 
