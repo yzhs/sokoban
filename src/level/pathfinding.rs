@@ -76,6 +76,21 @@ impl Level {
     }
 
     pub fn find_path_with_crate(&mut self, from: Position, to: Position) -> Option<Path> {
+        if from == to || !self.crates.contains_key(&from) || !self.is_empty(to) {
+            warn!(
+                "Cannot move crate from ({},{}) to ({},{}):",
+                from.x, from.y, to.x, to.y
+            );
+            if from == to {
+                warn!("same position");
+            } else if !self.crates.contains_key(&from) {
+                warn!("source is not a crate");
+            } else {
+                warn!("target is not empty");
+            }
+            return None;
+        }
+
         None
     }
 
