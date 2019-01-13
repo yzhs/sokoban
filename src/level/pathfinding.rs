@@ -87,6 +87,8 @@ impl Level {
                 continue;
             }
             visited.insert(pos);
+            neighbours.entry(pos).or_default();
+            info!("{:?}", pos);
 
             for neighbour in self.empty_neighbours(pos) {
                 let dir = direction(neighbour, pos).unwrap();
@@ -97,11 +99,30 @@ impl Level {
                 }
 
                 queue.push_back(neighbour);
-                neighbours.entry(pos).or_default().push(neighbour);
+                neighbours.get_mut(&pos).unwrap().push(neighbour);
             }
         }
 
         Graph { neighbours }
+    }
+
+    fn visualise_graph(&self, graph: &Graph<Position>) {
+        let mut line = "".to_string();
+        for (index, &bg) in self.background.iter().enumerate() {
+            let pos = self.position(index);
+            let c = if graph.neighbours.contains_key(&pos) {
+                '.'
+            } else if bg == Background::Wall {
+                '#'
+            } else {
+                ' '
+            };
+            line.push(c);
+            if index % self.columns == self.columns - 1 {
+                info!("{}", line);
+                line.truncate(0);
+            }
+        }
     }
 
     pub fn find_path_with_crate(&mut self, from: Position, to: Position) -> Option<Path> {
@@ -121,6 +142,7 @@ impl Level {
         }
 
         let graph = self.build_graph(from);
+        self.visualise_graph(&graph);
         graph.find_path(from, to)
     }
 
