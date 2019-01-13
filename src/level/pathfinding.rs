@@ -117,4 +117,15 @@ mod tests {
         let to = Position { x: 4, y: 1 };
         assert!(sut.find_path_with_crate(from, to).is_none());
     }
+
+    #[test]
+    fn find_trivial_path() {
+        let s = "#####\n\
+                 #@$.#\n\
+                 #####";
+        let mut sut = Level::parse(0, s).unwrap();
+        let from = Position { x: 1, y: 1 };
+
+        assert!(sut.find_path_with_crate(from, from).is_none());
+    }
 }
