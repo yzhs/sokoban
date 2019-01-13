@@ -165,7 +165,14 @@ struct Graph<T> {
 
 impl Graph<Position> {
     pub fn find_path(&self, from: Position, to: Position) -> Option<Path> {
-        None
+        if !self.neighbours.contains_key(&to) {
+            return None;
+        }
+
+        Some(Path {
+            start: from,
+            steps: vec![],
+        })
     }
 }
 
