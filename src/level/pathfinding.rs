@@ -88,7 +88,6 @@ impl Level {
             }
             visited.insert(pos);
             neighbours.entry(pos).or_default();
-            info!("{:?}", pos);
 
             for neighbour in self.empty_neighbours(pos) {
                 let dir = direction(neighbour, pos).unwrap();
@@ -167,6 +166,26 @@ impl Graph<Position> {
     pub fn find_path(&self, from: Position, to: Position) -> Option<Path> {
         if !self.neighbours.contains_key(&to) {
             return None;
+        }
+
+        let mut predecessors: HashMap<Position, Vec<Position>> = HashMap::new();
+
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::new();
+        queue.push_back(from);
+
+        while let Some(pos) = queue.pop_front() {
+            if visited.contains(&pos) {
+                continue;
+            }
+
+            visited.insert(pos);
+            info!("{:?}", pos);
+
+            for &neighbour in &self.neighbours[&pos] {
+                queue.push_back(neighbour);
+                predecessors.entry(neighbour).or_default().push(pos);
+            }
         }
 
         Some(Path {
