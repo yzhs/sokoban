@@ -90,3 +90,31 @@ impl Level {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::position::Position;
+
+    #[test]
+    fn cannot_move_into_wall() {
+        let s = "#####\n\
+                 #@$.#\n\
+                 #####";
+        let mut sut = Level::parse(0, s).unwrap();
+        let from = Position { x: 2, y: 1 };
+        let to = Position { x: 0, y: 0 };
+        assert!(sut.find_path_with_crate(from, to).is_none());
+    }
+
+    #[test]
+    fn fails_when_no_path_exists() {
+        let s = "######\n\
+                 #$#@.#\n\
+                 ######";
+        let mut sut = Level::parse(0, s).unwrap();
+        let from = Position { x: 1, y: 1 };
+        let to = Position { x: 4, y: 1 };
+        assert!(sut.find_path_with_crate(from, to).is_none());
+    }
+}
