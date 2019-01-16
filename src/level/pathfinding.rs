@@ -103,7 +103,6 @@ impl Level {
     }
 
     pub fn push_crate_along_path(&mut self, crate_path: Path) -> Option<()> {
-        let mut pos = crate_path.start;
         info!("Starting from {:?}", crate_path.start);
         assert!(!crate_path.steps.is_empty());
 
@@ -201,7 +200,7 @@ mod tests {
         let s = "#####\n\
                  #@$.#\n\
                  #####";
-        let mut sut = Level::parse(0, s).unwrap();
+        let sut = Level::parse(0, s).unwrap();
         let from = Position { x: 2, y: 1 };
         let to = Position { x: 0, y: 0 };
         assert!(sut.find_path_with_crate(from, to).is_none());
@@ -212,7 +211,7 @@ mod tests {
         let s = "######\n\
                  #$#@.#\n\
                  ######";
-        let mut sut = Level::parse(0, s).unwrap();
+        let sut = Level::parse(0, s).unwrap();
         let from = Position { x: 1, y: 1 };
         let to = Position { x: 4, y: 1 };
         assert!(sut.find_path_with_crate(from, to).is_none());
@@ -223,7 +222,7 @@ mod tests {
         let s = "#####\n\
                  #@$.#\n\
                  #####";
-        let mut sut = Level::parse(0, s).unwrap();
+        let sut = Level::parse(0, s).unwrap();
         let from = Position { x: 1, y: 1 };
 
         assert!(sut.find_path_with_crate(from, from).is_none());
@@ -234,7 +233,7 @@ mod tests {
         let s = "#####\n\
                  #@$.#\n\
                  #####";
-        let mut sut = Level::parse(0, s).unwrap();
+        let sut = Level::parse(0, s).unwrap();
         let from = Position { x: 2, y: 1 };
         let to = Position { x: 3, y: 1 };
 
