@@ -1,7 +1,6 @@
 use std::collections::{HashSet, VecDeque};
 
 use crate::direction::*;
-use crate::event::Event;
 use crate::level::*;
 use crate::move_::Move;
 use crate::position::*;

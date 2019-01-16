@@ -164,11 +164,6 @@ impl Level {
         }
     }
 
-    fn worker_path(&self, crate_path: Path) -> Option<Path>{
-        let mut pos = crate_path.start;
-        None
-    }
-
     /// Follow the given path, if any.
     pub fn follow_path(&mut self, path: Option<Path>) {
         if let Some(path) = path {
