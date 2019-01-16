@@ -77,13 +77,21 @@ impl Level {
     }
 
     /// Try to find a way to move the crate at `from` to `to`.
-    pub fn find_path_with_crate(&mut self, from: Position, to: Position) -> Option<Path> {
+    pub fn find_path_with_crate(&self, from: Position, to: Position) -> Option<Path> {
         self.is_valid_for_path_with_crate(from, to)?;
 
         let graph = self.build_graph(from);
         self.visualise_graph(&graph);
-        let crate_path = graph.find_crate_path(from, to)?;
-        self.worker_path(crate_path)
+        graph.find_crate_path(from, to)
+    }
+
+    pub fn push_crate_along_path(&mut self, crate_path: Path) -> Option<()> {
+        let mut pos = crate_path.start;
+        info!("Starting from {:?}", crate_path.start);
+        self.find_path(crate_path.start);
+        info!("Worker is now at {:?}", self.worker_position);
+
+        None
     }
 
     /// Create a graph of cells a crate `starting_from` can be moved to.
