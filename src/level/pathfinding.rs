@@ -20,7 +20,7 @@ impl Level {
         let rows = self.rows();
 
         if self.worker_position == to || !self.is_empty(to) {
-            return None;
+            return Some(Path{start: self.worker_position, steps: vec![]});
         }
 
         let mut distances = vec![::std::usize::MAX; columns * rows];
@@ -244,5 +244,21 @@ mod tests {
         assert_eq!(path.start, from);
         assert_eq!(path.steps.len(), 1);
         assert_eq!(path.steps[0].direction, Direction::Right);
+    }
+
+    #[test]
+    fn follow_simple_path() {
+        let s = "#########################\n\
+                 #@$                    .#\n\
+                 #########################";
+        let mut sut = Level::parse(0, s).unwrap();
+
+        let from = Position { x: 2, y: 1 };
+        let to = Position { x: 20, y: 1 };
+        let path = sut.find_path_with_crate(from, to).unwrap();
+
+        sut.push_crate_along_path(path);
+
+        assert_eq!(sut.worker_position, Position {x: 19, y: 1});
     }
 }
