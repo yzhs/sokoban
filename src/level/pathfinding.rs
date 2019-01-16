@@ -106,7 +106,6 @@ impl Level {
         info!("Starting from {:?}", crate_path.start);
         assert!(!crate_path.steps.is_empty());
 
-
         self.move_worker_into_position(crate_path.start, &crate_path.steps[0])?;
         self.try_move(crate_path.steps[0].direction).ok().unwrap();
 

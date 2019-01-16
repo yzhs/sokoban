@@ -28,14 +28,16 @@ impl<T: Clone + Eq + Hash> Graph<T> {
 
             for neighbour in &self.neighbours[&pos] {
                 queue.push_back(neighbour.clone());
-                predecessors.entry(neighbour.clone()).or_default().push(pos.clone());
+                predecessors
+                    .entry(neighbour.clone())
+                    .or_default()
+                    .push(pos.clone());
             }
         }
 
         predecessors
     }
 }
-
 
 impl Graph<Position> {
     pub fn find_crate_path(&self, from: Position, to: Position) -> Option<Path> {

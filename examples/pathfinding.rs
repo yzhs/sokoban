@@ -2,9 +2,7 @@ use sokoban_backend as backend;
 
 use std::sync::mpsc::channel;
 
-use crate::backend::{
-    Collection, Command, Direction, Game, Position,
-};
+use crate::backend::{Collection, Command, Direction, Game, Position};
 
 fn main() {
     colog::init();
