@@ -74,9 +74,6 @@ impl Graph<Position> {
             info!("{:?}", s);
         }
 
-        let dir = steps.first().unwrap().direction;
-        let start = from.neighbour(dir.reverse());
-
-        Some(Path { start, steps })
+        Some(Path { start: from, steps })
     }
 }

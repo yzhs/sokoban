@@ -227,6 +227,8 @@ mod tests {
 
         assert!(path.is_some());
         let path = path.unwrap();
-        assert_eq!(path.start, Position { x: 1, y: 1 });
+        assert_eq!(path.start, from);
+        assert_eq!(path.steps.len(), 1);
+        assert_eq!(path.steps[0].direction, Direction::Right);
     }
 }
