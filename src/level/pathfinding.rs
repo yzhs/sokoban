@@ -99,10 +99,16 @@ impl Level {
         info!("Starting from {:?}", crate_path.start);
         assert!(!crate_path.steps.is_empty());
 
-        let worker_start = crate_path.start.neighbour(crate_path.steps[0].direction.reverse());
-        info!("Moving worker to {:?}", worker_start);
-        let path = self.find_path(worker_start)?;
-        self.follow_path(path);
+
+        let mut move_worker_into_position = |crate_position: Position, r#move: &Move| {
+            let worker_pos = crate_position.neighbour(r#move.direction.reverse());
+            info!("Moving worker to {:?}", worker_pos);
+            let path = self.find_path(worker_pos)?;
+            self.follow_path(path);
+            Some(())
+        };
+
+        move_worker_into_position(crate_path.start, &crate_path.steps[0]);
 
         None
     }
