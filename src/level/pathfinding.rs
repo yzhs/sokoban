@@ -97,8 +97,12 @@ impl Level {
     pub fn push_crate_along_path(&mut self, crate_path: Path) -> Option<()> {
         let mut pos = crate_path.start;
         info!("Starting from {:?}", crate_path.start);
-        self.find_path(crate_path.start);
-        info!("Worker is now at {:?}", self.worker_position);
+        assert!(!crate_path.steps.is_empty());
+
+        let worker_start = crate_path.start.neighbour(crate_path.steps[0].direction.reverse());
+        info!("Moving worker to {:?}", worker_start);
+        let path = self.find_path(worker_start)?;
+        self.follow_path(path);
 
         None
     }
