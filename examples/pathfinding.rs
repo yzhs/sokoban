@@ -1,14 +1,9 @@
-#[macro_use]
-extern crate log;
-
 use sokoban_backend as backend;
 
-use std::env;
 use std::sync::mpsc::channel;
 
 use crate::backend::{
-    convert_savegames, print_collections_table, print_stats, Collection, Command, Direction, Game,
-    Position, TITLE,
+    Collection, Command, Direction, Game, Position,
 };
 
 fn main() {
@@ -28,6 +23,11 @@ fn main() {
 
     let from = Position { x: 1, y: 2 };
     let to = Position { x: 3, y: 3 };
+    let cmd = Command::MoveCrateToTarget { from, to };
+    sender.send(cmd).unwrap();
+    game.execute();
+
+    let to = Position { x: 1, y: 1 };
     let cmd = Command::MoveCrateToTarget { from, to };
     sender.send(cmd).unwrap();
     game.execute();
