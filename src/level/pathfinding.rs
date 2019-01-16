@@ -76,6 +76,15 @@ impl Level {
         Some(path)
     }
 
+    /// Follow the given path, if any.
+    pub fn follow_path(&mut self, path: Path) {
+        assert_eq!(self.worker_position, path.start);
+        for Move { direction, .. } in path.steps {
+            let is_ok = self.try_move(direction).is_ok();
+            assert!(is_ok);
+        }
+    }
+
     /// Try to find a way to move the crate at `from` to `to`.
     pub fn find_path_with_crate(&self, from: Position, to: Position) -> Option<Path> {
         self.is_valid_for_path_with_crate(from, to)?;
@@ -161,17 +170,6 @@ impl Level {
             None
         } else {
             Some(())
-        }
-    }
-
-    /// Follow the given path, if any.
-    pub fn follow_path(&mut self, path: Option<Path>) {
-        if let Some(path) = path {
-            assert_eq!(self.worker_position, path.start);
-            for Move { direction, .. } in path.steps {
-                let is_ok = self.try_move(direction).is_ok();
-                assert!(is_ok);
-            }
         }
     }
 }
