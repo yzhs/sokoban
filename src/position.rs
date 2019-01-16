@@ -1,9 +1,10 @@
+use std::fmt;
 use std::ops::Sub;
 
 use crate::direction::Direction;
 
 /// A position in a Sokoban level given as (x,y) coordinates.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Position {
     pub x: isize,
     pub y: isize,
@@ -72,5 +73,11 @@ impl Sub for Position {
     type Output = (isize, isize);
     fn sub(self, other: Position) -> (isize, isize) {
         (self.x - other.x, self.y - other.y)
+    }
+}
+
+impl fmt::Debug for Position {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({},{})", self.x, self.y)
     }
 }
