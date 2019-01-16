@@ -58,8 +58,6 @@ impl Graph<Position> {
             positions.push(predecessors[&pos][0]);
         }
 
-        info!("crate positions in reverse order: {:?}", positions);
-
         let mut steps = vec![];
         let len = positions.len();
         for i in 1..len {
@@ -69,8 +67,6 @@ impl Graph<Position> {
                 moves_crate: true,
             });
         }
-
-        info!("the crate has to move as follows: {:?}", steps);
 
         Some(Path { start: from, steps })
     }

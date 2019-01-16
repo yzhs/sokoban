@@ -90,21 +90,19 @@ impl Level {
         self.is_valid_for_path_with_crate(from, to)?;
 
         let graph = self.build_graph(from);
-        self.visualise_graph(&graph);
         graph.find_crate_path(from, to)
     }
 
     fn move_worker_into_position(&mut self, crate_position: Position, r#move: &Move) -> Option<()> {
         let worker_pos = crate_position.neighbour(r#move.direction.reverse());
-        info!("Moving worker to {:?}", worker_pos);
         let path = self.find_path(worker_pos)?;
         self.follow_path(path);
         Some(())
     }
 
     pub fn push_crate_along_path(&mut self, crate_path: Path) -> Option<()> {
-        info!("Starting from {:?}", crate_path.start);
         assert!(!crate_path.steps.is_empty());
+
 
         self.move_worker_into_position(crate_path.start, &crate_path.steps[0])?;
         self.try_move(crate_path.steps[0].direction).ok().unwrap();
@@ -163,7 +161,7 @@ impl Level {
             };
             line.push(c);
             if index % self.columns == self.columns - 1 {
-                info!("{}", line);
+                debug!("{}", line);
                 line.truncate(0);
             }
         }
