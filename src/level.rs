@@ -548,14 +548,10 @@ impl Level {
 
     /// Move the crate located at `from` to `to` if that is possible.
     pub fn move_crate_to_target(&mut self, from: Position, to: Position) -> Option<()> {
-        if let Some(path) = self.find_path_with_crate(from, to) {
-            info!("Found a path from {:?} to {:?}", from, to);
-            self.push_crate_along_path(path);
-        } else {
-            info!("Could not find a path from {:?} to {:?}:", from, to);
-        }
+        let path = self.find_path_with_crate(from, to)?;
 
-        Some(())
+        info!("Found a path from {:?} to {:?}", from, to);
+        self.push_crate_along_path(path)
     }
 
     /// Move as far as possible in the given direction (without pushing crates if `may_push_crate`
