@@ -94,21 +94,28 @@ impl Level {
         graph.find_crate_path(from, to)
     }
 
+    fn move_worker_into_position(&mut self, crate_position: Position, r#move: &Move) -> Option<()> {
+        let worker_pos = crate_position.neighbour(r#move.direction.reverse());
+        info!("Moving worker to {:?}", worker_pos);
+        let path = self.find_path(worker_pos)?;
+        self.follow_path(path);
+        Some(())
+    }
+
     pub fn push_crate_along_path(&mut self, crate_path: Path) -> Option<()> {
         let mut pos = crate_path.start;
         info!("Starting from {:?}", crate_path.start);
         assert!(!crate_path.steps.is_empty());
 
 
-        let mut move_worker_into_position = |crate_position: Position, r#move: &Move| {
-            let worker_pos = crate_position.neighbour(r#move.direction.reverse());
-            info!("Moving worker to {:?}", worker_pos);
-            let path = self.find_path(worker_pos)?;
-            self.follow_path(path);
-            Some(())
-        };
+        self.move_worker_into_position(crate_path.start, &crate_path.steps[0])?;
+        self.try_move(crate_path.steps[0].direction).ok().unwrap();
 
-        move_worker_into_position(crate_path.start, &crate_path.steps[0]);
+        for i in 1..crate_path.steps.len() {
+            let crate_position = self.worker_position.neighbour(self.worker_direction());
+            self.move_worker_into_position(crate_position, &crate_path.steps[i])?;
+            self.try_move(crate_path.steps[i].direction).ok().unwrap();
+        }
 
         None
     }
