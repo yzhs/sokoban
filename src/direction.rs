@@ -35,21 +35,28 @@ pub const DIRECTIONS: [Direction; 4] = [
     Direction::Down,
 ];
 
+#[derive(Debug, PartialEq)]
+pub enum DirectionResult {
+    SamePosition,
+    Neighbour { direction: Direction },
+    Other,
+}
+
 /// Find out in which direction you have to move to get from `from` to `to`, if there is such a
 /// direction. If both positions are the same, return `Err(None)`, if the two positions are neither
 /// in the same row nor the same column, return `Err(Some(to))`. Otherwise, return `Ok(dirction)`.
-pub fn direction(from: Position, to: Position) -> Result<Direction, Option<Position>> {
-    // TODO better errors?
+pub fn direction(from: Position, to: Position) -> DirectionResult {
     use crate::direction::Direction::*;
-    let (dx, dy) = to - from;
-    if dx == 0 && dy == 0 {
-        Err(None)
-    } else if dx == 0 && dy != 0 {
-        Ok(if dy < 0 { Up } else { Down })
-    } else if dx != 0 && dy == 0 {
-        Ok(if dx < 0 { Left } else { Right })
-    } else {
-        Err(Some(to))
+
+    match to - from {
+        (0, 0) => DirectionResult::SamePosition,
+        (0, dy) => DirectionResult::Neighbour {
+            direction: if dy < 0 { Up } else { Down },
+        },
+        (dx, 0) => DirectionResult::Neighbour {
+            direction: if dx < 0 { Left } else { Right },
+        },
+        _ => DirectionResult::Other,
     }
 }
 
@@ -78,11 +85,14 @@ mod test {
         let pos0 = Position::new(0, 42);
         for &dir in DIRECTIONS.iter() {
             let pos1 = pos0.neighbour(dir);
-            assert_eq!(direction(pos0, pos1), Ok(dir));
+            assert_eq!(
+                direction(pos0, pos1),
+                DirectionResult::Neighbour { direction: dir }
+            );
             assert_eq!(pos1.neighbour(dir.reverse()), pos0);
         }
-        assert_eq!(direction(pos0, pos0), Err(None));
-        assert_eq!(direction(pos0.left().above(), pos0), Err(Some(pos0)));
+        assert_eq!(direction(pos0, pos0), DirectionResult::SamePosition);
+        assert_eq!(direction(pos0.left().above(), pos0), DirectionResult::Other);
     }
 }
 
