@@ -1,3 +1,4 @@
+mod graph;
 mod pathfinding;
 
 use std::{
@@ -9,6 +10,7 @@ use std::{
 use crate::command::{Obstacle, WithCrate};
 use crate::direction::*;
 use crate::event::Event;
+use crate::level::pathfinding::*;
 use crate::move_::Move;
 use crate::position::*;
 use crate::util::*;
@@ -29,11 +31,6 @@ impl Background {
             _ => false,
         }
     }
-}
-
-pub struct Path {
-    pub start: Position,
-    pub steps: Vec<Move>,
 }
 
 /// Dynamic part of a cell.
