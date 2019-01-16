@@ -117,7 +117,7 @@ impl Level {
             self.try_move(crate_path.steps[i].direction).ok().unwrap();
         }
 
-        None
+        Some(())
     }
 
     /// Create a graph of cells a crate `starting_from` can be moved to.
