@@ -75,6 +75,17 @@ impl Level {
         Some(path)
     }
 
+    /// Try to find a way to move the crate at `from` to `to`.
+    pub fn find_path_with_crate(&mut self, from: Position, to: Position) -> Option<Path> {
+        self.is_valid_for_path_with_crate(from, to)?;
+
+        let graph = self.build_graph(from);
+        self.visualise_graph(&graph);
+        let crate_path = graph.find_crate_path(from, to)?;
+        self.worker_path(crate_path)
+    }
+
+    /// Create a graph of cells a crate `starting_from` can be moved to.
     fn build_graph(&self, starting_from: Position) -> Graph<Position> {
         let mut neighbours: HashMap<Position, Vec<_>> = HashMap::new();
 
@@ -105,6 +116,7 @@ impl Level {
         Graph { neighbours }
     }
 
+    /// Print a simple ASCII version of a graph in the context of the current level.
     fn visualise_graph(&self, graph: &Graph<Position>) {
         let mut line = "".to_string();
         for (index, &bg) in self.background.iter().enumerate() {
@@ -124,7 +136,7 @@ impl Level {
         }
     }
 
-    pub fn find_path_with_crate(&mut self, from: Position, to: Position) -> Option<Path> {
+    fn is_valid_for_path_with_crate(&self, from: Position, to: Position) -> Option<()> {
         if from == to || !self.crates.contains_key(&from) || !self.is_empty(to) {
             warn!(
                 "Cannot move crate from ({},{}) to ({},{}):",
@@ -137,12 +149,15 @@ impl Level {
             } else {
                 warn!("target is not empty");
             }
-            return None;
+            None
+        } else {
+            Some(())
         }
+    }
 
-        let graph = self.build_graph(from);
-        self.visualise_graph(&graph);
-        graph.find_path(from, to)
+    fn worker_path(&self, crate_path: Path) -> Option<Path>{
+        let mut pos = crate_path.start;
+        None
     }
 
     /// Follow the given path, if any.
@@ -176,7 +191,6 @@ impl Graph<Position> {
             }
 
             visited.insert(pos);
-            info!("{:?}", pos);
 
             for &neighbour in &self.neighbours[&pos] {
                 queue.push_back(neighbour);
@@ -187,7 +201,7 @@ impl Graph<Position> {
         predecessors
     }
 
-    pub fn find_path(&self, from: Position, to: Position) -> Option<Path> {
+    pub fn find_crate_path(&self, from: Position, to: Position) -> Option<Path> {
         if !self.neighbours.contains_key(&to) {
             return None;
         }
@@ -197,7 +211,7 @@ impl Graph<Position> {
         let mut positions = vec![to];
 
         loop {
-            let pos = positions[positions.len() - 1];
+            let pos = *positions.last().unwrap();
             if pos == from {
                 break;
             }
@@ -205,19 +219,28 @@ impl Graph<Position> {
             positions.push(predecessors[&pos][0]);
         }
 
+        for p in &positions {
+            info!("{:?}", p);
+        }
+
         let mut steps = vec![];
-        for i in 2..positions.len() {
-            let direction = direction(positions[i - 2], positions[i - 1]).unwrap();
+        let len = positions.len();
+        for i in 1..len {
+            let direction = direction(positions[len - i], positions[len - i - 1]).unwrap();
             steps.push(Move {
                 direction,
                 moves_crate: true,
             });
         }
 
-        Some(Path {
-            start: from.left(),
-            steps,
-        })
+        for s in &steps {
+            info!("{:?}", s);
+        }
+
+        let dir = steps.first().unwrap().direction;
+        let start = from.neighbour(dir.reverse());
+
+        Some(Path { start, steps })
     }
 }
 
