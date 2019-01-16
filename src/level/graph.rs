@@ -1,4 +1,5 @@
 use std::collections::{HashSet, VecDeque};
+use std::hash::Hash;
 
 use crate::direction::*;
 use crate::level::*;
@@ -6,13 +7,13 @@ use crate::move_::Move;
 use crate::position::*;
 
 /// A directed graph.
-pub struct Graph<T> {
+pub struct Graph<T: Eq> {
     pub neighbours: HashMap<T, Vec<T>>,
 }
 
-impl Graph<Position> {
-    fn find_paths_starting_at(&self, from: Position) -> HashMap<Position, Vec<Position>> {
-        let mut predecessors: HashMap<Position, Vec<Position>> = HashMap::new();
+impl<T: Clone + Eq + Hash> Graph<T> {
+    fn find_paths_starting_at(&self, from: T) -> HashMap<T, Vec<T>> {
+        let mut predecessors: HashMap<T, Vec<T>> = HashMap::new();
 
         let mut visited = HashSet::new();
         let mut queue = VecDeque::new();
@@ -23,17 +24,20 @@ impl Graph<Position> {
                 continue;
             }
 
-            visited.insert(pos);
+            visited.insert(pos.clone());
 
-            for &neighbour in &self.neighbours[&pos] {
-                queue.push_back(neighbour);
-                predecessors.entry(neighbour).or_default().push(pos);
+            for neighbour in &self.neighbours[&pos] {
+                queue.push_back(neighbour.clone());
+                predecessors.entry(neighbour.clone()).or_default().push(pos.clone());
             }
         }
 
         predecessors
     }
+}
 
+
+impl Graph<Position> {
     pub fn find_crate_path(&self, from: Position, to: Position) -> Option<Path> {
         if !self.neighbours.contains_key(&to) {
             return None;
