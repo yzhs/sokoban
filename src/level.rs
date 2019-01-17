@@ -513,32 +513,33 @@ impl Level {
 
     /// Move the worker towards `to`. If may_push_crate is set, `to` must be in the same row or
     /// column as the worker. In that case, the worker moves to `to`
-    pub fn move_to(&mut self, to: Position, may_push_crate: bool) {
-        match direction(self.worker_position, to) {
-            Ok(dir) => {
-                let (dx, dy) = to - self.worker_position;
-                if !may_push_crate && dx.abs() + dy.abs() > 1 {
-                    if let Some(path) = self.find_path(to) {
-                        self.follow_path(path);
-                    }
-                } else {
-                    // Note that this takes care of both movements of just one step and all cases
-                    // in which crates may be pushed.
-                    while self.move_helper(dir, may_push_crate).is_ok() {
-                        if self.worker_position == to || may_push_crate && self.is_finished() {
-                            break;
-                        }
-                    }
-                }
+    pub fn move_to(&mut self, to: Position, may_push_crate: bool) -> Option<()> {
+        let dir = direction(self.worker_position, to);
+
+        if !may_push_crate {
+            let (dx, dy) = to - self.worker_position;
+            if dx.abs() + dy.abs() > 1 {
+                let path = self.find_path(to)?;
+                self.follow_path(path);
+                return Some(());
             }
-            Err(None) => {}
-            Err(_) if !may_push_crate => {
-                if let Some(path) = self.find_path(to) {
-                    self.follow_path(path);
-                }
-            }
-            Err(_) => self.notify(&Event::NoPathfindingWhilePushing),
         }
+
+        match dir {
+            DirectionResult::Neighbour { direction } => {
+                // Note that this takes care of both movements of just one step and all cases
+                // in which crates may be pushed.
+                while self.move_helper(direction, may_push_crate).is_ok() {
+                    if self.worker_position == to || may_push_crate && self.is_finished() {
+                        break;
+                    }
+                }
+            }
+            DirectionResult::SamePosition => {}
+            DirectionResult::Other => self.notify(&Event::NoPathfindingWhilePushing),
+        }
+
+        Some(())
     }
 
     /// Try to move in the given direction. Return an error if that is not possible.

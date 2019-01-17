@@ -61,11 +61,16 @@ impl Graph<Position> {
         let mut steps = vec![];
         let len = positions.len();
         for i in 1..len {
-            let direction = direction(positions[len - i], positions[len - i - 1]).unwrap();
-            steps.push(Move {
-                direction,
-                moves_crate: true,
-            });
+            if let DirectionResult::Neighbour { direction } =
+                direction(positions[len - i], positions[len - i - 1])
+            {
+                steps.push(Move {
+                    direction,
+                    moves_crate: true,
+                });
+            } else {
+                unreachable!();
+            }
         }
 
         Some(Path { start: from, steps })

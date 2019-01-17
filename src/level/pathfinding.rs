@@ -2,8 +2,8 @@ use std::collections::{HashSet, VecDeque};
 
 use crate::direction::*;
 use crate::event::Event;
-use crate::level::*;
 use crate::level::graph::Graph;
+use crate::level::*;
 use crate::move_::Move;
 use crate::position::*;
 
@@ -20,7 +20,10 @@ impl Level {
         let rows = self.rows();
 
         if self.worker_position == to || !self.is_empty(to) {
-            return Some(Path{start: self.worker_position, steps: vec![]});
+            return Some(Path {
+                start: self.worker_position,
+                steps: vec![],
+            });
         }
 
         let mut distances = vec![::std::usize::MAX; columns * rows];
@@ -63,12 +66,15 @@ impl Level {
         while pos != to {
             for neighbour in self.empty_neighbours(pos) {
                 if distances[self.index(neighbour)] < distances[self.index(pos)] {
-                    let dir = direction(pos, neighbour).unwrap();
-                    pos = neighbour;
-                    path.steps.push(Move {
-                        direction: dir,
-                        moves_crate: false,
-                    });
+                    if let DirectionResult::Neighbour { direction } = direction(pos, neighbour) {
+                        pos = neighbour;
+                        path.steps.push(Move {
+                            direction,
+                            moves_crate: false,
+                        });
+                    } else {
+                        unreachable!();
+                    }
                 }
             }
         }
@@ -103,7 +109,6 @@ impl Level {
     pub fn push_crate_along_path(&mut self, crate_path: Path) -> Option<()> {
         assert!(!crate_path.steps.is_empty());
 
-
         self.move_worker_into_position(crate_path.start, &crate_path.steps[0])?;
         self.try_move(crate_path.steps[0].direction).ok().unwrap();
 
@@ -132,8 +137,13 @@ impl Level {
             neighbours.entry(pos).or_default();
 
             for neighbour in self.empty_neighbours(pos) {
-                let dir = direction(neighbour, pos).unwrap();
-                let opposite_neighbour = pos.neighbour(dir);
+                let opposite_neighbour = if let DirectionResult::Neighbour { direction: dir } =
+                    direction(neighbour, pos)
+                {
+                    pos.neighbour(dir)
+                } else {
+                    unreachable!()
+                };
 
                 if !self.is_empty(opposite_neighbour) && opposite_neighbour != starting_from {
                     continue;
@@ -256,6 +266,6 @@ mod tests {
 
         sut.push_crate_along_path(path);
 
-        assert_eq!(sut.worker_position, Position {x: 19, y: 1});
+        assert_eq!(sut.worker_position, Position { x: 19, y: 1 });
     }
 }
