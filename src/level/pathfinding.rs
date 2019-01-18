@@ -283,4 +283,23 @@ mod tests {
 
         assert!(sut.push_crate_along_path(path).is_none());
     }
+
+    #[test]
+    fn find_not_so_tricky_path() {
+        let s = "#####\n\
+                 ###.#\n\
+                 #@$ #\n\
+                 # # #\n\
+                 #   #\n\
+                 #####";
+        let mut sut = Level::parse(0, s).unwrap();
+
+        let from = Position { x: 2, y: 2 };
+        let to = Position { x: 3, y: 1 };
+        let path = sut.find_path_with_crate(from, to).unwrap();
+
+        sut.push_crate_along_path(path);
+
+        assert_eq!(sut.worker_position, Position { x: 3, y: 2 });
+   }
 }
