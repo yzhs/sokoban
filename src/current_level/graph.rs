@@ -1,8 +1,8 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::Hash;
 
+use crate::current_level::pathfinding::Path;
 use crate::direction::*;
-use crate::level::*;
 use crate::move_::Move;
 use crate::position::*;
 

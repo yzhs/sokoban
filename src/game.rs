@@ -3,9 +3,10 @@ use std::sync::mpsc::{Receiver, Sender};
 
 use crate::collection::*;
 use crate::command::*;
+use crate::current_level::CurrentLevel;
+use crate::level::Level;
 use crate::direction::Direction;
 use crate::event::*;
-use crate::level::Level;
 use crate::macros::Macros;
 use crate::position::Position;
 use crate::save::*;
@@ -24,7 +25,7 @@ pub struct Game {
     name: String,
 
     /// A copy of one of the levels.
-    current_level: Level,
+    current_level: CurrentLevel,
 
     collection: Collection,
 
@@ -75,8 +76,8 @@ impl Game {
         self.receiver = Some(receiver);
     }
 
-    fn set_current_level(&mut self, level: Level) {
-        self.current_level = level;
+    fn set_current_level(&mut self, level: &Level) {
+        self.current_level = level.into();
         for listener in &self.listeners.moves {
             self.current_level.subscribe(listener.clone());
         }
@@ -101,7 +102,7 @@ impl Game {
     pub fn new(collection: Collection) -> Self {
         let mut result = Game {
             name: collection.short_name().to_string(),
-            current_level: collection.first_level().clone(),
+            current_level: collection.first_level().into(),
             state: CollectionState::load(collection.short_name()),
             macros: Macros::new(),
             collection,
@@ -120,7 +121,7 @@ impl Game {
         self.collection = Collection::parse(name)?;
         let level = self.collection.first_level().clone();
         self.load_state(true);
-        self.set_current_level(level);
+        self.set_current_level(&level);
         Ok(())
     }
 
@@ -151,7 +152,7 @@ impl Game {
 
     // Access data concerning the current level
     /// The current level
-    pub fn current_level(&self) -> &Level {
+    pub fn current_level(&self) -> &CurrentLevel {
         &self.current_level
     }
 
@@ -319,7 +320,7 @@ impl Game {
     /// Replace the current level by a clean copy.
     fn reset_current_level(&mut self) {
         let current_level = self.get_level(self.rank());
-        self.set_current_level(current_level);
+        self.set_current_level(&current_level);
     }
 
     /// If `current_level` is finished, switch to the next level.
@@ -332,7 +333,7 @@ impl Game {
 
         if !is_last_level && (current_level_is_solved_now || current_level_has_been_solved_before) {
             let next_level = self.get_level(self.rank() + 1);
-            self.set_current_level(next_level);
+            self.set_current_level(&next_level);
             Ok(())
         } else if is_last_level {
             Err(NextLevelError::EndOfCollection)
@@ -348,7 +349,7 @@ impl Game {
             Err(())
         } else {
             let previous_level = self.get_level(n - 1);
-            self.set_current_level(previous_level);
+            self.set_current_level(&previous_level);
             Ok(())
         }
     }
@@ -360,7 +361,8 @@ impl Game {
             state = CollectionState::load(self.collection.short_name());
             if !state.collection_solved {
                 let n = state.levels_finished();
-                let mut lvl = self.collection.levels()[n].clone();
+                let lvl = self.get_level(n+1);
+                self.set_current_level(&lvl);
                 if n < state.number_of_levels() {
                     if let LevelState::Started {
                         number_of_moves,
@@ -368,11 +370,10 @@ impl Game {
                         ..
                     } = state.levels[n]
                     {
-                        let is_ok = lvl.execute_moves(number_of_moves, moves).is_ok();
+                        let is_ok = self.current_level.execute_moves(number_of_moves, moves).is_ok();
                         assert!(is_ok);
                     }
                 }
-                self.set_current_level(lvl);
             }
         } else {
             state = CollectionState::load_stats(self.collection.short_name());
@@ -511,7 +512,7 @@ mod tests {
             collection,
             macros: Macros::new(),
             state: CollectionState::new(""),
-            current_level: lvl,
+            current_level: lvl.into(),
             listeners: Listeners::new(),
             receiver: None,
         }

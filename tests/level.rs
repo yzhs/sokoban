@@ -29,7 +29,7 @@ fn char_to_direction(c: char) -> Direction {
 
 #[test]
 fn test_simple_moves() {
-    let mut lvl = Level::parse(0, ORIGINAL_LEVEL_1).unwrap();
+    let mut lvl: CurrentLevel = Level::parse(0, ORIGINAL_LEVEL_1).unwrap().into();
     assert_eq!(lvl.rows(), 11);
     assert_eq!(lvl.columns(), 19);
 
@@ -53,7 +53,7 @@ fn test_simple_moves() {
 #[test]
 fn test_path_finding() {
     use self::Direction::*;
-    let mut lvl = Level::parse(0, ORIGINAL_LEVEL_1).unwrap();
+    let mut lvl: CurrentLevel = Level::parse(0, ORIGINAL_LEVEL_1).unwrap().into();
     for (i, mv) in "ullluuuLUllDlldddrRRRRRRRRRRRRurD\
                     llllllllllllllulldRRRRRRRRRRRRRRR"
         .chars()

@@ -1,6 +1,4 @@
-mod builder;
-mod graph;
-mod pathfinding;
+pub mod builder;
 
 use std::{
     collections::HashMap,
@@ -8,11 +6,9 @@ use std::{
     sync::mpsc::Sender,
 };
 
-use crate::command::{Obstacle, WithCrate};
 use crate::direction::*;
 use crate::event::Event;
 use crate::level::builder::{Foreground, LevelBuilder};
-use crate::level::pathfinding::*;
 use crate::move_::Move;
 use crate::position::*;
 use crate::util::*;
@@ -37,9 +33,9 @@ impl Background {
 
 #[derive(Debug, Clone)]
 pub struct Level {
-    rank: usize,
-    columns: usize,
-    rows: usize,
+    pub rank: usize,
+    pub columns: usize,
+    pub rows: usize,
 
     /// `columns * rows` cells’ backgrounds in row-major order
     pub background: Vec<Background>,
@@ -48,19 +44,19 @@ pub struct Level {
     pub crates: HashMap<Position, usize>,
 
     /// The number of goals that have to be filled to solve the level
-    empty_goals: usize,
+    pub empty_goals: usize,
 
     /// Where the worker is at the moment
-    worker_position: Position,
+    pub worker_position: Position,
 
     /// The sequence of moves performed so far. Everything after the first number_of_moves moves is
     /// used to redo moves, i.e. undoing a previous undo operation.
-    moves: Vec<Move>,
+    pub moves: Vec<Move>,
 
     /// This describes how many moves have to be performed to arrive at the current state.
-    number_of_moves: usize,
+    pub number_of_moves: usize,
 
-    listeners: Vec<Sender<Event>>,
+    pub listeners: Vec<Sender<Event>>,
 }
 
 /// Parse level and some basic utility functions. None of these change an existing `Level`. {{{
@@ -99,16 +95,6 @@ impl Level {
         &self.background[self.index(pos)]
     }
 
-    /// A vector of all neighbours of the cell with the given position that contain neither a wall
-    /// nor a crate.
-    fn empty_neighbours(&self, position: Position) -> Vec<Position> {
-        DIRECTIONS
-            .iter()
-            .map(|&dir| position.neighbour(dir))
-            .filter(|&neighbour| self.is_empty(neighbour) || self.is_worker(neighbour))
-            .collect()
-    }
-
     fn in_bounds(&self, pos: Position) -> bool {
         pos.x >= 0 && pos.y >= 0 && pos.x < self.columns() as isize && pos.y < self.rows() as isize
     }
@@ -118,18 +104,8 @@ impl Level {
         self.crates.get(&pos).is_some()
     }
 
-    /// Is the cell with the given coordinates empty, i.e. could a crate be moved into it?
-    fn is_empty(&self, pos: Position) -> bool {
-        self.is_interior(pos) && !self.is_crate(pos)
-    }
-
     pub fn is_outside(&self, pos: Position) -> bool {
         !self.in_bounds(pos) || *self.background(pos) == Background::Empty
-    }
-
-    /// Is the cell with the given coordinates empty, i.e. could a crate be moved into it?
-    fn is_worker(&self, pos: Position) -> bool {
-        pos == self.worker_position
     }
 
     /// The cell at the given position is neither empty, nor does it contain a wall.
@@ -196,232 +172,6 @@ impl Level {
     }
 }
 // }}}
-
-/// Emit the appropriate events {{{
-impl Level {
-    pub fn subscribe(&mut self, sender: Sender<Event>) {
-        self.listeners.push(sender);
-    }
-
-    fn notify(&self, event: &Event) {
-        for sender in &self.listeners {
-            sender.send(event.clone()).unwrap();
-        }
-    }
-
-    fn move_worker(&mut self, direction: Direction) {
-        let to = self.worker_position.neighbour(direction);
-        self.move_worker_to(to, direction);
-    }
-
-    fn move_worker_back(&mut self, direction: Direction) {
-        let to = self.worker_position.neighbour(direction.reverse());
-        let from = self.worker_position;
-        self.worker_position = to;
-        self.on_worker_move(from, to, direction);
-    }
-
-    fn move_worker_to(&mut self, to: Position, direction: Direction) {
-        let from = self.worker_position;
-        self.worker_position = to;
-        self.on_worker_move(from, to, direction);
-    }
-
-    fn on_worker_move(&self, from: Position, to: Position, direction: Direction) {
-        let event = Event::MoveWorker {
-            from,
-            to,
-            direction,
-        };
-        self.notify(&event);
-    }
-
-    fn move_crate(&mut self, from: Position, direction: Direction) {
-        self.move_crate_to(from, from.neighbour(direction));
-    }
-
-    // NOTE We need `from` so we can find out the crate's id. That way, the user interface knows
-    // which crate to animate. Alternatively, the crate's id could be passed in.
-    fn move_crate_to(&mut self, from: Position, to: Position) {
-        let id = self.crates.remove(&from).unwrap();
-        self.crates.insert(to, id);
-
-        if self.background(from) == &Background::Goal {
-            self.empty_goals += 1;
-        }
-        if self.background(to) == &Background::Goal {
-            self.empty_goals -= 1;
-        }
-
-        self.on_crate_move(id, from, to);
-    }
-
-    fn on_crate_move(&self, id: usize, from: Position, to: Position) {
-        let event = Event::MoveCrate { id, from, to };
-        self.notify(&event);
-    }
-}
-// }}}
-
-/// Movement, i.e. everything that *does* change the `self`.
-impl Level {
-    /// Move one step in the given direction if that cell is empty or `may_push_crate` is true and
-    /// the next cell contains a crate which can be pushed in the given direction.
-    fn move_helper(&mut self, direction: Direction, may_push_crate: bool) -> Result<(), Event> {
-        let next = self.worker_position.neighbour(direction);
-        let next_but_one = next.neighbour(direction);
-
-        let moves_crate = if self.is_empty(next) {
-            false
-        } else if self.is_crate(next) && self.is_empty(next_but_one) && may_push_crate {
-            self.move_crate(next, direction);
-            true
-        } else {
-            let b = may_push_crate && self.is_crate(next);
-            let obj = if b && self.is_crate(next_but_one) {
-                Obstacle::Crate
-            } else {
-                Obstacle::Wall
-            };
-            // TODO make sure the result is used when appropriate
-            return Err(Event::CannotMove(WithCrate(b), obj));
-        };
-
-        self.move_worker(direction);
-
-        // Bookkeeping for undo and printing a solution
-        let current_move = Move {
-            direction,
-            moves_crate,
-        };
-        let n = self.number_of_moves;
-        self.number_of_moves += 1;
-
-        if n != self.moves.len() && self.moves[n] == current_move {
-            // In this case, we are just redoing a move previously undone
-        } else {
-            if n != self.moves.len() {
-                // Discard redo buffer as we are in a different state than before
-                self.moves.truncate(n);
-            }
-            self.moves.push(current_move);
-        }
-
-        Ok(())
-    }
-
-    /// Move the worker towards `to`. If may_push_crate is set, `to` must be in the same row or
-    /// column as the worker. In that case, the worker moves to `to`
-    pub fn move_to(&mut self, to: Position, may_push_crate: bool) -> Option<()> {
-        let dir = direction(self.worker_position, to);
-
-        if !may_push_crate {
-            let (dx, dy) = to - self.worker_position;
-            if dx.abs() + dy.abs() > 1 {
-                let path = self.find_path(to)?;
-                self.follow_path(path);
-                return Some(());
-            }
-        }
-
-        match dir {
-            DirectionResult::Neighbour { direction } => {
-                // Note that this takes care of both movements of just one step and all cases
-                // in which crates may be pushed.
-                while self.move_helper(direction, may_push_crate).is_ok() {
-                    if self.worker_position == to || may_push_crate && self.is_finished() {
-                        break;
-                    }
-                }
-            }
-            DirectionResult::SamePosition => {}
-            DirectionResult::Other => self.notify(&Event::NoPathfindingWhilePushing),
-        }
-
-        Some(())
-    }
-
-    /// Try to move in the given direction. Return an error if that is not possible.
-    pub fn try_move(&mut self, direction: Direction) -> Result<(), Event> {
-        self.move_helper(direction, true)
-    }
-
-    /// Move the crate located at `from` to `to` if that is possible.
-    pub fn move_crate_to_target(&mut self, from: Position, to: Position) -> Option<()> {
-        let path = self.find_path_with_crate(from, to)?;
-
-        info!("Found a path from {:?} to {:?}", from, to);
-        self.push_crate_along_path(path)
-    }
-
-    /// Move as far as possible in the given direction (without pushing crates if `may_push_crate`
-    /// is `false`).
-    pub fn move_as_far_as_possible(&mut self, direction: Direction, may_push_crate: bool) {
-        while self.move_helper(direction, may_push_crate).is_ok()
-            && !(may_push_crate && self.is_finished())
-        {}
-    }
-
-    /// Undo the most recent move.
-    pub fn undo(&mut self) -> bool {
-        if self.number_of_moves == 0 {
-            self.notify(&Event::NothingToUndo);
-            return false;
-        } else {
-            self.number_of_moves -= 1;
-        }
-
-        let direction = self.moves[self.number_of_moves].direction;
-        let crate_pos = self.worker_position.neighbour(direction);
-        self.move_worker_back(direction);
-
-        if self.moves[self.number_of_moves].moves_crate {
-            self.move_crate(crate_pos, direction.reverse());
-        }
-
-        true
-    }
-
-    /// If a move has been undone previously, redo it.
-    pub fn redo(&mut self) -> bool {
-        if self.moves.len() > self.number_of_moves {
-            let dir = self.moves[self.number_of_moves].direction;
-            let is_ok = self.try_move(dir).is_ok();
-            assert!(is_ok);
-            true
-        } else {
-            self.notify(&Event::NothingToRedo);
-            false
-        }
-    }
-
-    /// Given a number of simple moves, i.e. up, down, left, right, as a string, execute the first
-    /// `number_of_moves` of them. If there are more moves than that, they can be executed using
-    /// redo.
-    pub fn execute_moves(&mut self, number_of_moves: usize, moves: &str) -> Result<(), Event> {
-        let moves = crate::move_::parse(moves).unwrap();
-        // TODO Error handling
-        for (i, move_) in moves.iter().enumerate() {
-            // Some moves might have been undone, so we do not redo them just now.
-            if i >= number_of_moves {
-                self.moves = moves.to_owned();
-                break;
-            }
-            self.try_move(move_.direction)?;
-        }
-
-        Ok(())
-    }
-
-    /// Convert moves to string, including moves that have been undone.
-    pub fn all_moves_to_string(&self) -> String {
-        let mut result = String::with_capacity(self.moves.len());
-        for mv in &self.moves {
-            result.push(mv.to_char());
-        }
-        result
-    }
-}
 
 fn cell_to_char(background: Background, foreground: Foreground) -> char {
     match (background, foreground) {
@@ -514,65 +264,6 @@ mod test {
         let res = Level::parse(0, s);
         assert!(res.is_err());
         assert_eq!(res.unwrap_err().to_string(), "No worker in level #1");
-    }
-
-    #[test]
-    fn test_trivial_move_1() {
-        use self::Direction::*;
-
-        let mut lvl = Level::parse(
-            0,
-            "####\n\
-             #@ #\n\
-             ####\n",
-        )
-        .unwrap();
-        assert_eq!(lvl.worker_position.x, 1);
-        assert_eq!(lvl.worker_position.y, 1);
-
-        assert!(lvl.is_empty(Position::new(2, 1)));
-        assert!(!lvl.is_empty(Position::new(0, 1)));
-        for y in 0..3 {
-            for x in 0..4 {
-                assert!(!lvl.is_crate(Position::new(x, y)));
-            }
-        }
-
-        assert!(!&lvl.try_move(Right).is_err());
-        assert!(!&lvl.try_move(Left).is_err());
-        assert!(&lvl.try_move(Left).is_err());
-        assert!(&lvl.try_move(Up).is_err());
-        assert!(&lvl.try_move(Down).is_err());
-    }
-
-    #[test]
-    fn test_trivial_move_2() {
-        use self::Direction::*;
-        let mut lvl = Level::parse(
-            0,
-            "#######\n\
-             #.$@$.#\n\
-             #######\n",
-        )
-        .unwrap();
-        assert_eq!(lvl.worker_position.x, 3);
-        assert_eq!(lvl.worker_position.y, 1);
-        assert_eq!(lvl.worker_direction(), Left);
-        assert!(!&lvl.try_move(Right).is_err());
-        assert!(!&lvl.try_move(Left).is_err());
-        assert!(!&lvl.try_move(Left).is_err());
-        assert!(&lvl.try_move(Up).is_err());
-        assert!(&lvl.try_move(Down).is_err());
-        assert!(lvl.is_finished());
-        assert!(lvl.undo());
-        assert!(!lvl.is_finished());
-        assert!(!&lvl.try_move(Right).is_err());
-        assert_eq!(lvl.worker_direction(), Right);
-        assert!(!lvl.redo());
-        assert!(!&lvl.try_move(Left).is_err());
-        assert!(!&lvl.try_move(Left).is_err());
-        assert!(lvl.is_finished());
-        assert_eq!(lvl.worker_direction(), Left);
     }
 
     #[test]

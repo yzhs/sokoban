@@ -194,7 +194,7 @@ impl Gui {
     }
 
     /// Borrow the current level.
-    fn current_level(&self) -> &Level {
+    fn current_level(&self) -> &CurrentLevel {
         self.game.current_level()
     }
 
@@ -310,7 +310,7 @@ fn correct_aspect_ratio_matrix(aspect_ratio: f32) -> [[f32; 4]; 4] {
     }
 }
 
-fn generate_vertices_for(level: &Level, cell_type: Background) -> Vec<Vertex> {
+fn generate_vertices_for(level: &CurrentLevel, cell_type: Background) -> Vec<Vertex> {
     let columns = level.columns() as u32;
     let rows = level.rows() as u32;
     let mut vertices = vec![];
@@ -343,7 +343,7 @@ impl Gui {
 
             // Render each of the (square) tiles
             for &background in &[Background::Floor, Background::Goal, Background::Wall] {
-                let vertices = generate_vertices_for(&level, background);
+                let vertices = generate_vertices_for(level, background);
                 let vb = glium::VertexBuffer::new(&self.display, &vertices).unwrap();
 
                 let texture = self.background_to_texture(background);

@@ -1,9 +1,9 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashSet, HashMap, VecDeque};
 
+use crate::current_level::graph::Graph;
 use crate::direction::*;
 use crate::event::Event;
-use crate::level::graph::Graph;
-use crate::level::*;
+use crate::current_level::*;
 use crate::move_::Move;
 use crate::position::*;
 
@@ -12,7 +12,7 @@ pub struct Path {
     pub steps: Vec<Move>,
 }
 
-impl Level {
+impl CurrentLevel {
     /// Try to find a shortest path from the workers current position to `to` and execute it if one
     /// exists. Otherwise, emit `Event::NoPathFound`.
     pub fn find_path(&mut self, to: Position) -> Option<Path> {
@@ -207,7 +207,7 @@ mod tests {
         let s = "#####\n\
                  #@$.#\n\
                  #####";
-        let sut = Level::parse(0, s).unwrap();
+        let sut: CurrentLevel = Level::parse(0, s).unwrap().into();
         let from = Position { x: 2, y: 1 };
         let to = Position { x: 0, y: 0 };
         assert!(sut.find_path_with_crate(from, to).is_none());
@@ -218,7 +218,7 @@ mod tests {
         let s = "######\n\
                  #$#@.#\n\
                  ######";
-        let sut = Level::parse(0, s).unwrap();
+        let sut: CurrentLevel = Level::parse(0, s).unwrap().into();
         let from = Position { x: 1, y: 1 };
         let to = Position { x: 4, y: 1 };
         assert!(sut.find_path_with_crate(from, to).is_none());
@@ -229,7 +229,7 @@ mod tests {
         let s = "#####\n\
                  #@$.#\n\
                  #####";
-        let sut = Level::parse(0, s).unwrap();
+        let sut: CurrentLevel = Level::parse(0, s).unwrap().into();
         let from = Position { x: 1, y: 1 };
 
         assert!(sut.find_path_with_crate(from, from).is_none());
@@ -240,7 +240,7 @@ mod tests {
         let s = "#####\n\
                  #@$.#\n\
                  #####";
-        let sut = Level::parse(0, s).unwrap();
+        let sut: CurrentLevel = Level::parse(0, s).unwrap().into();
         let from = Position { x: 2, y: 1 };
         let to = Position { x: 3, y: 1 };
 
@@ -258,7 +258,7 @@ mod tests {
         let s = "#########################\n\
                  #@$                    .#\n\
                  #########################";
-        let mut sut = Level::parse(0, s).unwrap();
+        let mut sut: CurrentLevel = Level::parse(0, s).unwrap().into();
 
         let from = Position { x: 2, y: 1 };
         let to = Position { x: 20, y: 1 };
@@ -274,7 +274,7 @@ mod tests {
         let s = "######\n\
                  # $.@#\n\
                  ######";
-        let mut sut = Level::parse(0, s).unwrap();
+        let mut sut: CurrentLevel = Level::parse(0, s).unwrap().into();
 
         let from = Position { x: 2, y: 1 };
         let to = Position { x: 3, y: 1 };
@@ -292,7 +292,7 @@ mod tests {
                  # # #\n\
                  #   #\n\
                  #####";
-        let mut sut = Level::parse(0, s).unwrap();
+        let mut sut: CurrentLevel = Level::parse(0, s).unwrap().into();
 
         let from = Position { x: 2, y: 2 };
         let to = Position { x: 3, y: 1 };
@@ -301,5 +301,5 @@ mod tests {
         sut.push_crate_along_path(path);
 
         assert_eq!(sut.worker_position, Position { x: 3, y: 2 });
-   }
+    }
 }

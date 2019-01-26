@@ -34,6 +34,7 @@ extern crate lazy_static;
 
 mod collection;
 mod command;
+mod current_level;
 mod direction;
 mod event;
 mod game;
@@ -51,6 +52,7 @@ use ansi_term::Colour::{Blue, Green, White, Yellow};
 
 pub use crate::collection::*;
 pub use crate::command::*;
+pub use crate::current_level::*;
 pub use crate::direction::*;
 pub use crate::event::*;
 pub use crate::game::*;

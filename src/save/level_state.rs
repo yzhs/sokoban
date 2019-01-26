@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use super::solution::*;
-use crate::level::*;
+use crate::current_level::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LevelState {
@@ -35,7 +35,7 @@ impl LevelState {
         }
     }
 
-    pub fn new_unsolved(level: &Level) -> Self {
+    pub fn new_unsolved(level: &CurrentLevel) -> Self {
         LevelState::Started {
             rank: level.rank(),
             number_of_moves: level.number_of_moves(),
@@ -66,8 +66,8 @@ impl LevelState {
     }
 }
 
-impl<'a> From<&'a Level> for LevelState {
-    fn from(lvl: &'a Level) -> Self {
+impl<'a> From<&'a CurrentLevel> for LevelState {
+    fn from(lvl: &'a CurrentLevel) -> Self {
         if lvl.is_finished() {
             let soln = Solution::try_from(lvl).unwrap();
             LevelState::new_solved(lvl.rank(), soln)

@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 
-use crate::level::*;
+use crate::current_level::*;
 
 /// One particular solution of a level.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,9 +41,9 @@ impl Solution {
     }
 }
 
-impl<'a> TryFrom<&'a Level> for Solution {
+impl<'a> TryFrom<&'a CurrentLevel> for Solution {
     type Error = ();
-    fn try_from(lvl: &'a Level) -> Result<Solution, ()> {
+    fn try_from(lvl: &'a CurrentLevel) -> Result<Solution, ()> {
         if lvl.is_finished() {
             Ok(Solution {
                 number_of_moves: lvl.number_of_moves(),
