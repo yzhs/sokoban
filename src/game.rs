@@ -4,9 +4,9 @@ use std::sync::mpsc::{Receiver, Sender};
 use crate::collection::*;
 use crate::command::*;
 use crate::current_level::CurrentLevel;
-use crate::level::Level;
 use crate::direction::Direction;
 use crate::event::*;
+use crate::level::Level;
 use crate::macros::Macros;
 use crate::position::Position;
 use crate::save::*;
@@ -361,7 +361,7 @@ impl Game {
             state = CollectionState::load(self.collection.short_name());
             if !state.collection_solved {
                 let n = state.levels_finished();
-                let lvl = self.get_level(n+1);
+                let lvl = self.get_level(n + 1);
                 self.set_current_level(&lvl);
                 if n < state.number_of_levels() {
                     if let LevelState::Started {
@@ -370,7 +370,10 @@ impl Game {
                         ..
                     } = state.levels[n]
                     {
-                        let is_ok = self.current_level.execute_moves(number_of_moves, moves).is_ok();
+                        let is_ok = self
+                            .current_level
+                            .execute_moves(number_of_moves, moves)
+                            .is_ok();
                         assert!(is_ok);
                     }
                 }

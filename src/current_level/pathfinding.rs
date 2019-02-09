@@ -1,9 +1,9 @@
-use std::collections::{HashSet, HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::current_level::graph::Graph;
+use crate::current_level::*;
 use crate::direction::*;
 use crate::event::Event;
-use crate::current_level::*;
 use crate::move_::Move;
 use crate::position::*;
 

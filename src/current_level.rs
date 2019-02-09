@@ -4,11 +4,11 @@ pub mod pathfinding;
 use std::{collections::HashMap, fmt, sync::mpsc::Sender};
 
 use crate::command::{Obstacle, WithCrate};
+use crate::current_level::pathfinding::*;
 use crate::direction::*;
 use crate::event::Event;
 use crate::level::builder::{Foreground, LevelBuilder};
-use crate::current_level::pathfinding::*;
-use crate::level::{Level, Background};
+use crate::level::{Background, Level};
 use crate::move_::Move;
 use crate::position::*;
 use crate::util::*;
