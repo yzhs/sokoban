@@ -444,19 +444,28 @@ impl fmt::Display for CurrentLevel {
 
 impl From<&Level> for CurrentLevel {
     fn from(level: &Level) -> Self {
-        Self {
+        let mut result = Self {
             rank: level.rank,
             columns: level.columns,
             rows: level.rows,
             background: level.background.clone(),
             crates: level.crates.clone(),
             worker_position: level.worker_position,
-            empty_goals: level.empty_goals,
+
+            empty_goals: 0,
 
             moves: vec![],
             number_of_moves: 0,
             listeners: vec![],
-        }
+        };
+
+        result.empty_goals = result
+            .crates
+            .keys()
+            .filter(|&&pos| result.background(pos) != &Background::Goal)
+            .count();
+
+        result
     }
 }
 

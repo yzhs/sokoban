@@ -31,7 +31,6 @@ pub(crate) struct LevelBuilder {
     rows: usize,
     background: Vec<Background>,
     crates: HashMap<Position, usize>,
-    empty_goals: usize,
     worker_position: Position,
 }
 
@@ -56,7 +55,6 @@ impl LevelBuilder {
 
         let mut found_worker = false;
         let mut worker_position = Position { x: 0, y: 0 };
-        let mut empty_goals = 0;
         let mut background = vec![Background::Empty; columns * rows];
         let mut crates = Vec::with_capacity(20);
 
@@ -76,7 +74,6 @@ impl LevelBuilder {
                 // Count goals still to be filled and make sure that there are exactly as many
                 // goals as there are crates.
                 if bg == Background::Goal && fg != Foreground::Crate {
-                    empty_goals += 1;
                     goals_minus_crates += 1;
                 } else if bg != Background::Goal && fg == Foreground::Crate {
                     goals_minus_crates -= 1;
@@ -124,7 +121,6 @@ impl LevelBuilder {
             rows,
             background,
             crates,
-            empty_goals,
             worker_position,
         })
     }
@@ -137,7 +133,6 @@ impl LevelBuilder {
             rows: self.rows,
             background: self.background,
             crates: self.crates,
-            empty_goals: self.empty_goals,
             worker_position: self.worker_position,
         }
     }

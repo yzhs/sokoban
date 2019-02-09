@@ -36,9 +36,6 @@ pub struct Level {
     /// Positions of all crates
     pub crates: HashMap<Position, usize>,
 
-    /// The number of goals that have to be filled to solve the level
-    pub empty_goals: usize,
-
     /// Where the worker is at the moment
     pub worker_position: Position,
 }
