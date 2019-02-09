@@ -26,7 +26,6 @@ impl Background {
 
 #[derive(Debug, Clone)]
 pub struct Level {
-    pub rank: usize,
     pub columns: usize,
     pub rows: usize,
 

@@ -14,7 +14,6 @@ use crate::position::*;
 
 #[derive(Debug, Clone)]
 pub struct CurrentLevel {
-    rank: usize,
     columns: usize,
     rows: usize,
 
@@ -42,10 +41,6 @@ pub struct CurrentLevel {
 
 /// Parse level and some basic utility functions. None of these change an existing `CurrentLevel`. {{{
 impl CurrentLevel {
-    pub fn rank(&self) -> usize {
-        self.rank
-    }
-
     pub fn rows(&self) -> usize {
         self.rows
     }
@@ -438,7 +433,6 @@ impl fmt::Display for CurrentLevel {
 impl From<&Level> for CurrentLevel {
     fn from(level: &Level) -> Self {
         let mut result = Self {
-            rank: level.rank,
             columns: level.columns,
             rows: level.rows,
             background: level.background.clone(),

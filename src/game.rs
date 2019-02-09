@@ -24,6 +24,8 @@ pub enum NextLevelError {
 pub struct Game {
     name: String,
 
+    rank: usize,
+
     /// A copy of one of the levels.
     current_level: CurrentLevel,
 
@@ -103,6 +105,7 @@ impl Game {
 impl Game {
     pub fn new(collection: Collection) -> Self {
         let mut result = Game {
+            rank: 1,
             name: collection.short_name().to_string(),
             current_level: collection.first_level().into(),
             state: CollectionState::load(collection.short_name()),
@@ -160,7 +163,7 @@ impl Game {
 
     /// The rank of the current level in the current collection.
     pub fn rank(&self) -> usize {
-        self.current_level.rank()
+        self.rank
     }
 
     /// The number of columns of the current level.
@@ -364,8 +367,11 @@ impl Game {
             state = CollectionState::load(self.collection.short_name());
             if !state.collection_solved {
                 let n = state.levels_finished();
+
                 let lvl = self.get_level(n + 1);
                 self.set_current_level(&lvl);
+                self.rank = n + 1;
+
                 if n < state.number_of_levels() {
                     if let LevelState::Started {
                         number_of_moves,
@@ -392,7 +398,7 @@ impl Game {
         // TODO self should not be mut
         let rank = self.rank();
         let level_state = match Solution::try_from(&self.current_level) {
-            Ok(soln) => LevelState::new_solved(self.rank(), soln),
+            Ok(soln) => LevelState::new_solved(soln),
             _ => LevelState::new_unsolved(&self.current_level),
         };
         let response = self.state.update(rank - 1, level_state);
@@ -514,6 +520,7 @@ mod tests {
         let lvl = Level::parse(0, LARGE_EMPTY_LEVEL).unwrap();
         let collection = Collection::from_levels(NAME, &[lvl.clone()]);
         Game {
+            rank: 1,
             name: "LARGE_EMPTY_LEVEL".into(),
             collection,
             macros: Macros::new(),

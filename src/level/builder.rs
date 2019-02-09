@@ -26,7 +26,6 @@ fn char_to_cell(chr: char) -> Option<(Background, Foreground)> {
 }
 
 pub(crate) struct LevelBuilder {
-    rank: usize,
     columns: usize,
     rows: usize,
     background: Vec<Background>,
@@ -116,7 +115,6 @@ impl LevelBuilder {
         let swap = |(a, b)| (b, a);
         let crates = crates.into_iter().enumerate().map(swap).collect();
         Ok(Self {
-            rank,
             columns,
             rows,
             background,
@@ -128,7 +126,6 @@ impl LevelBuilder {
     pub fn build(mut self) -> Level {
         self.correct_outside_cells();
         Level {
-            rank: self.rank,
             columns: self.columns,
             rows: self.rows,
             background: self.background,

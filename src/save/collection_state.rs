@@ -92,13 +92,6 @@ impl CollectionState {
 
     /// Save the current state to disc.
     pub fn save(&mut self, name: &str) -> Result<(), SaveError> {
-        // If no rank was given in the JSON file, set it.
-        if self.levels[0].rank() == 0 {
-            for (i, lvl) in self.levels.iter_mut().enumerate() {
-                lvl.set_rank(i + 1);
-            }
-        }
-
         self.levels_solved = self.levels_finished() as u32;
 
         self.save_cbor(name)
@@ -127,7 +120,6 @@ impl CollectionState {
                     UpdateResponse::FirstTimeSolved
                 }
                 Finished {
-                    rank,
                     least_moves: ref lm_old,
                     least_pushes: ref lp_old,
                 } => {
@@ -138,7 +130,6 @@ impl CollectionState {
                     } = level_state
                     {
                         self.levels[index] = Finished {
-                            rank,
                             least_moves: lm_old.min_moves(lm),
                             least_pushes: lp_old.min_pushes(lp),
                         };
