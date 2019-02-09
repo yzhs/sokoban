@@ -358,6 +358,7 @@ impl Game {
 
     /// Load state stored on disc.
     fn load_state(&mut self, parse_levels: bool) {
+        // DEBT this is horrible, clean it up
         let state: CollectionState;
         if parse_levels {
             state = CollectionState::load(self.collection.short_name());
