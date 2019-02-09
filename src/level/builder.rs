@@ -139,11 +139,6 @@ impl LevelBuilder {
             crates: self.crates,
             empty_goals: self.empty_goals,
             worker_position: self.worker_position,
-
-            number_of_moves: 0,
-            moves: vec![],
-
-            listeners: vec![],
         }
     }
 

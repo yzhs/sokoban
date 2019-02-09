@@ -452,9 +452,10 @@ impl From<&Level> for CurrentLevel {
             crates: level.crates.clone(),
             worker_position: level.worker_position,
             empty_goals: level.empty_goals,
-            moves: level.moves.clone(),
-            number_of_moves: level.number_of_moves,
-            listeners: level.listeners.clone(),
+
+            moves: vec![],
+            number_of_moves: 0,
+            listeners: vec![],
         }
     }
 }

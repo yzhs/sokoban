@@ -1,10 +1,8 @@
 pub mod builder;
 
-use std::{collections::HashMap, fmt, sync::mpsc::Sender};
+use std::{collections::HashMap, fmt};
 
-use crate::event::Event;
 use crate::level::builder::{Foreground, LevelBuilder};
-use crate::move_::Move;
 use crate::position::*;
 use crate::util::*;
 
@@ -43,15 +41,6 @@ pub struct Level {
 
     /// Where the worker is at the moment
     pub worker_position: Position,
-
-    /// The sequence of moves performed so far. Everything after the first number_of_moves moves is
-    /// used to redo moves, i.e. undoing a previous undo operation.
-    pub moves: Vec<Move>,
-
-    /// This describes how many moves have to be performed to arrive at the current state.
-    pub number_of_moves: usize,
-
-    pub listeners: Vec<Sender<Event>>,
 }
 
 /// Parse level and some basic utility functions. None of these change an existing `Level`.
