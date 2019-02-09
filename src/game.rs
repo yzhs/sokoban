@@ -85,14 +85,16 @@ impl Game {
     }
 
     fn on_load_level(&self) {
+        let rank = self.rank();
+        let lvl = self.get_level(rank);
         let initial_state = Event::InitialLevelState {
-            rank: self.rank(),
+            rank,
             columns: self.columns(),
             rows: self.rows(),
-            background: self.current_level.background.clone(),
+            background: lvl.background,
             worker_position: self.worker_position(),
             worker_direction: Direction::Left,
-            crates: self.current_level.crates.clone(),
+            crates: lvl.crates,
         };
         self.listeners.notify_move(&initial_state);
     }
