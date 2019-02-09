@@ -7,11 +7,10 @@ use crate::command::{Obstacle, WithCrate};
 use crate::current_level::pathfinding::*;
 use crate::direction::*;
 use crate::event::Event;
-use crate::level::builder::{Foreground, LevelBuilder};
+use crate::level::builder::Foreground;
 use crate::level::{Background, Level};
 use crate::move_::Move;
 use crate::position::*;
-use crate::util::*;
 
 #[derive(Debug, Clone)]
 pub struct CurrentLevel {
@@ -43,12 +42,6 @@ pub struct CurrentLevel {
 
 /// Parse level and some basic utility functions. None of these change an existing `CurrentLevel`. {{{
 impl CurrentLevel {
-    /// Parse the ASCII representation of a level.
-    pub fn parse(num: usize, string: &str) -> Result<CurrentLevel, SokobanError> {
-        let builder = LevelBuilder::new(num + 1, string)?;
-        Ok(builder.build().into())
-    }
-
     pub fn rank(&self) -> usize {
         self.rank
     }
@@ -483,13 +476,14 @@ mod test {
     fn test_trivial_move_1() {
         use self::Direction::*;
 
-        let mut lvl = CurrentLevel::parse(
+        let mut lvl: CurrentLevel = Level::parse(
             0,
             "####\n\
              #@ #\n\
              ####\n",
         )
-        .unwrap();
+        .unwrap()
+        .into();
         assert_eq!(lvl.worker_position.x, 1);
         assert_eq!(lvl.worker_position.y, 1);
 
@@ -511,13 +505,14 @@ mod test {
     #[test]
     fn test_trivial_move_2() {
         use self::Direction::*;
-        let mut lvl = CurrentLevel::parse(
+        let mut lvl: CurrentLevel = Level::parse(
             0,
             "#######\n\
              #.$@$.#\n\
              #######\n",
         )
-        .unwrap();
+        .unwrap()
+        .into();
         assert_eq!(lvl.worker_position.x, 3);
         assert_eq!(lvl.worker_position.y, 1);
         assert_eq!(lvl.worker_direction(), Left);

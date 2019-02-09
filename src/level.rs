@@ -53,6 +53,7 @@ impl Level {
         self.crates.get(&pos).is_some()
     }
 }
+
 fn cell_to_char(background: Background, foreground: Foreground) -> char {
     match (background, foreground) {
         (Background::Wall, Foreground::None) => '#',
