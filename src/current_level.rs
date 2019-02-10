@@ -229,8 +229,92 @@ impl CurrentLevel {
 }
 // }}}
 
+enum MovePerformed {
+    /// Successfully pushed a crate.
+    MovedCrate { from: Position, to: Position },
+
+    /// Moved worker to adjacent cell
+    MovedWorker { from: Position, to: Position },
+}
+
+enum MoveNotPerformed {
+    /// Trying to push a crate onto a cell that is either another crate or a piece of wall.
+    CrateTargetCellNotEmpty {
+        from: Position,
+        to: Position,
+        target_cell: Background,
+    },
+
+    /// Tried to walk to a non-empty cell
+    WorkerTargetCellNotEmpty {
+        from: Position,
+        to: Position,
+        target_cell: Background,
+    },
+
+    /// Tried to push a crate when there is none
+    NoCrateToPush { expected_crate_at: Position },
+}
+
 /// Movement, i.e. everything that *does* change the `self`.
 impl CurrentLevel {
+    pub fn perform_moves(&mut self, moves: &[Move]) -> Result<(), ()> {
+        for r#move in moves {
+            self.perform_move(r#move).map_err(|_| ())?;
+        }
+
+        Ok(())
+    }
+
+    fn perform_move(&mut self, r#move: &Move) -> Result<(), MoveNotPerformed> {
+        let Move {
+            moves_crate,
+            direction,
+        } = r#move;
+        let new_worker_position = self.worker_position().neighbour(*direction);
+
+        let is_crate = self.is_crate(new_worker_position);
+
+        if is_crate && !moves_crate {
+            info!("Target cell contains a crate, doing nothing");
+
+            Err(MoveNotPerformed::WorkerTargetCellNotEmpty {
+                from: self.worker_position(),
+                to: new_worker_position,
+                target_cell: *self.background(new_worker_position),
+            })
+        } else if is_crate {
+            info!("Target cell contains a crate, trying to push it along");
+            let new_crate_position = new_worker_position.neighbour(*direction);
+
+            if self.is_empty(new_crate_position) {
+                info!("Pushing crate");
+
+                Ok(())
+            } else {
+                info!("Cannot push crate");
+
+                Err(MoveNotPerformed::CrateTargetCellNotEmpty {
+                    from: new_worker_position,
+                    to: new_crate_position,
+                    target_cell: *self.background(new_crate_position),
+                })
+            }
+        } else if self.is_empty(new_worker_position) {
+            info!("Target cell is empty");
+
+            Ok(())
+        } else {
+            info!("Target cell is a wall");
+
+            Err(MoveNotPerformed::WorkerTargetCellNotEmpty {
+                from: self.worker_position,
+                to: new_worker_position,
+                target_cell: *self.background(new_worker_position),
+            })
+        }
+    }
+
     /// Move one step in the given direction if that cell is empty or `may_push_crate` is true and
     /// the next cell contains a crate which can be pushed in the given direction.
     fn move_helper(&mut self, direction: Direction, may_push_crate: bool) -> Result<(), Event> {
