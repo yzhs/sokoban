@@ -275,15 +275,7 @@ impl CurrentLevel {
 
         let is_crate = self.is_crate(new_worker_position);
 
-        if is_crate && !moves_crate {
-            info!("Target cell contains a crate, doing nothing");
-
-            Err(MoveNotPerformed::WorkerTargetCellNotEmpty {
-                from: self.worker_position(),
-                to: new_worker_position,
-                target_cell: *self.background(new_worker_position),
-            })
-        } else if is_crate {
+        if is_crate && moves_crate {
             info!("Target cell contains a crate, trying to push it along");
             let new_crate_position = new_worker_position.neighbour(*direction);
 
@@ -300,6 +292,14 @@ impl CurrentLevel {
                     target_cell: *self.background(new_crate_position),
                 })
             }
+        } else if is_crate {
+            info!("Target cell contains a crate, doing nothing");
+
+            Err(MoveNotPerformed::WorkerTargetCellNotEmpty {
+                from: self.worker_position(),
+                to: new_worker_position,
+                target_cell: *self.background(new_worker_position),
+            })
         } else if self.is_empty(new_worker_position) {
             info!("Target cell is empty");
 
