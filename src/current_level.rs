@@ -231,13 +231,30 @@ impl CurrentLevel {
 
 enum MovePerformed {
     /// Successfully pushed a crate.
-    MovedCrate { from: Position, to: Position },
+    MoveCrate { from: Position, to: Position },
 
     /// Moved worker to adjacent cell
-    MovedWorker { from: Position, to: Position },
+    MoveWorker { from: Position, to: Position },
 }
 
-enum MoveNotPerformed {
+struct MoveNotPerformed {
+    /// Moves that were performed before the first error occurred
+    movesPerformed: Vec<MovePerformed>,
+
+    /// The errors returned by the first failed move
+    problems: Vec<Problem>,
+}
+
+impl From<Problem> for MoveNotPerformed {
+    fn from(problem: Problem) -> Self {
+        MoveNotPerformed {
+            movesPerformed: vec![],
+            problems: vec![problem],
+        }
+    }
+}
+
+enum Problem {
     /// Trying to push a crate onto a cell that is either another crate or a piece of wall.
     CrateTargetCellNotEmpty {
         from: Position,
@@ -266,7 +283,7 @@ impl CurrentLevel {
         Ok(())
     }
 
-    fn perform_move(&mut self, r#move: &Move) -> Result<(), MoveNotPerformed> {
+    fn perform_move(&mut self, r#move: &Move) -> Result<Vec<MovePerformed>, MoveNotPerformed> {
         let Move {
             moves_crate,
             direction,
@@ -275,43 +292,58 @@ impl CurrentLevel {
 
         let is_crate = self.is_crate(new_worker_position);
 
-        if is_crate && moves_crate {
+        if is_crate && *moves_crate {
             info!("Target cell contains a crate, trying to push it along");
             let new_crate_position = new_worker_position.neighbour(*direction);
 
             if self.is_empty(new_crate_position) {
                 info!("Pushing crate");
 
-                Ok(())
+                Ok(vec![
+                    MovePerformed::MoveWorker {
+                        from: self.worker_position,
+                        to: new_worker_position,
+                    },
+                    MovePerformed::MoveCrate {
+                        from: new_worker_position,
+                        to: new_crate_position,
+                    },
+                ])
             } else {
                 info!("Cannot push crate");
 
-                Err(MoveNotPerformed::CrateTargetCellNotEmpty {
+                Err(Problem::CrateTargetCellNotEmpty {
                     from: new_worker_position,
                     to: new_crate_position,
                     target_cell: *self.background(new_crate_position),
-                })
+                }
+                .into())
             }
         } else if is_crate {
             info!("Target cell contains a crate, doing nothing");
 
-            Err(MoveNotPerformed::WorkerTargetCellNotEmpty {
+            Err(Problem::WorkerTargetCellNotEmpty {
                 from: self.worker_position(),
                 to: new_worker_position,
                 target_cell: *self.background(new_worker_position),
-            })
+            }
+            .into())
         } else if self.is_empty(new_worker_position) {
             info!("Target cell is empty");
 
-            Ok(())
+            Ok(vec![MovePerformed::MoveWorker {
+                from: self.worker_position,
+                to: new_worker_position,
+            }])
         } else {
             info!("Target cell is a wall");
 
-            Err(MoveNotPerformed::WorkerTargetCellNotEmpty {
+            Err(Problem::WorkerTargetCellNotEmpty {
                 from: self.worker_position,
                 to: new_worker_position,
                 target_cell: *self.background(new_worker_position),
-            })
+            }
+            .into())
         }
     }
 
