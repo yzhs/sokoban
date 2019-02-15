@@ -78,7 +78,8 @@ impl Game {
         self.receiver = Some(receiver);
     }
 
-    fn set_current_level(&mut self, level: &Level) {
+    fn set_current_level(&mut self, level: &Level, rank: usize) {
+        self.rank = rank;
         self.current_level = level.into();
         for listener in &self.listeners.moves {
             self.current_level.subscribe(listener.clone());
@@ -125,8 +126,8 @@ impl Game {
         self.name = name.into();
         self.collection = Collection::parse(name)?;
         let level = self.collection.first_level().clone();
+        self.set_current_level(&level, 1);
         self.load_state(true);
-        self.set_current_level(&level);
         Ok(())
     }
 
@@ -325,7 +326,7 @@ impl Game {
     /// Replace the current level by a clean copy.
     fn reset_current_level(&mut self) {
         let current_level = self.get_level(self.rank());
-        self.set_current_level(&current_level);
+        self.set_current_level(&current_level, self.rank);
     }
 
     /// If `current_level` is finished, switch to the next level.
@@ -337,8 +338,8 @@ impl Game {
         let current_level_has_been_solved_before = n <= self.state.number_of_levels();
 
         if !is_last_level && (current_level_is_solved_now || current_level_has_been_solved_before) {
-            let next_level = self.get_level(self.rank() + 1);
-            self.set_current_level(&next_level);
+            let next_level = self.get_level(n + 1);
+            self.set_current_level(&next_level, n + 1);
             Ok(())
         } else if is_last_level {
             Err(NextLevelError::EndOfCollection)
@@ -354,7 +355,7 @@ impl Game {
             Err(())
         } else {
             let previous_level = self.get_level(n - 1);
-            self.set_current_level(&previous_level);
+            self.set_current_level(&previous_level, n - 1);
             Ok(())
         }
     }
@@ -374,7 +375,7 @@ impl Game {
                 let n = state.levels_finished();
 
                 let lvl = self.get_level(n + 1);
-                self.set_current_level(&lvl);
+                self.set_current_level(&lvl, n + 1);
                 self.rank = n + 1;
 
                 if n < state.number_of_levels() {
