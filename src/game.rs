@@ -361,6 +361,11 @@ impl Game {
 
     /// Load state stored on disc.
     fn load_state(&mut self, parse_levels: bool) {
+        info!(
+            "Loading collection state for collection={}...",
+            self.collection.short_name()
+        );
+
         // DEBT this is horrible, clean it up
         let state: CollectionState;
         if parse_levels {
@@ -391,6 +396,12 @@ impl Game {
             state = CollectionState::load_stats(self.collection.short_name());
         }
         self.state = state;
+
+        info!(
+            "Successfully loaded collection state for collection={}: currently at level {:?}",
+            self.collection.short_name(),
+            self.state.levels_solved + 1,
+        );
     }
 
     /// Save the state of this collection including the state of the current level.

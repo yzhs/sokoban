@@ -283,7 +283,7 @@ impl CurrentLevel {
         Ok(())
     }
 
-    fn perform_move(&mut self, r#move: &Move) -> Result<Vec<MovePerformed>, MoveNotPerformed> {
+    fn perform_move(&self, r#move: &Move) -> Result<Vec<MovePerformed>, MoveNotPerformed> {
         let Move {
             moves_crate,
             direction,
@@ -299,6 +299,7 @@ impl CurrentLevel {
             if self.is_empty(new_crate_position) {
                 info!("Pushing crate");
 
+                // TODO actually perform this action
                 Ok(vec![
                     MovePerformed::MoveWorker {
                         from: self.worker_position,
@@ -319,6 +320,14 @@ impl CurrentLevel {
                 }
                 .into())
             }
+        } else if self.is_empty(new_worker_position) {
+            info!("Target cell is empty");
+
+            // TODO actually perform this action
+            Ok(vec![MovePerformed::MoveWorker {
+                from: self.worker_position,
+                to: new_worker_position,
+            }])
         } else if is_crate {
             info!("Target cell contains a crate, doing nothing");
 
@@ -328,13 +337,6 @@ impl CurrentLevel {
                 target_cell: *self.background(new_worker_position),
             }
             .into())
-        } else if self.is_empty(new_worker_position) {
-            info!("Target cell is empty");
-
-            Ok(vec![MovePerformed::MoveWorker {
-                from: self.worker_position,
-                to: new_worker_position,
-            }])
         } else {
             info!("Target cell is a wall");
 
