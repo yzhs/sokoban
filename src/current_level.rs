@@ -175,6 +175,15 @@ impl CurrentLevel {
         }
     }
 
+    fn move_worker_from_to(&mut self, from_to: FromTo) {
+        let FromTo { from, to } = from_to;
+        if let DirectionResult::Neighbour { direction } = direction(from, to) {
+            self.move_worker_to(to, direction);
+        } else {
+            panic!("invalid FromTo: {:?}", from_to);
+        }
+    }
+
     fn move_worker(&mut self, direction: Direction) {
         let to = self.worker_position.neighbour(direction);
         self.move_worker_to(to, direction);
@@ -229,61 +238,59 @@ impl CurrentLevel {
 }
 // }}}
 
-enum MovePerformed {
-    /// Successfully pushed a crate.
-    MoveCrate { from: Position, to: Position },
-
-    /// Moved worker to adjacent cell
-    MoveWorker { from: Position, to: Position },
+#[derive(Debug)]
+struct FromTo {
+    from: Position,
+    to: Position,
 }
 
-struct MoveNotPerformed {
-    /// Moves that were performed before the first error occurred
-    movesPerformed: Vec<MovePerformed>,
-
-    /// The errors returned by the first failed move
-    problems: Vec<Problem>,
-}
-
-impl From<Problem> for MoveNotPerformed {
-    fn from(problem: Problem) -> Self {
-        MoveNotPerformed {
-            movesPerformed: vec![],
-            problems: vec![problem],
-        }
-    }
-}
-
-enum Problem {
-    /// Trying to push a crate onto a cell that is either another crate or a piece of wall.
-    CrateTargetCellNotEmpty {
-        from: Position,
-        to: Position,
-        target_cell: Background,
+enum MoveEvaluationResult {
+    Successful {
+        worker_move: FromTo,
+        crate_move: Option<FromTo>,
     },
 
-    /// Tried to walk to a non-empty cell
-    WorkerTargetCellNotEmpty {
-        from: Position,
-        to: Position,
-        target_cell: Background,
+    Failed {
+        obstacle_at: Position,
+        obstacle_type: Obstacle,
     },
-
-    /// Tried to push a crate when there is none
-    NoCrateToPush { expected_crate_at: Position },
 }
 
 /// Movement, i.e. everything that *does* change the `self`.
 impl CurrentLevel {
     pub fn perform_moves(&mut self, moves: &[Move]) -> Result<(), ()> {
         for r#move in moves {
-            self.perform_move(r#move).map_err(|_| ())?;
+            match self.evaluate_move(r#move) {
+                MoveEvaluationResult::Successful {
+                    worker_move,
+                    crate_move,
+                } => {
+                    if let Some(FromTo { from, to }) = crate_move {
+                        self.move_crate_to(from, to);
+                    }
+
+                    self.move_worker_from_to(worker_move);
+                }
+
+                MoveEvaluationResult::Failed {
+                    obstacle_at,
+                    obstacle_type,
+                } => {
+                    info!(
+                        "Cannot move to {:?} because there is a {:?}",
+                        obstacle_at, obstacle_type
+                    );
+                    Err(())?;
+                }
+            }
         }
 
         Ok(())
     }
 
-    fn perform_move(&self, r#move: &Move) -> Result<Vec<MovePerformed>, MoveNotPerformed> {
+    /// Figure out whether a `Move` can be performed at the current state. If so, return what
+    /// changes it causes. Otherwise, return why it cannot be performed.
+    fn evaluate_move(&self, r#move: &Move) -> MoveEvaluationResult {
         let Move {
             moves_crate,
             direction,
@@ -300,52 +307,53 @@ impl CurrentLevel {
                 info!("Pushing crate");
 
                 // TODO actually perform this action
-                Ok(vec![
-                    MovePerformed::MoveWorker {
+                MoveEvaluationResult::Successful {
+                    worker_move: FromTo {
                         from: self.worker_position,
                         to: new_worker_position,
                     },
-                    MovePerformed::MoveCrate {
+                    crate_move: Some(FromTo {
                         from: new_worker_position,
                         to: new_crate_position,
-                    },
-                ])
+                    }),
+                }
             } else {
                 info!("Cannot push crate");
+                let obstacle = match *self.background(new_crate_position) {
+                    Background::Wall => Obstacle::Wall,
+                    _ => Obstacle::Crate,
+                };
 
-                Err(Problem::CrateTargetCellNotEmpty {
-                    from: new_worker_position,
-                    to: new_crate_position,
-                    target_cell: *self.background(new_crate_position),
+                MoveEvaluationResult::Failed {
+                    obstacle_at: new_crate_position,
+                    obstacle_type: obstacle,
                 }
-                .into())
             }
         } else if self.is_empty(new_worker_position) {
             info!("Target cell is empty");
 
             // TODO actually perform this action
-            Ok(vec![MovePerformed::MoveWorker {
-                from: self.worker_position,
-                to: new_worker_position,
-            }])
+            MoveEvaluationResult::Successful {
+                worker_move: FromTo {
+                    from: self.worker_position,
+                    to: new_worker_position,
+                },
+                crate_move: None,
+            }
         } else if is_crate {
             info!("Target cell contains a crate, doing nothing");
 
-            Err(Problem::WorkerTargetCellNotEmpty {
-                from: self.worker_position(),
-                to: new_worker_position,
-                target_cell: *self.background(new_worker_position),
+            MoveEvaluationResult::Failed {
+                obstacle_at: new_worker_position,
+                obstacle_type: Obstacle::Crate,
             }
-            .into())
         } else {
             info!("Target cell is a wall");
 
-            Err(Problem::WorkerTargetCellNotEmpty {
-                from: self.worker_position,
-                to: new_worker_position,
-                target_cell: *self.background(new_worker_position),
+            MoveEvaluationResult::Failed {
+                obstacle_at: new_worker_position,
+                obstacle_type: Obstacle::Wall,
             }
-            .into())
         }
     }
 
