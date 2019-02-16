@@ -3,8 +3,7 @@ pub mod pathfinding;
 
 use std::{collections::HashMap, fmt, sync::mpsc::Sender};
 
-use crate::command::{Obstacle, WithCrate};
-use crate::current_level::pathfinding::*;
+use crate::command::Obstacle;
 use crate::direction::*;
 use crate::event::Event;
 use crate::level::builder::Foreground;
@@ -319,13 +318,9 @@ impl CurrentLevel {
         let is_crate = self.is_crate(new_worker_position);
 
         if is_crate && *moves_crate {
-            info!("Target cell contains a crate, trying to push it along");
             let new_crate_position = new_worker_position.neighbour(*direction);
 
             if self.is_empty(new_crate_position) {
-                info!("Pushing crate");
-
-                // TODO actually perform this action
                 MoveEvaluationResult::Successful {
                     worker_move: FromTo {
                         from: self.worker_position,
@@ -337,7 +332,6 @@ impl CurrentLevel {
                     }),
                 }
             } else {
-                info!("Cannot push crate");
                 let obstacle = match *self.background(new_crate_position) {
                     Background::Wall => Obstacle::Wall,
                     _ => Obstacle::Crate,
@@ -349,9 +343,6 @@ impl CurrentLevel {
                 }
             }
         } else if self.is_empty(new_worker_position) {
-            info!("Target cell is empty");
-
-            // TODO actually perform this action
             MoveEvaluationResult::Successful {
                 worker_move: FromTo {
                     from: self.worker_position,
@@ -360,15 +351,11 @@ impl CurrentLevel {
                 crate_move: None,
             }
         } else if is_crate {
-            info!("Target cell contains a crate, doing nothing");
-
             MoveEvaluationResult::Failed {
                 obstacle_at: new_worker_position,
                 obstacle_type: Obstacle::Crate,
             }
         } else {
-            info!("Target cell is a wall");
-
             MoveEvaluationResult::Failed {
                 obstacle_at: new_worker_position,
                 obstacle_type: Obstacle::Wall,
@@ -437,7 +424,6 @@ impl CurrentLevel {
     pub fn move_crate_to_target(&mut self, from: Position, to: Position) -> Option<()> {
         let path = self.find_path_with_crate(from, to)?;
 
-        info!("Found a path from {:?} to {:?}", from, to);
         self.push_crate_along_path(path)
     }
 
