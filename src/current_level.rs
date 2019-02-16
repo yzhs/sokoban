@@ -175,50 +175,54 @@ impl CurrentLevel {
         }
     }
 
-    fn move_worker_from_to(&mut self, from_to: FromTo) {
+    fn move_worker_from_to(&mut self, from_to: FromTo) -> Event {
         let FromTo { from, to } = from_to;
         if let DirectionResult::Neighbour { direction } = direction(from, to) {
-            self.move_worker_to(to, direction);
+            self.move_worker_to(to, direction)
         } else {
-            panic!("invalid FromTo: {:?}", from_to);
+            panic!("invalid FromTo: {:?}", from_to)
         }
     }
 
-    fn move_worker(&mut self, direction: Direction) {
+    fn move_worker(&mut self, direction: Direction) -> Event {
         let to = self.worker_position.neighbour(direction);
-        self.move_worker_to(to, direction);
+        self.move_worker_to(to, direction)
     }
 
-    fn move_worker_back(&mut self, direction: Direction) {
+    fn move_worker_back(&mut self, direction: Direction) -> Event {
         let to = self.worker_position.neighbour(direction.reverse());
         let from = self.worker_position;
         self.worker_position = to;
-        self.on_worker_move(from, to, direction);
-    }
 
-    fn move_worker_to(&mut self, to: Position, direction: Direction) {
-        let from = self.worker_position;
-        self.worker_position = to;
-        self.on_worker_move(from, to, direction);
-    }
-
-    fn on_worker_move(&self, from: Position, to: Position, direction: Direction) {
-        let event = Event::MoveWorker {
+        Event::MoveWorker {
             from,
             to,
             direction,
-        };
-        self.notify(&event);
+        }
     }
 
-    fn move_crate(&mut self, from: Position, direction: Direction) {
-        self.move_crate_to(from, from.neighbour(direction));
+    fn move_worker_to(&mut self, to: Position, direction: Direction) -> Event {
+        let from = self.worker_position;
+        self.worker_position = to;
+
+        Event::MoveWorker {
+            from,
+            to,
+            direction,
+        }
+    }
+
+    fn move_crate(&mut self, from: Position, direction: Direction) -> Event {
+        self.move_crate_to(from, from.neighbour(direction))
     }
 
     // NOTE We need `from` so we can find out the crate's id. That way, the user interface knows
     // which crate to animate. Alternatively, the crate's id could be passed in.
-    fn move_crate_to(&mut self, from: Position, to: Position) {
-        let id = self.crates.remove(&from).unwrap();
+    fn move_crate_to(&mut self, from: Position, to: Position) -> Event {
+        let id = self.crates.remove(&from).expect(&format!(
+            "Moving crate from {:?} to {:?}. Crates: {:?}",
+            from, to, self.crates
+        ));
         self.crates.insert(to, id);
 
         if self.background(from) == &Background::Goal {
@@ -228,12 +232,7 @@ impl CurrentLevel {
             self.empty_goals -= 1;
         }
 
-        self.on_crate_move(id, from, to);
-    }
-
-    fn on_crate_move(&self, id: usize, from: Position, to: Position) {
-        let event = Event::MoveCrate { id, from, to };
-        self.notify(&event);
+        Event::MoveCrate { id, from, to }
     }
 }
 // }}}
@@ -258,34 +257,54 @@ enum MoveEvaluationResult {
 
 /// Movement, i.e. everything that *does* change the `self`.
 impl CurrentLevel {
-    pub fn perform_moves(&mut self, moves: &[Move]) -> Result<(), ()> {
+    pub fn perform_moves(&mut self, moves: &[Move]) -> Result<Vec<Event>, ()> {
+        let mut events = vec![];
+
         for r#move in moves {
-            match self.evaluate_move(r#move) {
-                MoveEvaluationResult::Successful {
-                    worker_move,
-                    crate_move,
-                } => {
-                    if let Some(FromTo { from, to }) = crate_move {
-                        self.move_crate_to(from, to);
-                    }
-
-                    self.move_worker_from_to(worker_move);
-                }
-
-                MoveEvaluationResult::Failed {
-                    obstacle_at,
-                    obstacle_type,
-                } => {
-                    info!(
-                        "Cannot move to {:?} because there is a {:?}",
-                        obstacle_at, obstacle_type
-                    );
-                    Err(())?;
-                }
-            }
+            events.append(&mut self.perform_move(r#move)?);
         }
 
-        Ok(())
+        Ok(events)
+    }
+
+    fn perform_move(&mut self, r#move: &Move) -> Result<Vec<Event>, ()> {
+        match self.evaluate_move(r#move) {
+            MoveEvaluationResult::Successful {
+                worker_move,
+                crate_move,
+            } => {
+                let mut events = vec![];
+                if let Some(FromTo { from, to }) = crate_move {
+                    events.push(self.move_crate_to(from, to));
+                }
+
+                events.push(self.move_worker_from_to(worker_move));
+
+                let n = self.number_of_moves;
+                if n != self.moves.len() && &self.moves[n] == r#move {
+                    // Nothing to do but increment number_of_moves
+                } else {
+                    if n != self.moves.len() {
+                        self.moves.truncate(n);
+                    }
+                    self.moves.push(r#move.to_owned());
+                }
+                self.number_of_moves += 1;
+
+                Ok(events)
+            }
+
+            MoveEvaluationResult::Failed {
+                obstacle_at,
+                obstacle_type,
+            } => {
+                info!(
+                    "Cannot move to {:?} because there is a {:?}",
+                    obstacle_at, obstacle_type
+                );
+                Err(())
+            }
+        }
     }
 
     /// Figure out whether a `Move` can be performed at the current state. If so, return what
@@ -360,43 +379,19 @@ impl CurrentLevel {
     /// Move one step in the given direction if that cell is empty or `may_push_crate` is true and
     /// the next cell contains a crate which can be pushed in the given direction.
     fn move_helper(&mut self, direction: Direction, may_push_crate: bool) -> Result<(), Event> {
-        let next = self.worker_position.neighbour(direction);
-        let next_but_one = next.neighbour(direction);
+        let target_position = self.worker_position.neighbour(direction);
+        let is_crate = self.crates.contains_key(&target_position);
 
-        let moves_crate = if self.is_empty(next) {
-            false
-        } else if self.is_crate(next) && self.is_empty(next_but_one) && may_push_crate {
-            self.move_crate(next, direction);
-            true
-        } else {
-            let b = may_push_crate && self.is_crate(next);
-            let obj = if b && self.is_crate(next_but_one) {
-                Obstacle::Crate
-            } else {
-                Obstacle::Wall
-            };
-            // TODO make sure the result is used when appropriate
-            return Err(Event::CannotMove(WithCrate(b), obj));
-        };
+        let events = self
+            .perform_move(&Move {
+                direction,
+                moves_crate: may_push_crate && is_crate,
+            })
+            .map_err(|_| Event::NoPathFound)?;
+        // FIXME properly handle errors
 
-        self.move_worker(direction);
-
-        // Bookkeeping for undo and printing a solution
-        let current_move = Move {
-            direction,
-            moves_crate,
-        };
-        let n = self.number_of_moves;
-        self.number_of_moves += 1;
-
-        if n != self.moves.len() && self.moves[n] == current_move {
-            // In this case, we are just redoing a move previously undone
-        } else {
-            if n != self.moves.len() {
-                // Discard redo buffer as we are in a different state than before
-                self.moves.truncate(n);
-            }
-            self.moves.push(current_move);
+        for event in events {
+            self.notify(&event);
         }
 
         Ok(())
@@ -459,16 +454,19 @@ impl CurrentLevel {
         if self.number_of_moves == 0 {
             self.notify(&Event::NothingToUndo);
             return false;
-        } else {
-            self.number_of_moves -= 1;
         }
+
+        self.number_of_moves -= 1;
 
         let direction = self.moves[self.number_of_moves].direction;
         let crate_pos = self.worker_position.neighbour(direction);
-        self.move_worker_back(direction);
+
+        let event = self.move_worker_back(direction);
+        self.notify(&event);
 
         if self.moves[self.number_of_moves].moves_crate {
-            self.move_crate(crate_pos, direction.reverse());
+            let event = self.move_crate(crate_pos, direction.reverse());
+            self.notify(&event);
         }
 
         true

@@ -484,7 +484,19 @@ mod tests {
         assert_eq!(game.current_level.number_of_pushes(), 1);
 
         assert_eq!(game.current_level.moves_to_string(), "ullluuuL");
-        assert!(exec_ok(&mut game, &receiver, Command::Undo));
+
+        //assert!(exec_ok(&mut game, &receiver, Command::Undo));
+
+        game.execute_helper(&Command::Undo, false);
+        let mut found_some_event = false;
+
+        while let Ok(event) = receiver.try_recv() {
+            println!("Received event {:?}", event);
+            found_some_event = true;
+            assert!(!event.is_error(), "Error: {:?}", event);
+        }
+        assert!(found_some_event);
+
         assert_eq!(game.current_level.all_moves_to_string(), "ullluuuL");
         assert_eq!(game.current_level.moves_to_string(), "ullluuu");
         assert!(exec_ok(&mut game, &receiver, Command::Redo));
@@ -560,5 +572,20 @@ mod tests {
         let current_lvl = game.current_level();
         current_lvl.worker_position() == lvl.worker_position()
             && current_lvl.number_of_moves() == lvl.number_of_moves()
+    }
+
+    #[test]
+    fn test_undo() {
+        let mut game = create_game();
+        let worker_position = game.worker_position();
+        let number_of_moves = game.number_of_moves();
+
+        game.execute_helper(&Command::Move(Direction::Down), false);
+        game.execute_helper(&Command::Undo, false);
+
+        let current_lvl = game.current_level();
+
+        assert_eq!(current_lvl.worker_position(), worker_position);
+        assert_eq!(current_lvl.number_of_moves(), number_of_moves);
     }
 }
