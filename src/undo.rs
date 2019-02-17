@@ -17,7 +17,8 @@ where
 
     /// When an action is performed, record the action in a log so it can later be undone.
     pub fn record(&mut self, action: T) {
-        if self.actions.len() == self.actions_performed {
+        assert!(self.actions_performed <= self.actions.len());
+        if self.actions.len() <= self.actions_performed {
             self.actions.push(action);
         } else {
             if self.actions[self.actions_performed] != action {
@@ -28,10 +29,13 @@ where
         }
 
         self.actions_performed += 1;
+        assert!(self.actions_performed <= self.actions.len());
     }
 
     /// Get the most recent action from the log.
     pub fn undo(&mut self) -> Option<&T> {
+        assert!(self.actions_performed <= self.actions.len());
+
         let mut result = None;
 
         if self.actions_performed > 0 {
@@ -39,13 +43,18 @@ where
             self.actions_performed -= 1;
         }
 
+        assert!(self.actions_performed <= self.actions.len());
         result
     }
 
     /// Return the most recently undone action.
     pub fn redo(&mut self) -> Option<&T> {
+        assert!(self.actions_performed <= self.actions.len());
         let result = self.actions.get(self.actions_performed);
-        self.actions_performed += 1;
+        if result.is_some() {
+            self.actions_performed += 1;
+        }
+        assert!(self.actions_performed <= self.actions.len());
         result
     }
 }
