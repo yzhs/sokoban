@@ -102,4 +102,34 @@ mod tests {
         assert_eq!(sut.redo(), Some(&x));
         assert_eq!(sut.actions_performed, num_actions);
     }
+
+    #[quickcheck]
+    fn record_should_not_truncate_if_identical(mut sut: Undo<u32>, x: u32, y: u32) {
+        sut.record(x);
+        sut.record(y);
+        let len = sut.actions.len();
+
+        sut.undo();
+        sut.record(x);
+
+        assert_eq!(sut.actions.len(), len);
+    }
+
+    #[quickcheck]
+    fn record_should_truncate_if_different(mut sut: Undo<u32>, x: u32, mut y: u32) {
+        if x == y {
+            y = x ^ 1;
+        }
+
+        sut.record(x);
+        let num_actions = sut.actions_performed;
+        sut.record(y);
+
+        sut.undo();
+        sut.undo();
+        sut.record(y);
+
+        assert_eq!(sut.actions_performed, num_actions);
+        assert_eq!(sut.actions.len(), num_actions);
+    }
 }
