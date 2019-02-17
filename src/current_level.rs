@@ -242,21 +242,25 @@ struct FromTo {
     to: Position,
 }
 
-enum MoveEvaluationResult {
-    Successful {
-        worker_move: FromTo,
-        crate_move: Option<FromTo>,
-    },
+pub enum BlockedEntity {
+    Worker,
+    Crate,
+}
 
-    Failed {
-        obstacle_at: Position,
-        obstacle_type: Obstacle,
-    },
+struct VerifiedMove {
+    worker_move: FromTo,
+    crate_move: Option<FromTo>,
+}
+
+pub struct FailedMove {
+    pub obstacle_at: Position,
+    pub obstacle_type: Obstacle,
+    pub thing_blocked: BlockedEntity,
 }
 
 /// Movement, i.e. everything that *does* change the `self`.
 impl CurrentLevel {
-    pub fn perform_moves(&mut self, moves: &[Move]) -> Result<Vec<Event>, ()> {
+    pub fn perform_moves(&mut self, moves: &[Move]) -> Result<Vec<Event>, FailedMove> {
         let mut events = vec![];
 
         for r#move in moves {
@@ -266,49 +270,36 @@ impl CurrentLevel {
         Ok(events)
     }
 
-    fn perform_move(&mut self, r#move: &Move) -> Result<Vec<Event>, ()> {
-        match self.evaluate_move(r#move) {
-            MoveEvaluationResult::Successful {
-                worker_move,
-                crate_move,
-            } => {
-                let mut events = vec![];
-                if let Some(FromTo { from, to }) = crate_move {
-                    events.push(self.move_crate_to(from, to));
-                }
+    fn perform_move(&mut self, r#move: &Move) -> Result<Vec<Event>, FailedMove> {
+        let VerifiedMove {
+            worker_move,
+            crate_move,
+        } = self.evaluate_move(r#move)?;
 
-                events.push(self.move_worker_from_to(worker_move));
-
-                let n = self.number_of_moves;
-                if n != self.moves.len() && &self.moves[n] == r#move {
-                    // Nothing to do but increment number_of_moves
-                } else {
-                    if n != self.moves.len() {
-                        self.moves.truncate(n);
-                    }
-                    self.moves.push(r#move.to_owned());
-                }
-                self.number_of_moves += 1;
-
-                Ok(events)
-            }
-
-            MoveEvaluationResult::Failed {
-                obstacle_at,
-                obstacle_type,
-            } => {
-                info!(
-                    "Cannot move to {:?} because there is a {:?}",
-                    obstacle_at, obstacle_type
-                );
-                Err(())
-            }
+        let mut events = vec![];
+        if let Some(FromTo { from, to }) = crate_move {
+            events.push(self.move_crate_to(from, to));
         }
+
+        events.push(self.move_worker_from_to(worker_move));
+
+        let n = self.number_of_moves;
+        if n != self.moves.len() && &self.moves[n] == r#move {
+            // Nothing to do but increment number_of_moves
+        } else {
+            if n != self.moves.len() {
+                self.moves.truncate(n);
+            }
+            self.moves.push(r#move.to_owned());
+        }
+        self.number_of_moves += 1;
+
+        Ok(events)
     }
 
     /// Figure out whether a `Move` can be performed at the current state. If so, return what
     /// changes it causes. Otherwise, return why it cannot be performed.
-    fn evaluate_move(&self, r#move: &Move) -> MoveEvaluationResult {
+    fn evaluate_move(&self, r#move: &Move) -> Result<VerifiedMove, FailedMove> {
         let Move {
             moves_crate,
             direction,
@@ -321,7 +312,7 @@ impl CurrentLevel {
             let new_crate_position = new_worker_position.neighbour(*direction);
 
             if self.is_empty(new_crate_position) {
-                MoveEvaluationResult::Successful {
+                Ok(VerifiedMove {
                     worker_move: FromTo {
                         from: self.worker_position,
                         to: new_worker_position,
@@ -330,51 +321,55 @@ impl CurrentLevel {
                         from: new_worker_position,
                         to: new_crate_position,
                     }),
-                }
+                })
             } else {
                 let obstacle = match *self.background(new_crate_position) {
                     Background::Wall => Obstacle::Wall,
                     _ => Obstacle::Crate,
                 };
 
-                MoveEvaluationResult::Failed {
+                Err(FailedMove {
                     obstacle_at: new_crate_position,
                     obstacle_type: obstacle,
-                }
+                    thing_blocked: BlockedEntity::Crate,
+                })
             }
         } else if self.is_empty(new_worker_position) {
-            MoveEvaluationResult::Successful {
+            Ok(VerifiedMove {
                 worker_move: FromTo {
                     from: self.worker_position,
                     to: new_worker_position,
                 },
                 crate_move: None,
-            }
-        } else if is_crate {
-            MoveEvaluationResult::Failed {
-                obstacle_at: new_worker_position,
-                obstacle_type: Obstacle::Crate,
-            }
+            })
         } else {
-            MoveEvaluationResult::Failed {
+            let obstacle_type = if is_crate {
+                Obstacle::Crate
+            } else {
+                Obstacle::Wall
+            };
+            Err(FailedMove {
                 obstacle_at: new_worker_position,
-                obstacle_type: Obstacle::Wall,
-            }
+                obstacle_type,
+                thing_blocked: BlockedEntity::Worker,
+            })
         }
     }
 
     /// Move one step in the given direction if that cell is empty or `may_push_crate` is true and
     /// the next cell contains a crate which can be pushed in the given direction.
-    fn move_helper(&mut self, direction: Direction, may_push_crate: bool) -> Result<(), Event> {
+    fn move_helper(
+        &mut self,
+        direction: Direction,
+        may_push_crate: bool,
+    ) -> Result<(), FailedMove> {
         let target_position = self.worker_position.neighbour(direction);
         let is_crate = self.crates.contains_key(&target_position);
 
-        let events = self
-            .perform_move(&Move {
-                direction,
-                moves_crate: may_push_crate && is_crate,
-            })
-            .map_err(|_| Event::NoPathFound)?;
+        let events = self.perform_move(&Move {
+            direction,
+            moves_crate: may_push_crate && is_crate,
+        })?;
         // FIXME properly handle errors
 
         for event in events {
@@ -416,7 +411,7 @@ impl CurrentLevel {
     }
 
     /// Try to move in the given direction. Return an error if that is not possible.
-    pub fn try_move(&mut self, direction: Direction) -> Result<(), Event> {
+    pub fn try_move(&mut self, direction: Direction) -> Result<(), FailedMove> {
         self.move_helper(direction, true)
     }
 
@@ -474,7 +469,7 @@ impl CurrentLevel {
     /// Given a number of simple moves, i.e. up, down, left, right, as a string, execute the first
     /// `number_of_moves` of them. If there are more moves than that, they can be executed using
     /// redo.
-    pub fn execute_moves(&mut self, number_of_moves: usize, moves: &str) -> Result<(), Event> {
+    pub fn execute_moves(&mut self, number_of_moves: usize, moves: &str) -> Result<(), FailedMove> {
         let moves = crate::move_::parse(moves).unwrap();
         // TODO Error handling
         for (i, move_) in moves.iter().enumerate() {

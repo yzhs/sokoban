@@ -229,7 +229,7 @@ impl Game {
         match *command {
             Move(dir) if !is_finished => {
                 if let Err(event) = self.current_level.try_move(dir) {
-                    self.listeners.notify_move(&event);
+                    self.listeners.notify_move(&event.into());
                 }
             }
             MoveAsFarAsPossible {
