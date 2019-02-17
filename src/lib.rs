@@ -43,6 +43,7 @@ mod macros;
 mod move_;
 mod position;
 pub mod save;
+mod undo;
 mod util;
 
 use std::fs;
