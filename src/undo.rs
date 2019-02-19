@@ -133,4 +133,24 @@ mod tests {
         assert_eq!(sut.actions_performed, num_actions);
         assert_eq!(sut.actions.len(), num_actions);
     }
+
+    #[quickcheck]
+    fn record_should_redo_if_possible(mut sut: Undo<u32>, x: u32, mut y: u32) {
+        if x == y {
+            y ^= 1;
+        }
+
+        sut.actions_performed = sut.actions.len();
+        sut.record(y);
+
+        let num_actions = sut.actions_performed;
+        let len = sut.actions.len();
+
+        sut.record(x);
+        sut.undo();
+        sut.record(x);
+
+        assert_eq!(sut.actions_performed, num_actions + 1);
+        assert_eq!(sut.actions.len(), len + 1);
+    }
 }
