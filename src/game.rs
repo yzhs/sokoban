@@ -485,20 +485,11 @@ mod tests {
 
         assert_eq!(game.current_level.moves_to_string(), "ullluuuL");
 
-        //assert!(exec_ok(&mut game, &receiver, Command::Undo));
-
-        game.execute_helper(&Command::Undo, false);
-        let mut found_some_event = false;
-
-        while let Ok(event) = receiver.try_recv() {
-            println!("Received event {:?}", event);
-            found_some_event = true;
-            assert!(!event.is_error(), "Error: {:?}", event);
-        }
-        assert!(found_some_event);
+        assert!(exec_ok(&mut game, &receiver, Command::Undo));
 
         assert_eq!(game.current_level.all_moves_to_string(), "ullluuuL");
         assert_eq!(game.current_level.moves_to_string(), "ullluuu");
+        assert_eq!(game.current_level.number_of_pushes(), 0);
         assert!(exec_ok(&mut game, &receiver, Command::Redo));
         assert_eq!(game.current_level.number_of_pushes(), 1);
     }

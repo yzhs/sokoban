@@ -1,7 +1,8 @@
-#[cfg_attr(test, derive(Clone, Debug))]
+#[derive(Clone)]
+#[cfg_attr(test, derive(Debug))]
 pub struct Undo<T> {
-    actions: Vec<T>,
-    actions_performed: usize,
+    pub actions: Vec<T>,
+    pub actions_performed: usize,
 }
 
 impl<T> Undo<T>

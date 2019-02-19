@@ -10,8 +10,9 @@ use crate::level::builder::Foreground;
 use crate::level::{Background, Level};
 use crate::move_::Move;
 use crate::position::*;
+use crate::undo::Undo;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct CurrentLevel {
     columns: usize,
     rows: usize,
@@ -28,12 +29,7 @@ pub struct CurrentLevel {
     /// Where the worker is at the moment
     worker_position: Position,
 
-    /// The sequence of moves performed so far. Everything after the first number_of_moves moves is
-    /// used to redo moves, i.e. undoing a previous undo operation.
-    moves: Vec<Move>,
-
-    /// This describes how many moves have to be performed to arrive at the current state.
-    number_of_moves: usize,
+    undo: Undo<Move>,
 
     listeners: Vec<Sender<Event>>,
 }
@@ -119,12 +115,12 @@ impl CurrentLevel {
 
     /// How moves were performed to reach the current state?
     pub fn number_of_moves(&self) -> usize {
-        self.number_of_moves
+        self.undo.actions_performed
     }
 
     /// How many times have crates been moved to reach the current state?
     pub fn number_of_pushes(&self) -> usize {
-        self.moves[0..self.number_of_moves]
+        self.undo.actions[0..self.undo.actions_performed]
             .iter()
             .filter(|x| x.moves_crate)
             .count()
@@ -132,18 +128,19 @@ impl CurrentLevel {
 
     /// Which direction is the worker currently facing?
     pub fn worker_direction(&self) -> Direction {
-        if self.number_of_moves == 0 {
+        if self.undo.actions_performed == 0 {
             Direction::Left
         } else {
-            self.moves[self.number_of_moves - 1].direction
+            self.undo.actions[self.undo.actions_performed - 1].direction
         }
     }
 
     /// Create a string representation of the moves made to reach the current state.
     pub fn moves_to_string(&self) -> String {
-        self.moves
+        self.undo
+            .actions
             .iter()
-            .take(self.number_of_moves)
+            .take(self.undo.actions_performed)
             .map(|mv| mv.to_char())
             .collect()
     }
@@ -264,13 +261,13 @@ impl CurrentLevel {
         let mut events = vec![];
 
         for r#move in moves {
-            events.append(&mut self.perform_move(r#move)?);
+            events.append(&mut self.perform_move(r#move, true)?);
         }
 
         Ok(events)
     }
 
-    fn perform_move(&mut self, r#move: &Move) -> Result<Vec<Event>, FailedMove> {
+    fn perform_move(&mut self, r#move: &Move, record_move: bool) -> Result<Vec<Event>, FailedMove> {
         let VerifiedMove {
             worker_move,
             crate_move,
@@ -283,16 +280,9 @@ impl CurrentLevel {
 
         events.push(self.move_worker_from_to(worker_move));
 
-        let n = self.number_of_moves;
-        if n != self.moves.len() && &self.moves[n] == r#move {
-            // Nothing to do but increment number_of_moves
-        } else {
-            if n != self.moves.len() {
-                self.moves.truncate(n);
-            }
-            self.moves.push(r#move.to_owned());
+        if record_move {
+            self.undo.record(r#move.to_owned());
         }
-        self.number_of_moves += 1;
 
         Ok(events)
     }
@@ -366,10 +356,13 @@ impl CurrentLevel {
         let target_position = self.worker_position.neighbour(direction);
         let is_crate = self.crates.contains_key(&target_position);
 
-        let events = self.perform_move(&Move {
-            direction,
-            moves_crate: may_push_crate && is_crate,
-        })?;
+        let events = self.perform_move(
+            &Move {
+                direction,
+                moves_crate: may_push_crate && is_crate,
+            },
+            true,
+        )?;
         // FIXME properly handle errors
 
         for event in events {
@@ -432,37 +425,51 @@ impl CurrentLevel {
 
     /// Undo the most recent move.
     pub fn undo(&mut self) -> bool {
-        if self.number_of_moves == 0 {
-            self.notify(&Event::NothingToUndo);
-            return false;
+        match self.undo.undo() {
+            None => {
+                self.notify(&Event::NothingToUndo);
+                false
+            }
+            Some(&Move {
+                direction,
+                moves_crate,
+            }) => {
+                let crate_pos = self.worker_position.neighbour(direction);
+
+                let event = self.move_worker_back(direction);
+                self.notify(&event);
+
+                if moves_crate {
+                    let event = self.move_crate(crate_pos, direction.reverse());
+                    self.notify(&event);
+                }
+
+                true
+            }
         }
-
-        self.number_of_moves -= 1;
-
-        let direction = self.moves[self.number_of_moves].direction;
-        let crate_pos = self.worker_position.neighbour(direction);
-
-        let event = self.move_worker_back(direction);
-        self.notify(&event);
-
-        if self.moves[self.number_of_moves].moves_crate {
-            let event = self.move_crate(crate_pos, direction.reverse());
-            self.notify(&event);
-        }
-
-        true
     }
 
     /// If a move has been undone previously, redo it.
     pub fn redo(&mut self) -> bool {
-        if self.moves.len() > self.number_of_moves {
-            let dir = self.moves[self.number_of_moves].direction;
-            let is_ok = self.try_move(dir).is_ok();
-            assert!(is_ok);
-            true
-        } else {
-            self.notify(&Event::NothingToRedo);
-            false
+        let r#move = match self.undo.redo() {
+            Some(r#move) => r#move.to_owned(),
+            None => {
+                self.notify(&Event::NothingToRedo);
+                return false;
+            }
+        };
+
+        match self.perform_move(&r#move, false) {
+            Ok(events) => {
+                for event in events {
+                    self.notify(&event);
+                }
+                true
+            }
+            Err(err) => {
+                self.notify(&err.into());
+                false
+            }
         }
     }
 
@@ -475,7 +482,7 @@ impl CurrentLevel {
         for (i, move_) in moves.iter().enumerate() {
             // Some moves might have been undone, so we do not redo them just now.
             if i >= number_of_moves {
-                self.moves = moves.to_owned();
+                self.undo.actions = moves.to_owned();
                 break;
             }
             self.try_move(move_.direction)?;
@@ -486,8 +493,8 @@ impl CurrentLevel {
 
     /// Convert moves to string, including moves that have been undone.
     pub fn all_moves_to_string(&self) -> String {
-        let mut result = String::with_capacity(self.moves.len());
-        for mv in &self.moves {
+        let mut result = String::with_capacity(self.undo.actions.len());
+        for mv in &self.undo.actions {
             result.push(mv.to_char());
         }
         result
@@ -546,8 +553,8 @@ impl From<&Level> for CurrentLevel {
 
             empty_goals: 0,
 
-            moves: vec![],
-            number_of_moves: 0,
+            undo: Undo::new(),
+
             listeners: vec![],
         };
 
