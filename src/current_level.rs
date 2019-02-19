@@ -268,6 +268,7 @@ impl CurrentLevel {
     }
 
     fn perform_move(&mut self, r#move: &Move, record_move: bool) -> Result<Vec<Event>, FailedMove> {
+        // DEBT get rid of record_move!
         let VerifiedMove {
             worker_move,
             crate_move,

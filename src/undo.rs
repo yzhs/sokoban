@@ -68,7 +68,7 @@ mod tests {
     impl<A: Arbitrary + Clone> Arbitrary for Undo<A> {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let actions = Vec::arbitrary(g);
-            let actions_performed = actions.len();
+            let actions_performed = usize::arbitrary(g) % (actions.len() + 1);
             Undo {
                 actions,
                 actions_performed,
