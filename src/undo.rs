@@ -16,6 +16,39 @@ where
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.actions_performed == 0
+    }
+
+    pub fn number_of_actions(&self) -> usize {
+        self.actions_performed
+    }
+
+    pub fn count_actions<F>(&self, mut f: F) -> usize
+    where
+        F: FnMut(&T) -> bool,
+    {
+        self.actions[0..self.actions_performed]
+            .iter()
+            .filter(|&x| f(x))
+            .count()
+    }
+
+    pub fn last(&self) -> &T {
+        &self.actions[self.actions_performed - 1]
+    }
+
+    pub fn to_string<F>(&self, f: F) -> String
+    where
+        F: FnMut(&T) -> char,
+    {
+        self.actions
+            .iter()
+            .take(self.actions_performed)
+            .map(f)
+            .collect()
+    }
+
     /// When an action is performed, record the action in a log so it can later be undone.
     pub fn record(&mut self, action: T) {
         assert!(self.actions_performed <= self.actions.len());
@@ -57,39 +90,6 @@ where
         }
         assert!(self.actions_performed <= self.actions.len());
         result
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.actions_performed == 0
-    }
-
-    pub fn number_of_actions(&self) -> usize {
-        self.actions_performed
-    }
-
-    pub fn count_actions<F>(&self, mut f: F) -> usize
-    where
-        F: FnMut(&T) -> bool,
-    {
-        self.actions[0..self.actions_performed]
-            .iter()
-            .filter(|&x| f(x))
-            .count()
-    }
-
-    pub fn last(&self) -> &T {
-        &self.actions[self.actions_performed - 1]
-    }
-
-    pub fn to_string<F>(&self, f: F) -> String
-    where
-        F: FnMut(&T) -> char,
-    {
-        self.actions
-            .iter()
-            .take(self.actions_performed)
-            .map(f)
-            .collect()
     }
 }
 
