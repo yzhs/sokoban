@@ -115,34 +115,26 @@ impl CurrentLevel {
 
     /// How moves were performed to reach the current state?
     pub fn number_of_moves(&self) -> usize {
-        self.undo.actions_performed
+        self.undo.number_of_actions()
     }
 
     /// How many times have crates been moved to reach the current state?
     pub fn number_of_pushes(&self) -> usize {
-        self.undo.actions[0..self.undo.actions_performed]
-            .iter()
-            .filter(|x| x.moves_crate)
-            .count()
+        self.undo.count_actions(|x| x.moves_crate)
     }
 
     /// Which direction is the worker currently facing?
     pub fn worker_direction(&self) -> Direction {
-        if self.undo.actions_performed == 0 {
+        if self.undo.is_empty() {
             Direction::Left
         } else {
-            self.undo.actions[self.undo.actions_performed - 1].direction
+            self.undo.last().direction
         }
     }
 
     /// Create a string representation of the moves made to reach the current state.
     pub fn moves_to_string(&self) -> String {
-        self.undo
-            .actions
-            .iter()
-            .take(self.undo.actions_performed)
-            .map(Move::to_char)
-            .collect()
+        self.undo.to_string(Move::to_char)
     }
 
     /// Get an ordered list of the crates’ positions where the id of a crate is its index in the
@@ -478,7 +470,10 @@ impl CurrentLevel {
     /// Given a number of simple moves, i.e. up, down, left, right, as a string, execute the first
     /// `number_of_moves` of them. If there are more moves than that, they can be executed using
     /// redo.
+    ///
+    /// Used for loading a level.
     pub fn execute_moves(&mut self, number_of_moves: usize, moves: &str) -> Result<(), FailedMove> {
+        // DEBT Should be moved somewhere else. load.rs, maybe?
         let moves = crate::move_::parse(moves).unwrap();
         // TODO Error handling
         for (i, move_) in moves.iter().enumerate() {
@@ -494,7 +489,10 @@ impl CurrentLevel {
     }
 
     /// Convert moves to string, including moves that have been undone.
+    ///
+    /// Used for loading a level.
     pub fn all_moves_to_string(&self) -> String {
+        // DEBT Should be part of load (?)
         let mut result = String::with_capacity(self.undo.actions.len());
         for mv in &self.undo.actions {
             result.push(mv.to_char());
