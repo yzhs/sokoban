@@ -141,7 +141,7 @@ impl CurrentLevel {
             .actions
             .iter()
             .take(self.undo.actions_performed)
-            .map(|mv| mv.to_char())
+            .map(Move::to_char)
             .collect()
     }
 
@@ -215,10 +215,12 @@ impl CurrentLevel {
     // NOTE We need `from` so we can find out the crate's id. That way, the user interface knows
     // which crate to animate. Alternatively, the crate's id could be passed in.
     fn move_crate_to(&mut self, from: Position, to: Position) -> Event {
-        let id = self.crates.remove(&from).expect(&format!(
-            "Moving crate from {:?} to {:?}. Crates: {:?}",
-            from, to, self.crates
-        ));
+        let id = self.crates.remove(&from).unwrap_or_else(|| {
+            panic!(
+                "Moving crate from {:?} to {:?}. Crates: {:?}",
+                from, to, self.crates
+            )
+        });
         self.crates.insert(to, id);
 
         if self.background(from) == &Background::Goal {
@@ -452,12 +454,11 @@ impl CurrentLevel {
 
     /// If a move has been undone previously, redo it.
     pub fn redo(&mut self) -> bool {
-        let r#move = match self.undo.redo() {
-            Some(r#move) => r#move.to_owned(),
-            None => {
-                self.notify(&Event::NothingToRedo);
-                return false;
-            }
+        let r#move = if let Some(r#move) = self.undo.redo() {
+            r#move.to_owned()
+        } else {
+            self.notify(&Event::NothingToRedo);
+            return false;
         };
 
         match self.perform_move(&r#move, false) {
