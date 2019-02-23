@@ -24,7 +24,7 @@ where
         self.actions_performed
     }
 
-    pub fn count_actions<F>(&self, mut f: F) -> usize
+    pub fn count_matches<F>(&self, mut f: F) -> usize
     where
         F: FnMut(&T) -> bool,
     {

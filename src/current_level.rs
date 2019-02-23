@@ -120,7 +120,7 @@ impl CurrentLevel {
 
     /// How many times have crates been moved to reach the current state?
     pub fn number_of_pushes(&self) -> usize {
-        self.undo.count_actions(|x| x.moves_crate)
+        self.undo.count_matches(|x| x.moves_crate)
     }
 
     /// Which direction is the worker currently facing?
