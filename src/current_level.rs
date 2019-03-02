@@ -13,13 +13,7 @@ use crate::position::*;
 use crate::undo::Undo;
 
 #[derive(Clone)]
-pub struct CurrentLevel {
-    columns: usize,
-    rows: usize,
-
-    /// `columns * rows` cells’ backgrounds in row-major order
-    background: Vec<Background>,
-
+pub struct DynamicEntities {
     /// Positions of all crates
     crates: HashMap<Position, usize>,
 
@@ -28,6 +22,17 @@ pub struct CurrentLevel {
 
     /// Where the worker is at the moment
     worker_position: Position,
+}
+
+#[derive(Clone)]
+pub struct CurrentLevel {
+    columns: usize,
+    rows: usize,
+
+    /// `columns * rows` cells’ backgrounds in row-major order
+    background: Vec<Background>,
+
+    dynamic: DynamicEntities,
 
     undo: Undo<Move>,
 
@@ -45,7 +50,7 @@ impl CurrentLevel {
     }
 
     pub fn worker_position(&self) -> Position {
-        self.worker_position
+        self.dynamic.worker_position
     }
 
     fn index(&self, pos: Position) -> usize {
@@ -76,7 +81,7 @@ impl CurrentLevel {
 
     /// Is there a crate at the given position?
     fn is_crate(&self, pos: Position) -> bool {
-        self.crates.get(&pos).is_some()
+        self.dynamic.crates.get(&pos).is_some()
     }
 
     /// Is the cell with the given coordinates empty, i.e. could a crate be moved into it?
@@ -90,7 +95,7 @@ impl CurrentLevel {
 
     /// Is the cell with the given coordinates empty, i.e. could a crate be moved into it?
     fn is_worker(&self, pos: Position) -> bool {
-        pos == self.worker_position
+        pos == self.dynamic.worker_position
     }
 
     /// The cell at the given position is neither empty, nor does it contain a wall.
@@ -110,7 +115,7 @@ impl CurrentLevel {
     /// Check whether the given level is completed, i.e. every goal has a crate on it, and every
     /// crate is on a goal.
     pub fn is_finished(&self) -> bool {
-        self.empty_goals == 0
+        self.dynamic.empty_goals == 0
     }
 
     /// How moves were performed to reach the current state?
@@ -140,7 +145,7 @@ impl CurrentLevel {
     /// Get an ordered list of the crates’ positions where the id of a crate is its index in the
     /// list.
     pub fn crate_positions(&self) -> Vec<Position> {
-        let mut crates: Vec<_> = self.crates.iter().collect();
+        let mut crates: Vec<_> = self.dynamic.crates.iter().collect();
         crates.sort_by_key(|&(_pos, id)| id);
         crates.into_iter().map(|(&pos, _id)| pos).collect()
     }
@@ -173,14 +178,14 @@ impl CurrentLevel {
     }
 
     fn move_worker(&mut self, direction: Direction) -> Event {
-        let to = self.worker_position.neighbour(direction);
+        let to = self.dynamic.worker_position.neighbour(direction);
         self.move_worker_to(to, direction)
     }
 
     fn move_worker_back(&mut self, direction: Direction) -> Event {
-        let to = self.worker_position.neighbour(direction.reverse());
-        let from = self.worker_position;
-        self.worker_position = to;
+        let to = self.dynamic.worker_position.neighbour(direction.reverse());
+        let from = self.dynamic.worker_position;
+        self.dynamic.worker_position = to;
 
         Event::MoveWorker {
             from,
@@ -190,8 +195,8 @@ impl CurrentLevel {
     }
 
     fn move_worker_to(&mut self, to: Position, direction: Direction) -> Event {
-        let from = self.worker_position;
-        self.worker_position = to;
+        let from = self.dynamic.worker_position;
+        self.dynamic.worker_position = to;
 
         Event::MoveWorker {
             from,
@@ -207,19 +212,19 @@ impl CurrentLevel {
     // NOTE We need `from` so we can find out the crate's id. That way, the user interface knows
     // which crate to animate. Alternatively, the crate's id could be passed in.
     fn move_crate_to(&mut self, from: Position, to: Position) -> Event {
-        let id = self.crates.remove(&from).unwrap_or_else(|| {
+        let id = self.dynamic.crates.remove(&from).unwrap_or_else(|| {
             panic!(
                 "Moving crate from {:?} to {:?}. Crates: {:?}",
-                from, to, self.crates
+                from, to, self.dynamic.crates
             )
         });
-        self.crates.insert(to, id);
+        self.dynamic.crates.insert(to, id);
 
         if self.background(from) == &Background::Goal {
-            self.empty_goals += 1;
+            self.dynamic.empty_goals += 1;
         }
         if self.background(to) == &Background::Goal {
-            self.empty_goals -= 1;
+            self.dynamic.empty_goals -= 1;
         }
 
         Event::MoveCrate { id, from, to }
@@ -299,7 +304,7 @@ impl CurrentLevel {
             if self.is_empty(new_crate_position) {
                 Ok(VerifiedMove {
                     worker_move: FromTo {
-                        from: self.worker_position,
+                        from: self.dynamic.worker_position,
                         to: new_worker_position,
                     },
                     crate_move: Some(FromTo {
@@ -322,7 +327,7 @@ impl CurrentLevel {
         } else if self.is_empty(new_worker_position) {
             Ok(VerifiedMove {
                 worker_move: FromTo {
-                    from: self.worker_position,
+                    from: self.dynamic.worker_position,
                     to: new_worker_position,
                 },
                 crate_move: None,
@@ -348,8 +353,8 @@ impl CurrentLevel {
         direction: Direction,
         may_push_crate: bool,
     ) -> Result<(), FailedMove> {
-        let target_position = self.worker_position.neighbour(direction);
-        let is_crate = self.crates.contains_key(&target_position);
+        let target_position = self.dynamic.worker_position.neighbour(direction);
+        let is_crate = self.dynamic.crates.contains_key(&target_position);
 
         let events = self.perform_move(
             &Move {
@@ -370,10 +375,10 @@ impl CurrentLevel {
     /// Move the worker towards `to`. If may_push_crate is set, `to` must be in the same row or
     /// column as the worker. In that case, the worker moves to `to`
     pub fn move_to(&mut self, to: Position, may_push_crate: bool) -> Option<()> {
-        let dir = direction(self.worker_position, to);
+        let dir = direction(self.dynamic.worker_position, to);
 
         if !may_push_crate {
-            let (dx, dy) = to - self.worker_position;
+            let (dx, dy) = to - self.dynamic.worker_position;
             if dx.abs() + dy.abs() > 1 {
                 let path = self.find_path(to)?;
                 self.follow_path(path);
@@ -386,7 +391,7 @@ impl CurrentLevel {
                 // Note that this takes care of both movements of just one step and all cases
                 // in which crates may be pushed.
                 while self.move_helper(direction, may_push_crate).is_ok() {
-                    if self.worker_position == to || may_push_crate && self.is_finished() {
+                    if self.dynamic.worker_position == to || may_push_crate && self.is_finished() {
                         break;
                     }
                 }
@@ -429,7 +434,7 @@ impl CurrentLevel {
                 direction,
                 moves_crate,
             }) => {
-                let crate_pos = self.worker_position.neighbour(direction);
+                let crate_pos = self.dynamic.worker_position.neighbour(direction);
 
                 let event = self.move_worker_back(direction);
                 self.notify(&event);
@@ -527,7 +532,7 @@ impl fmt::Display for CurrentLevel {
             for j in 0..columns {
                 let background = self.background[j + i * self.columns];
                 let pos = Position::new(j, i);
-                let foreground = if self.worker_position == pos {
+                let foreground = if self.dynamic.worker_position == pos {
                     Foreground::Worker
                 } else if self.is_crate(pos) {
                     Foreground::Crate
@@ -544,21 +549,26 @@ impl fmt::Display for CurrentLevel {
 
 impl From<&Level> for CurrentLevel {
     fn from(level: &Level) -> Self {
-        let mut result = Self {
-            columns: level.columns,
-            rows: level.rows,
-            background: level.background.clone(),
+        let dynamic = DynamicEntities {
             crates: level.crates.clone(),
             worker_position: level.worker_position,
 
             empty_goals: 0,
+        };
+
+        let mut result = Self {
+            columns: level.columns,
+            rows: level.rows,
+            background: level.background.clone(),
+            dynamic,
 
             undo: Undo::new(),
 
             listeners: vec![],
         };
 
-        result.empty_goals = result
+        result.dynamic.empty_goals = result
+            .dynamic
             .crates
             .keys()
             .filter(|&&pos| result.background(pos) != &Background::Goal)
@@ -590,8 +600,8 @@ mod test {
         )
         .unwrap()
         .into();
-        assert_eq!(lvl.worker_position.x, 1);
-        assert_eq!(lvl.worker_position.y, 1);
+        assert_eq!(lvl.dynamic.worker_position.x, 1);
+        assert_eq!(lvl.dynamic.worker_position.y, 1);
 
         assert!(lvl.is_empty(Position::new(2, 1)));
         assert!(!lvl.is_empty(Position::new(0, 1)));
@@ -619,8 +629,8 @@ mod test {
         )
         .unwrap()
         .into();
-        assert_eq!(lvl.worker_position.x, 3);
-        assert_eq!(lvl.worker_position.y, 1);
+        assert_eq!(lvl.dynamic.worker_position.x, 3);
+        assert_eq!(lvl.dynamic.worker_position.y, 1);
         assert_eq!(lvl.worker_direction(), Left);
         assert!(!&lvl.try_move(Right).is_err());
         assert!(!&lvl.try_move(Left).is_err());
