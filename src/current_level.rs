@@ -24,6 +24,17 @@ pub struct DynamicEntities {
     worker_position: Position,
 }
 
+impl DynamicEntities {
+    pub fn is_empty(&self, position: Position) -> bool {
+        !self.is_crate(position)
+    }
+
+    /// Is there a crate at the given position?
+    fn is_crate(&self, pos: Position) -> bool {
+        self.crates.get(&pos).is_some()
+    }
+}
+
 #[derive(Clone)]
 pub struct CurrentLevel {
     columns: usize,
@@ -81,12 +92,12 @@ impl CurrentLevel {
 
     /// Is there a crate at the given position?
     fn is_crate(&self, pos: Position) -> bool {
-        self.dynamic.crates.get(&pos).is_some()
+        self.dynamic.is_crate(pos)
     }
 
     /// Is the cell with the given coordinates empty, i.e. could a crate be moved into it?
     fn is_empty(&self, pos: Position) -> bool {
-        self.is_interior(pos) && !self.is_crate(pos)
+        self.is_interior(pos) && self.dynamic.is_empty(pos)
     }
 
     pub fn is_outside(&self, pos: Position) -> bool {
@@ -290,21 +301,23 @@ impl CurrentLevel {
     /// Figure out whether a `Move` can be performed at the current state. If so, return what
     /// changes it causes. Otherwise, return why it cannot be performed.
     fn evaluate_move(&self, r#move: &Move) -> Result<VerifiedMove, FailedMove> {
+        let dynamic = &self.dynamic;
+
         let Move {
             moves_crate,
             direction,
         } = r#move;
-        let new_worker_position = self.worker_position().neighbour(*direction);
+        let new_worker_position = dynamic.worker_position.neighbour(*direction);
 
         let is_crate = self.is_crate(new_worker_position);
 
         if is_crate && *moves_crate {
             let new_crate_position = new_worker_position.neighbour(*direction);
 
-            if self.is_empty(new_crate_position) {
+            if self.is_interior(new_worker_position) && dynamic.is_empty(new_crate_position) {
                 Ok(VerifiedMove {
                     worker_move: FromTo {
-                        from: self.dynamic.worker_position,
+                        from: dynamic.worker_position,
                         to: new_worker_position,
                     },
                     crate_move: Some(FromTo {
@@ -324,10 +337,10 @@ impl CurrentLevel {
                     thing_blocked: BlockedEntity::Crate,
                 })
             }
-        } else if self.is_empty(new_worker_position) {
+        } else if self.is_interior(new_worker_position) && dynamic.is_empty(new_worker_position) {
             Ok(VerifiedMove {
                 worker_move: FromTo {
-                    from: self.dynamic.worker_position,
+                    from: dynamic.worker_position,
                     to: new_worker_position,
                 },
                 crate_move: None,
