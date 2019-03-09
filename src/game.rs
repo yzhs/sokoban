@@ -232,17 +232,20 @@ impl Game {
                     self.listeners.notify_move(&event.into());
                 }
             }
-            MoveAsFarAsPossible {
-                direction,
-                may_push_crate,
-            } if !is_finished => self
-                .current_level
-                .move_as_far_as_possible(direction, may_push_crate),
-            MoveToPosition {
-                position,
-                may_push_crate,
-            } if !is_finished => {
-                self.current_level.move_to(position, may_push_crate);
+            WalkTillObstacle { direction } if !is_finished => {
+                self.current_level.move_as_far_as_possible(direction, false)
+            }
+            PushTillObstacle { direction } if !is_finished => {
+                self.current_level.move_as_far_as_possible(direction, true)
+            }
+            WalkTowards { position } if !is_finished => {
+                self.current_level.move_to(position, false);
+            }
+            PushTowards { position } if !is_finished => {
+                self.current_level.move_to(position, true);
+            }
+            WalkToPosition { position } if !is_finished => {
+                self.current_level.move_to(position, false);
             }
 
             MoveCrateToTarget { from, to } => {
@@ -284,8 +287,11 @@ impl Game {
 
             Nothing
             | Move(_)
-            | MoveAsFarAsPossible { .. }
-            | MoveToPosition { .. }
+            | WalkTillObstacle { .. }
+            | PushTillObstacle { .. }
+            | WalkTowards { .. }
+            | PushTowards { .. }
+            | WalkToPosition { .. }
             | Undo
             | Redo => {}
         };
@@ -464,19 +470,15 @@ mod tests {
         assert!(exec_ok(
             &mut game,
             &receiver,
-            Command::MoveAsFarAsPossible {
-                direction: Left,
-                may_push_crate: true
-            },
+            Command::PushTillObstacle { direction: Left },
         ));
         assert!(!exec_ok(&mut game, &receiver, Command::Move(Left)));
         assert!(exec_ok(&mut game, &receiver, Command::ResetLevel));
         assert!(exec_ok(
             &mut game,
             &receiver,
-            Command::MoveToPosition {
+            Command::WalkToPosition {
                 position: Position::new(8_usize, 4),
-                may_push_crate: false
             },
         ));
         assert_eq!(game.current_level.number_of_moves(), 7);

@@ -12,18 +12,22 @@ pub enum Command {
     /// Move one step in the given direction if possible.
     Move(Direction),
 
-    /// Move as far as possible in the given direction with or without pushing crates.
-    MoveAsFarAsPossible {
-        direction: Direction,
-        may_push_crate: bool,
-    },
+    /// Move as far as possible in the given direction without pushing crates.
+    WalkTillObstacle { direction: Direction },
 
-    /// Move as far as possible towards the given position in the same row or column while pushing
-    /// crates or to any position when not pushing crates.
-    MoveToPosition {
-        position: Position,
-        may_push_crate: bool,
-    },
+    /// Push a crate as far as possible in the given direction.
+    PushTillObstacle { direction: Direction },
+
+    /// Walk straight towards `position` until the worker is there or hits an obstacle.
+    WalkTowards { position: Position },
+
+    /// Push a crate straight towards `position` until the worker is there or the crate hits an
+    /// obstacle.
+    PushTowards { position: Position },
+
+    /// Walk to the given position, no matter where the path takes the worker, i.e. general path
+    /// finding without moving any crates.
+    WalkToPosition { position: Position },
 
     /// Try to push the crate at position `from` to position `to`.
     MoveCrateToTarget { from: Position, to: Position },
@@ -81,16 +85,11 @@ impl Command {
         match *self {
             Move(dir) => dir.to_string(),
             // TODO Find different formats for the next two cases
-            MoveAsFarAsPossible {
-                direction: dir,
-                may_push_crate: true,
-            } => format!("_{}", dir),
-            MoveAsFarAsPossible { direction: dir, .. } => format!("_{}", dir),
-            MoveToPosition {
-                position: pos,
-                may_push_crate: true,
-            } => format!("[{}, {}]", pos.x, pos.y),
-            MoveToPosition { position: pos, .. } => format!("({}, {})", pos.x, pos.y),
+            PushTillObstacle { direction: dir } => format!("_{}", dir),
+            WalkTillObstacle { direction: dir } => format!("_{}", dir),
+            PushTowards { position: pos } => format!("[{}, {}]", pos.x, pos.y),
+            WalkTowards { position: pos } => format!("({}, {})", pos.x, pos.y),
+            WalkToPosition { position: pos } => format!("({}, {})", pos.x, pos.y),
             MoveCrateToTarget { from, to } => {
                 format!("![({},{}),({},{})]", from.x, from.y, to.x, to.y)
             }

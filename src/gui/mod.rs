@@ -251,9 +251,18 @@ impl Gui {
                     Command::Nothing
                 }
             } else {
-                Command::MoveToPosition {
-                    position: target,
-                    may_push_crate: mouse_button == MouseButton::Right,
+                let worker = self.worker_position;
+                let same_row_or_column = target.x == worker.x || target.y == worker.y;
+                let can_move_crate = mouse_button == MouseButton::Right;
+
+                match (same_row_or_column, can_move_crate) {
+                    (true, true) => Command::PushTowards { position: target },
+                    (true, false) => Command::WalkTowards { position: target },
+                    (false, false) => Command::WalkToPosition { position: target },
+                    (false, true) => {
+                        warn!("Cannot push crate to a different row and column.");
+                        Command::Nothing
+                    }
                 }
             }
         } else {

@@ -23,11 +23,10 @@ impl InputState {
                     Move(dir)
                 } else if modifiers.ctrl && modifiers.shift {
                     Nothing
+                } else if modifiers.shift {
+                    WalkTillObstacle { direction: dir }
                 } else {
-                    MoveAsFarAsPossible {
-                        direction: dir,
-                        may_push_crate: modifiers.shift,
-                    }
+                    PushTillObstacle { direction: dir }
                 };
             }
 
