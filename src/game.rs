@@ -221,24 +221,12 @@ impl Game {
 
         match *command {
             ResetLevel => self.reset_current_level(),
-
             NextLevel => self.next_level().unwrap(),
             PreviousLevel => self.previous_level().unwrap(),
 
             Save => {
                 let _ = self.save().unwrap();
             }
-
-            RecordMacro(slot) => {
-                self.macros.start_recording(slot);
-            }
-            StoreMacro => {
-                let len = self.macros.stop_recording();
-                if len != 0 {
-                    self.listeners.notify_move(&Event::MacroDefined);
-                }
-            }
-            ExecuteMacro(slot) => self.execute_macro(slot),
 
             // This is handled inside Game and never passed to this method.
             LoadCollection(_) => unreachable!(),
@@ -251,6 +239,9 @@ impl Game {
             | PushTowards { .. }
             | WalkToPosition { .. }
             | MoveCrateToTarget { .. }
+            | ExecuteMacro(_)
+            | RecordMacro(_)
+            | StoreMacro
             | Undo
             | Redo => {}
         };
@@ -282,10 +273,6 @@ impl Game {
             }
 
             MoveCrateToTarget { from, to } => {
-                info!(
-                    "Trying to move crate at position ({},{}) to position ({},{})",
-                    from.x, from.y, to.x, to.y
-                );
                 self.current_level.move_crate_to_target(from, to);
             }
 
@@ -295,8 +282,8 @@ impl Game {
             Redo => {
                 self.current_level.redo();
             }
-            ResetLevel => self.reset_current_level(),
 
+            ResetLevel => self.reset_current_level(),
             NextLevel => self.next_level().unwrap(),
             PreviousLevel => self.previous_level().unwrap(),
 
@@ -304,6 +291,7 @@ impl Game {
                 let _ = self.save().unwrap();
             }
 
+            ExecuteMacro(slot) => self.execute_macro(slot),
             RecordMacro(slot) => {
                 self.macros.start_recording(slot);
             }
@@ -313,7 +301,6 @@ impl Game {
                     self.listeners.notify_move(&Event::MacroDefined);
                 }
             }
-            ExecuteMacro(slot) => self.execute_macro(slot),
 
             // This is handled inside Game and never passed to this method.
             LoadCollection(_) => unreachable!(),
@@ -324,7 +311,8 @@ impl Game {
 
     /// Execute whatever command we get from the frontend.
     fn execute_helper(&mut self, command: &Command, executing_macro: bool) {
-        if self.current_level.is_finished() {
+        let is_finished = self.current_level.is_finished();
+        if is_finished {
             self.execute_command_on_finished_level(command);
         } else {
             self.send_command_to_macros(command, executing_macro);
@@ -334,6 +322,12 @@ impl Game {
         if self.current_level.is_finished() {
             if self.rank() == self.collection.number_of_levels() {
                 self.state.collection_solved = true;
+            }
+            if !is_finished {
+                let len = self.macros.stop_recording();
+                if len != 0 {
+                    self.listeners.notify_move(&Event::MacroDefined);
+                }
             }
 
             // TODO Emit the events in one of the move() functions?
