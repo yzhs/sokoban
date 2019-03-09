@@ -216,52 +216,10 @@ impl Game {
         }
     }
 
-    /// Execute whatever command we get from the frontend.
-    fn execute_helper(&mut self, command: &Command, executing_macro: bool) {
+    fn execute_command_on_finished_level(&mut self, command: &Command) {
         use crate::Command::*;
 
-        let is_finished = self.current_level.is_finished();
-
-        if !is_finished {
-            self.send_command_to_macros(command, executing_macro);
-        }
-
         match *command {
-            Move(dir) if !is_finished => {
-                if let Err(event) = self.current_level.try_move(dir) {
-                    self.listeners.notify_move(&event.into());
-                }
-            }
-            WalkTillObstacle { direction } if !is_finished => {
-                self.current_level.move_as_far_as_possible(direction, false)
-            }
-            PushTillObstacle { direction } if !is_finished => {
-                self.current_level.move_as_far_as_possible(direction, true)
-            }
-            WalkTowards { position } if !is_finished => {
-                self.current_level.move_to(position, false);
-            }
-            PushTowards { position } if !is_finished => {
-                self.current_level.move_to(position, true);
-            }
-            WalkToPosition { position } if !is_finished => {
-                self.current_level.move_to(position, false);
-            }
-
-            MoveCrateToTarget { from, to } => {
-                info!(
-                    "Trying to move crate at position ({},{}) to position ({},{})",
-                    from.x, from.y, to.x, to.y
-                );
-                self.current_level.move_crate_to_target(from, to);
-            }
-
-            Undo if !is_finished => {
-                self.current_level.undo();
-            }
-            Redo if !is_finished => {
-                self.current_level.redo();
-            }
             ResetLevel => self.reset_current_level(),
 
             NextLevel => self.next_level().unwrap(),
@@ -292,9 +250,87 @@ impl Game {
             | WalkTowards { .. }
             | PushTowards { .. }
             | WalkToPosition { .. }
+            | MoveCrateToTarget { .. }
             | Undo
             | Redo => {}
         };
+    }
+
+    fn execute_command_on_unfinished_level(&mut self, command: &Command) {
+        use crate::Command::*;
+
+        match *command {
+            Move(dir) => {
+                if let Err(event) = self.current_level.try_move(dir) {
+                    self.listeners.notify_move(&event.into());
+                }
+            }
+            WalkTillObstacle { direction } => {
+                self.current_level.move_as_far_as_possible(direction, false)
+            }
+            PushTillObstacle { direction } => {
+                self.current_level.move_as_far_as_possible(direction, true)
+            }
+            WalkTowards { position } => {
+                self.current_level.move_to(position, false);
+            }
+            PushTowards { position } => {
+                self.current_level.move_to(position, true);
+            }
+            WalkToPosition { position } => {
+                self.current_level.move_to(position, false);
+            }
+
+            MoveCrateToTarget { from, to } => {
+                info!(
+                    "Trying to move crate at position ({},{}) to position ({},{})",
+                    from.x, from.y, to.x, to.y
+                );
+                self.current_level.move_crate_to_target(from, to);
+            }
+
+            Undo => {
+                self.current_level.undo();
+            }
+            Redo => {
+                self.current_level.redo();
+            }
+            ResetLevel => self.reset_current_level(),
+
+            NextLevel => self.next_level().unwrap(),
+            PreviousLevel => self.previous_level().unwrap(),
+
+            Save => {
+                let _ = self.save().unwrap();
+            }
+
+            RecordMacro(slot) => {
+                self.macros.start_recording(slot);
+            }
+            StoreMacro => {
+                let len = self.macros.stop_recording();
+                if len != 0 {
+                    self.listeners.notify_move(&Event::MacroDefined);
+                }
+            }
+            ExecuteMacro(slot) => self.execute_macro(slot),
+
+            // This is handled inside Game and never passed to this method.
+            LoadCollection(_) => unreachable!(),
+
+            Nothing => {}
+        };
+    }
+
+    /// Execute whatever command we get from the frontend.
+    fn execute_helper(&mut self, command: &Command, executing_macro: bool) {
+        if self.current_level.is_finished() {
+            self.execute_command_on_finished_level(command);
+        } else {
+            self.send_command_to_macros(command, executing_macro);
+            self.execute_command_on_unfinished_level(command);
+        }
+
         if self.current_level.is_finished() {
             if self.rank() == self.collection.number_of_levels() {
                 self.state.collection_solved = true;
