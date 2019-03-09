@@ -251,11 +251,7 @@ impl Game {
         use crate::Command::*;
 
         match *command {
-            Step { direction } => {
-                if let Err(event) = self.current_level.try_move(direction) {
-                    self.listeners.notify_move(&event.into());
-                }
-            }
+            Step { direction } => self.current_level.step(direction),
             WalkTillObstacle { direction } => {
                 self.current_level.move_as_far_as_possible(direction, false)
             }

@@ -385,6 +385,13 @@ impl CurrentLevel {
         Ok(())
     }
 
+    /// Take one step in the specified direction, pushing a crate if necessary.
+    pub fn step(&mut self, direction: Direction) {
+        if let Err(event) = self.try_move(direction) {
+            self.notify(&event.into());
+        }
+    }
+
     /// Move the worker towards `to`. If may_push_crate is set, `to` must be in the same row or
     /// column as the worker. In that case, the worker moves to `to`
     pub fn move_to(&mut self, to: Position, may_push_crate: bool) -> Option<()> {
