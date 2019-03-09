@@ -221,7 +221,7 @@ impl Game {
         let is_finished = self.current_level.is_finished();
 
         match *command {
-            ResetLevel => self.reset_current_level(),
+            ResetLevel => self.reset_level(),
             NextLevel if !is_finished => self.next_level().unwrap(),
             PreviousLevel => self.previous_level().unwrap(),
 
@@ -333,11 +333,7 @@ impl Game {
     fn execute_macro(&mut self, slot: u8) {
         // NOTE We have to clone the commands so we can borrow self mutably in the loop.
         let cmds = self.macros.get(slot).to_owned();
-        cmds.iter().for_each(|cmd| self.execute_macro_command(cmd));
-    }
-
-    fn execute_macro_command(&mut self, command: &Command) {
-        self.execute_helper(command, true);
+        cmds.iter().for_each(|cmd| self.execute_helper(cmd, true));
     }
 
     // Helpers for Collection::execute
@@ -347,7 +343,7 @@ impl Game {
     }
 
     /// Replace the current level by a clean copy.
-    fn reset_current_level(&mut self) {
+    fn reset_level(&mut self) {
         let current_level = self.get_level(self.rank());
         self.set_current_level(&current_level, self.rank);
     }
