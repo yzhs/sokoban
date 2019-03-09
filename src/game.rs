@@ -221,12 +221,8 @@ impl Game {
 
         match *command {
             ResetLevel => self.reset_current_level(),
-            NextLevel => self.next_level().unwrap(),
+            NextLevel => {}
             PreviousLevel => self.previous_level().unwrap(),
-
-            Save => {
-                let _ = self.save().unwrap();
-            }
 
             // This is handled inside Game and never passed to this method.
             LoadCollection(_) => unreachable!(),
@@ -243,7 +239,8 @@ impl Game {
             | RecordMacro(_)
             | StoreMacro
             | Undo
-            | Redo => {}
+            | Redo
+            | Save => {}
         };
     }
 
