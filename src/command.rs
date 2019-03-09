@@ -9,6 +9,13 @@ pub enum Command {
     /// Do not do anything. This exists solely to eliminate the need of using Option<Command>.
     Nothing,
 
+    Movement(Movement),
+    LevelManagement(LevelManagement),
+    Macro(Macro),
+}
+
+#[derive(Debug, Clone)]
+pub enum Movement {
     /// Move one step in the given direction if possible. This may involve pushing a crate.
     Step { direction: Direction },
 
@@ -37,7 +44,10 @@ pub enum Command {
 
     /// Redo a move previously undone.
     Redo,
+}
 
+#[derive(Debug, Clone)]
+pub enum LevelManagement {
     /// Reset the current level
     ResetLevel,
 
@@ -52,24 +62,28 @@ pub enum Command {
 
     /// Switch to the level collection with the given name.
     LoadCollection(String),
+}
 
+#[derive(Debug, Clone)]
+pub enum Macro {
     /// Start recording a macro to the given slot.
-    RecordMacro(Slot),
+    Record(Slot),
 
     /// Stop recording a macro and store the result.
-    StoreMacro,
+    Store,
 
     /// Execute the macro stored in the given slon.
-    ExecuteMacro(Slot),
+    Execute(Slot),
 }
 
 impl Command {
     /// Does this command change the collection of macros, i.e. cannot be safely recorded in a
     /// macro?
     pub fn changes_macros(&self) -> bool {
-        match *self {
-            Command::RecordMacro(_) | Command::StoreMacro => true,
-            _ => false,
+        if let Command::Macro(Macro::Record(_)) | Command::Macro(Macro::Store) = self {
+            true
+        } else {
+            false
         }
     }
 
@@ -82,22 +96,26 @@ impl Command {
 
     pub fn to_string(&self) -> String {
         use crate::Command::*;
+        use crate::Macro::*;
+        use crate::Movement::*;
+
         match *self {
-            Step { direction } => direction.to_string(),
-            // TODO Find different formats for the next two cases
-            PushTillObstacle { direction: dir } => format!("_{}", dir),
-            WalkTillObstacle { direction: dir } => format!("_{}", dir),
-            PushTowards { position: pos } => format!("[{}, {}]", pos.x, pos.y),
-            WalkTowards { position: pos } => format!("({}, {})", pos.x, pos.y),
-            WalkToPosition { position: pos } => format!("({}, {})", pos.x, pos.y),
-            MoveCrateToTarget { from, to } => {
-                format!("![({},{}),({},{})]", from.x, from.y, to.x, to.y)
-            }
-            Undo => "<".to_string(),
-            Redo => ">".to_string(),
-            ExecuteMacro(slot) => format!("@{}", slot),
-            Nothing | ResetLevel | NextLevel | PreviousLevel | Save | LoadCollection(_)
-            | RecordMacro(_) | StoreMacro => unreachable!(),
+            Movement(ref m) => match *m {
+                Step { direction } => direction.to_string(),
+                // TODO Find different formats for the next two cases
+                PushTillObstacle { direction: dir } => format!("_{}", dir),
+                WalkTillObstacle { direction: dir } => format!("_{}", dir),
+                PushTowards { position: pos } => format!("[{}, {}]", pos.x, pos.y),
+                WalkTowards { position: pos } => format!("({}, {})", pos.x, pos.y),
+                WalkToPosition { position: pos } => format!("({}, {})", pos.x, pos.y),
+                MoveCrateToTarget { from, to } => {
+                    format!("![({},{}),({},{})]", from.x, from.y, to.x, to.y)
+                }
+                Undo => "<".to_string(),
+                Redo => ">".to_string(),
+            },
+            Macro(Execute(slot)) => format!("@{}", slot),
+            _ => unreachable!(),
         }
     }
 }

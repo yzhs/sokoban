@@ -1,6 +1,6 @@
 use glium::glutin::{ModifiersState, VirtualKeyCode};
 
-use crate::backend::{Command, Direction, Position};
+use crate::backend::{Command, Direction, LevelManagement, Macro, Movement, Position};
 
 #[derive(Default)]
 pub struct InputState {
@@ -14,15 +14,19 @@ impl InputState {
     /// Handle key press events.
     pub fn press_to_command(&mut self, key: VirtualKeyCode, modifiers: ModifiersState) -> Command {
         use self::Command::*;
+        use self::LevelManagement::*;
+        use self::Macro::*;
+        use self::Movement::*;
         use self::VirtualKeyCode::*;
+
         match key {
             // Move
             Left | Right | Up | Down => {
                 let direction = key_to_direction(key);
                 return match (modifiers.ctrl, modifiers.shift) {
-                    (false, false) => Step { direction },
-                    (false, true) => WalkTillObstacle { direction },
-                    (true, false) => PushTillObstacle { direction },
+                    (false, false) => Movement(Step { direction }),
+                    (false, true) => Movement(WalkTillObstacle { direction }),
+                    (true, false) => Movement(PushTillObstacle { direction }),
                     (true, true) => Nothing,
                 };
             }
@@ -30,33 +34,32 @@ impl InputState {
             // Undo and redo
             Z if !modifiers.ctrl => {}
             U if modifiers.ctrl => {}
-            U | Z if modifiers.shift => return Redo,
-            U | Z => return Undo,
+            U | Z if modifiers.shift => return Movement(Redo),
+            U | Z => return Movement(Undo),
 
             // Record or execute macro
             F1 | F2 | F3 | F4 | F5 | F6 | F7 | F8 | F9 | F10 | F11 | F12 => {
                 let n = key_to_num(key);
-                return if self.recording_macro && modifiers.ctrl {
+                return Macro(if self.recording_macro && modifiers.ctrl {
                     // Finish recording
                     self.recording_macro = false;
-                    StoreMacro
+                    Store
                 } else if modifiers.ctrl {
                     // Start recording
                     self.recording_macro = true;
-                    RecordMacro(n)
+                    Record(n)
                 } else {
                     // Execute
-                    ExecuteMacro(n)
-                };
+                    Execute(n)
+                });
             }
 
-            P => return PreviousLevel,
-            N => return NextLevel,
-
-            S if modifiers.ctrl => return Save,
-
             // TODO Open the main menu
-            Escape => return ResetLevel,
+            P => return LevelManagement(PreviousLevel),
+            N => return LevelManagement(NextLevel),
+            S if modifiers.ctrl => return LevelManagement(Save),
+            Escape => return LevelManagement(ResetLevel),
+
             LAlt | LControl | LShift | LWin | RAlt | RControl | RShift | RWin => {}
             _ => error!("Unknown key: {:?}", key),
         }

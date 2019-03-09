@@ -142,7 +142,7 @@ impl Game {
                 return;
             }
         } {
-            if let Command::LoadCollection(ref name) = cmd {
+            if let Command::LevelManagement(LevelManagement::LoadCollection(ref name)) = cmd {
                 info!("Loading level collection {}.", name);
                 self.set_collection(name).unwrap();
             } else {
@@ -216,97 +216,91 @@ impl Game {
         }
     }
 
-    fn execute_command_on_finished_level(&mut self, command: &Command) {
-        use crate::Command::*;
+    fn manage_level(&mut self, command: &LevelManagement) {
+        use crate::LevelManagement::*;
+        let is_finished = self.current_level.is_finished();
 
         match *command {
             ResetLevel => self.reset_current_level(),
-            NextLevel => {}
+            NextLevel if !is_finished => self.next_level().unwrap(),
             PreviousLevel => self.previous_level().unwrap(),
+
+            Save if !is_finished => {
+                let _ = self.save().unwrap();
+            }
 
             // This is handled inside Game and never passed to this method.
             LoadCollection(_) => unreachable!(),
 
-            Nothing
-            | Step { .. }
-            | WalkTillObstacle { .. }
-            | PushTillObstacle { .. }
-            | WalkTowards { .. }
-            | PushTowards { .. }
-            | WalkToPosition { .. }
-            | MoveCrateToTarget { .. }
-            | ExecuteMacro(_)
-            | RecordMacro(_)
-            | StoreMacro
-            | Undo
-            | Redo
-            | Save => {}
+            _ => {}
         };
     }
 
     fn execute_command_on_unfinished_level(&mut self, command: &Command) {
         use crate::Command::*;
+        use crate::Movement::*;
 
         match *command {
-            Step { direction } => self.current_level.step(direction),
-            WalkTillObstacle { direction } => {
-                self.current_level.move_as_far_as_possible(direction, false)
-            }
-            PushTillObstacle { direction } => {
-                self.current_level.move_as_far_as_possible(direction, true)
-            }
-            WalkTowards { position } => {
-                self.current_level.move_to(position, false);
-            }
-            PushTowards { position } => {
-                self.current_level.move_to(position, true);
-            }
-            WalkToPosition { position } => {
-                self.current_level.move_to(position, false);
-            }
+            Nothing => {}
+            Movement(ref movement) => match *movement {
+                Step { direction } => self.current_level.step(direction),
+                WalkTillObstacle { direction } => {
+                    self.current_level.move_as_far_as_possible(direction, false)
+                }
+                PushTillObstacle { direction } => {
+                    self.current_level.move_as_far_as_possible(direction, true)
+                }
+                WalkTowards { position } => {
+                    self.current_level.move_to(position, false);
+                }
+                PushTowards { position } => {
+                    self.current_level.move_to(position, true);
+                }
+                WalkToPosition { position } => {
+                    self.current_level.move_to(position, false);
+                }
 
-            MoveCrateToTarget { from, to } => {
-                self.current_level.move_crate_to_target(from, to);
-            }
+                MoveCrateToTarget { from, to } => {
+                    self.current_level.move_crate_to_target(from, to);
+                }
 
-            Undo => {
-                self.current_level.undo();
-            }
-            Redo => {
-                self.current_level.redo();
-            }
+                Undo => {
+                    self.current_level.undo();
+                }
+                Redo => {
+                    self.current_level.redo();
+                }
+            },
+            LevelManagement(ref level_management) => self.manage_level(level_management),
 
-            ResetLevel => self.reset_current_level(),
-            NextLevel => self.next_level().unwrap(),
-            PreviousLevel => self.previous_level().unwrap(),
+            Macro(ref m) => self.macro_command(m),
+        };
+    }
 
-            Save => {
-                let _ = self.save().unwrap();
-            }
+    pub fn macro_command(&mut self, macro_command: &Macro) {
+        use crate::Macro::*;
 
-            ExecuteMacro(slot) => self.execute_macro(slot),
-            RecordMacro(slot) => {
+        match *macro_command {
+            Execute(slot) => self.execute_macro(slot),
+            Record(slot) => {
                 self.macros.start_recording(slot);
             }
-            StoreMacro => {
+            Store => {
                 let len = self.macros.stop_recording();
                 if len != 0 {
                     self.listeners.notify_move(&Event::MacroDefined);
                 }
             }
-
-            // This is handled inside Game and never passed to this method.
-            LoadCollection(_) => unreachable!(),
-
-            Nothing => {}
-        };
+        }
     }
 
     /// Execute whatever command we get from the frontend.
     fn execute_helper(&mut self, command: &Command, executing_macro: bool) {
         let is_finished = self.current_level.is_finished();
         if is_finished {
-            self.execute_command_on_finished_level(command);
+            if let Command::LevelManagement(cmd) = command {
+                self.manage_level(cmd);
+            }
         } else {
             self.send_command_to_macros(command, executing_macro);
             self.execute_command_on_unfinished_level(command);
@@ -492,42 +486,54 @@ mod tests {
         assert!(exec_ok(
             &mut game,
             &receiver,
-            Command::Step { direction: Up }
+            Command::Movement(Movement::Step { direction: Up })
         ));
         assert!(exec_ok(
             &mut game,
             &receiver,
-            Command::PushTillObstacle { direction: Left },
+            Command::Movement(Movement::PushTillObstacle { direction: Left }),
         ));
         assert!(!exec_ok(
             &mut game,
             &receiver,
-            Command::Step { direction: Left }
+            Command::Movement(Movement::Step { direction: Left })
         ));
-        assert!(exec_ok(&mut game, &receiver, Command::ResetLevel));
         assert!(exec_ok(
             &mut game,
             &receiver,
-            Command::WalkToPosition {
+            Command::LevelManagement(LevelManagement::ResetLevel)
+        ));
+        assert!(exec_ok(
+            &mut game,
+            &receiver,
+            Command::Movement(Movement::WalkToPosition {
                 position: Position::new(8_usize, 4),
-            },
+            }),
         ));
         assert_eq!(game.current_level.number_of_moves(), 7);
         assert!(exec_ok(
             &mut game,
             &receiver,
-            Command::Step { direction: Left }
+            Command::Movement(Movement::Step { direction: Left })
         ));
         assert_eq!(game.current_level.number_of_pushes(), 1);
 
         assert_eq!(game.current_level.moves_to_string(), "ullluuuL");
 
-        assert!(exec_ok(&mut game, &receiver, Command::Undo));
+        assert!(exec_ok(
+            &mut game,
+            &receiver,
+            Command::Movement(Movement::Undo)
+        ));
 
         assert_eq!(game.current_level.all_moves_to_string(), "ullluuuL");
         assert_eq!(game.current_level.moves_to_string(), "ullluuu");
         assert_eq!(game.current_level.number_of_pushes(), 0);
-        assert!(exec_ok(&mut game, &receiver, Command::Redo));
+        assert!(exec_ok(
+            &mut game,
+            &receiver,
+            Command::Movement(Movement::Redo)
+        ));
         assert_eq!(game.current_level.number_of_pushes(), 1);
     }
 
@@ -591,10 +597,10 @@ mod tests {
 
         let num_moves = move_dirs.len();
         for direction in move_dirs {
-            game.execute_helper(&Command::Step { direction }, false);
+            game.execute_helper(&Command::Movement(Movement::Step { direction }), false);
         }
         for _ in 0..num_moves {
-            game.execute_helper(&Command::Undo, false);
+            game.execute_helper(&Command::Movement(Movement::Undo), false);
         }
 
         let current_lvl = game.current_level();
@@ -609,12 +615,12 @@ mod tests {
         let number_of_moves = game.number_of_moves();
 
         game.execute_helper(
-            &Command::Step {
+            &Command::Movement(Movement::Step {
                 direction: Direction::Down,
-            },
+            }),
             false,
         );
-        game.execute_helper(&Command::Undo, false);
+        game.execute_helper(&Command::Movement(Movement::Undo), false);
 
         let current_lvl = game.current_level();
 
