@@ -236,45 +236,37 @@ impl Game {
         };
     }
 
-    fn execute_command_on_unfinished_level(&mut self, command: &Command) {
-        use crate::Command::*;
+    fn execute_movement(&mut self, movement: &Movement) {
         use crate::Movement::*;
 
-        match *command {
-            Nothing => {}
-            Movement(ref movement) => match *movement {
-                Step { direction } => self.current_level.step(direction),
-                WalkTillObstacle { direction } => {
-                    self.current_level.move_as_far_as_possible(direction, false)
-                }
-                PushTillObstacle { direction } => {
-                    self.current_level.move_as_far_as_possible(direction, true)
-                }
-                WalkTowards { position } => {
-                    self.current_level.move_to(position, false);
-                }
-                PushTowards { position } => {
-                    self.current_level.move_to(position, true);
-                }
-                WalkToPosition { position } => {
-                    self.current_level.move_to(position, false);
-                }
+        match *movement {
+            Step { direction } => self.current_level.step(direction),
+            WalkTillObstacle { direction } => {
+                self.current_level.move_as_far_as_possible(direction, false)
+            }
+            PushTillObstacle { direction } => {
+                self.current_level.move_as_far_as_possible(direction, true)
+            }
+            WalkTowards { position } => {
+                self.current_level.move_to(position, false);
+            }
+            PushTowards { position } => {
+                self.current_level.move_to(position, true);
+            }
+            WalkToPosition { position } => {
+                self.current_level.move_to(position, false);
+            }
+            MoveCrateToTarget { from, to } => {
+                self.current_level.move_crate_to_target(from, to);
+            }
 
-                MoveCrateToTarget { from, to } => {
-                    self.current_level.move_crate_to_target(from, to);
-                }
-
-                Undo => {
-                    self.current_level.undo();
-                }
-                Redo => {
-                    self.current_level.redo();
-                }
-            },
-            LevelManagement(ref level_management) => self.manage_level(level_management),
-
-            Macro(ref m) => self.macro_command(m),
-        };
+            Undo => {
+                self.current_level.undo();
+            }
+            Redo => {
+                self.current_level.redo();
+            }
+        }
     }
 
     pub fn macro_command(&mut self, macro_command: &Macro) {
@@ -296,6 +288,8 @@ impl Game {
 
     /// Execute whatever command we get from the frontend.
     fn execute_helper(&mut self, command: &Command, executing_macro: bool) {
+        use crate::Command::*;
+
         let is_finished = self.current_level.is_finished();
         if is_finished {
             if let Command::LevelManagement(cmd) = command {
@@ -303,7 +297,13 @@ impl Game {
             }
         } else {
             self.send_command_to_macros(command, executing_macro);
-            self.execute_command_on_unfinished_level(command);
+
+            match *command {
+                Nothing => {}
+                Movement(ref movement) => self.execute_movement(movement),
+                LevelManagement(ref level_management) => self.manage_level(level_management),
+                Macro(ref m) => self.macro_command(m),
+            }
         }
 
         if self.current_level.is_finished() {
