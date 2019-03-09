@@ -15,9 +15,21 @@ fn main() {
     let (sender, receiver) = channel();
     game.listen_to(receiver);
 
-    sender.send(Command::Move(Direction::Down)).unwrap();
-    sender.send(Command::Move(Direction::Left)).unwrap();
-    sender.send(Command::Move(Direction::Up)).unwrap();
+    sender
+        .send(Command::Step {
+            direction: Direction::Down,
+        })
+        .unwrap();
+    sender
+        .send(Command::Step {
+            direction: Direction::Left,
+        })
+        .unwrap();
+    sender
+        .send(Command::Step {
+            direction: Direction::Up,
+        })
+        .unwrap();
 
     let from = Position { x: 1, y: 2 };
     let to = Position { x: 3, y: 3 };

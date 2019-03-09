@@ -9,8 +9,8 @@ pub enum Command {
     /// Do not do anything. This exists solely to eliminate the need of using Option<Command>.
     Nothing,
 
-    /// Move one step in the given direction if possible.
-    Move(Direction),
+    /// Move one step in the given direction if possible. This may involve pushing a crate.
+    Step { direction: Direction },
 
     /// Move as far as possible in the given direction without pushing crates.
     WalkTillObstacle { direction: Direction },
@@ -83,7 +83,7 @@ impl Command {
     pub fn to_string(&self) -> String {
         use crate::Command::*;
         match *self {
-            Move(dir) => dir.to_string(),
+            Step { direction } => direction.to_string(),
             // TODO Find different formats for the next two cases
             PushTillObstacle { direction: dir } => format!("_{}", dir),
             WalkTillObstacle { direction: dir } => format!("_{}", dir),

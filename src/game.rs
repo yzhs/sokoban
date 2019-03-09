@@ -244,7 +244,7 @@ impl Game {
             LoadCollection(_) => unreachable!(),
 
             Nothing
-            | Move(_)
+            | Step { .. }
             | WalkTillObstacle { .. }
             | PushTillObstacle { .. }
             | WalkTowards { .. }
@@ -260,8 +260,8 @@ impl Game {
         use crate::Command::*;
 
         match *command {
-            Move(dir) => {
-                if let Err(event) = self.current_level.try_move(dir) {
+            Step { direction } => {
+                if let Err(event) = self.current_level.try_move(direction) {
                     self.listeners.notify_move(&event.into());
                 }
             }
@@ -502,13 +502,21 @@ mod tests {
         assert_eq!(game.collection.number_of_levels(), 50);
         assert_eq!(game.collection.short_name(), name);
 
-        assert!(exec_ok(&mut game, &receiver, Command::Move(Up)));
+        assert!(exec_ok(
+            &mut game,
+            &receiver,
+            Command::Step { direction: Up }
+        ));
         assert!(exec_ok(
             &mut game,
             &receiver,
             Command::PushTillObstacle { direction: Left },
         ));
-        assert!(!exec_ok(&mut game, &receiver, Command::Move(Left)));
+        assert!(!exec_ok(
+            &mut game,
+            &receiver,
+            Command::Step { direction: Left }
+        ));
         assert!(exec_ok(&mut game, &receiver, Command::ResetLevel));
         assert!(exec_ok(
             &mut game,
@@ -518,7 +526,11 @@ mod tests {
             },
         ));
         assert_eq!(game.current_level.number_of_moves(), 7);
-        assert!(exec_ok(&mut game, &receiver, Command::Move(Left)));
+        assert!(exec_ok(
+            &mut game,
+            &receiver,
+            Command::Step { direction: Left }
+        ));
         assert_eq!(game.current_level.number_of_pushes(), 1);
 
         assert_eq!(game.current_level.moves_to_string(), "ullluuuL");
@@ -591,8 +603,8 @@ mod tests {
         move_dirs.truncate(10);
 
         let num_moves = move_dirs.len();
-        for dir in move_dirs {
-            game.execute_helper(&Command::Move(dir), false);
+        for direction in move_dirs {
+            game.execute_helper(&Command::Step { direction }, false);
         }
         for _ in 0..num_moves {
             game.execute_helper(&Command::Undo, false);
@@ -609,7 +621,12 @@ mod tests {
         let worker_position = game.worker_position();
         let number_of_moves = game.number_of_moves();
 
-        game.execute_helper(&Command::Move(Direction::Down), false);
+        game.execute_helper(
+            &Command::Step {
+                direction: Direction::Down,
+            },
+            false,
+        );
         game.execute_helper(&Command::Undo, false);
 
         let current_lvl = game.current_level();
