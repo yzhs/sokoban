@@ -19,14 +19,11 @@ impl InputState {
             // Move
             Left | Right | Up | Down => {
                 let direction = key_to_direction(key);
-                return if !modifiers.ctrl && !modifiers.shift {
-                    Step { direction }
-                } else if modifiers.ctrl && modifiers.shift {
-                    Nothing
-                } else if modifiers.shift {
-                    WalkTillObstacle { direction }
-                } else {
-                    PushTillObstacle { direction }
+                return match (modifiers.ctrl, modifiers.shift) {
+                    (false, false) => Step { direction },
+                    (false, true) => WalkTillObstacle { direction },
+                    (true, false) => PushTillObstacle { direction },
+                    (true, true) => Nothing,
                 };
             }
 
