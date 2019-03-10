@@ -244,7 +244,7 @@ impl CurrentLevel {
 // }}}
 
 #[derive(Debug)]
-struct FromTo {
+pub struct FromTo {
     from: Position,
     to: Position,
 }
@@ -254,7 +254,7 @@ pub enum BlockedEntity {
     Crate,
 }
 
-struct VerifiedMove {
+pub struct VerifiedMove {
     worker_move: FromTo,
     crate_move: Option<FromTo>,
 }
@@ -263,6 +263,45 @@ pub struct FailedMove {
     pub obstacle_at: Position,
     pub obstacle_type: Obstacle,
     pub thing_blocked: BlockedEntity,
+}
+
+/// Public movement functions.
+impl CurrentLevel {
+    /// Take one step in the specified direction, pushing a crate if necessary.
+    pub fn step(&mut self, direction: Direction) {
+        if let Err(event) = self.try_move(direction) {
+            self.notify(&event.into());
+        }
+    }
+
+    /// Walk in the given direction until the first obstacle is reached. Do not push any crates.
+    pub fn walk_to_obstacle(
+        &mut self,
+        direction: Direction,
+        dynamic: &mut DynamicEntities,
+    ) -> Result<Vec<VerifiedMove>, FailedMove> {
+        let mut moves = vec![];
+
+        loop {
+            let next_position = dynamic.worker_position.neighbour(direction);
+
+            if !self.is_empty(next_position) {
+                break;
+            }
+
+            moves.push(VerifiedMove {
+                worker_move: FromTo {
+                    from: dynamic.worker_position,
+                    to: next_position,
+                },
+                crate_move: None,
+            });
+
+            dynamic.worker_position = next_position;
+        }
+
+        Ok(moves)
+    }
 }
 
 /// Movement, i.e. everything that *does* change the `self`.
@@ -383,13 +422,6 @@ impl CurrentLevel {
         }
 
         Ok(())
-    }
-
-    /// Take one step in the specified direction, pushing a crate if necessary.
-    pub fn step(&mut self, direction: Direction) {
-        if let Err(event) = self.try_move(direction) {
-            self.notify(&event.into());
-        }
     }
 
     /// Move the worker towards `to`. If may_push_crate is set, `to` must be in the same row or
