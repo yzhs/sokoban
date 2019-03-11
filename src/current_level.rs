@@ -276,7 +276,7 @@ impl CurrentLevel {
 
     /// Walk in the given direction until the first obstacle is reached. Do not push any crates.
     pub fn walk_to_obstacle(
-        &mut self,
+        &self,
         direction: Direction,
         dynamic: &mut DynamicEntities,
     ) -> Result<Vec<VerifiedMove>, FailedMove> {
