@@ -126,6 +126,7 @@ pub struct WithCrate(pub bool);
 
 /// What blacked a movement?
 #[derive(Clone, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum Obstacle {
     Wall,
     Crate,

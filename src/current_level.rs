@@ -244,21 +244,25 @@ impl CurrentLevel {
 // }}}
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct FromTo {
     from: Position,
     to: Position,
 }
 
+#[cfg_attr(test, derive(Debug, PartialEq))]
 pub enum BlockedEntity {
     Worker,
     Crate,
 }
 
+#[cfg_attr(test, derive(Debug, PartialEq))]
 pub struct VerifiedMove {
     worker_move: FromTo,
     crate_move: Option<FromTo>,
 }
 
+#[cfg_attr(test, derive(Debug, PartialEq))]
 pub struct FailedMove {
     pub obstacle_at: Position,
     pub obstacle_type: Obstacle,
@@ -699,5 +703,28 @@ mod test {
         assert!(!&lvl.try_move(Left).is_err());
         assert!(lvl.is_finished());
         assert_eq!(lvl.worker_direction(), Left);
+    }
+
+    #[test]
+    fn walk_to_obstacle_test() {
+        let lvl: CurrentLevel = Level::parse(
+            0,
+            "#######\n\
+             # @ $.#\n\
+             #######\n",
+        )
+        .unwrap()
+        .into();
+
+        let mut dynamic = lvl.dynamic.clone();
+        let mut go = |dir| lvl.walk_to_obstacle(dir, &mut dynamic);
+        assert_eq!(go(Direction::Up), Ok(vec![]));
+        assert_eq!(go(Direction::Down), Ok(vec![]));
+        assert_eq!(go(Direction::Left).unwrap_or_default().len(), 1);
+        assert_eq!(go(Direction::Right).unwrap_or_default().len(), 2);
+
+        let mut dynamic = lvl.dynamic.clone();
+        let mut go = |dir| lvl.walk_to_obstacle(dir, &mut dynamic);
+        assert_eq!(go(Direction::Right).unwrap_or_default().len(), 1);
     }
 }
