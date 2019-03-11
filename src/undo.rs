@@ -138,9 +138,8 @@ mod tests {
     }
 
     #[quickcheck]
-    fn record_should_not_truncate_if_identical(mut sut: Undo<u32>, x: u32, y: u32) {
+    fn record_should_not_truncate_if_identical(mut sut: Undo<u32>, x: u32) {
         sut.record(x);
-        sut.record(y);
         let len = sut.actions.len();
 
         sut.undo();
