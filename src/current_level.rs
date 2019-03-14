@@ -306,6 +306,43 @@ impl CurrentLevel {
 
         Ok(moves)
     }
+
+    /// Push the crate in the given direction until it hits an obstacle. Needs a crate next to the
+    /// worker in the given direction.
+    pub fn push_to_obstacle(
+        &self,
+        direction: Direction,
+        dynamic: &mut DynamicEntities,
+    ) -> Result<Vec<VerifiedMove>, FailedMove> {
+        let mut moves = self.walk_to_obstacle(direction, dynamic)?;
+
+        loop {
+            let crate_position = dynamic.worker_position.neighbour(direction);
+            if !self.is_crate(crate_position) {
+                break;
+            }
+
+            let next_crate_position = crate_position.neighbour(direction);
+            if !self.is_empty(next_crate_position) {
+                break;
+            }
+
+            moves.push(VerifiedMove {
+                worker_move: FromTo {
+                    from: dynamic.worker_position,
+                    to: crate_position,
+                },
+                crate_move: Some(FromTo {
+                    from: crate_position,
+                    to: next_crate_position,
+                }),
+            });
+
+            dynamic.worker_position = crate_position;
+        }
+
+        Ok(moves)
+    }
 }
 
 /// Movement, i.e. everything that *does* change the `self`.
@@ -726,5 +763,28 @@ mod test {
         let mut dynamic = lvl.dynamic.clone();
         let mut go = |dir| lvl.walk_to_obstacle(dir, &mut dynamic);
         assert_eq!(go(Direction::Right).unwrap_or_default().len(), 1);
+    }
+
+    #[test]
+    fn push_to_obstacle_test() {
+        let lvl: CurrentLevel = Level::parse(
+            0,
+            "#######\n\
+             # @ $.#\n\
+             #######\n",
+        )
+        .unwrap()
+        .into();
+
+        let mut dynamic = lvl.dynamic.clone();
+        let mut go = |dir| lvl.push_to_obstacle(dir, &mut dynamic);
+        assert_eq!(go(Direction::Up), Ok(vec![]));
+        assert_eq!(go(Direction::Down), Ok(vec![]));
+        assert_eq!(go(Direction::Left).unwrap_or_default().len(), 1);
+        assert_eq!(go(Direction::Right).unwrap_or_default().len(), 3);
+
+        let mut dynamic = lvl.dynamic.clone();
+        let mut go = |dir| lvl.push_to_obstacle(dir, &mut dynamic);
+        assert_eq!(go(Direction::Right).unwrap_or_default().len(), 2);
     }
 }
