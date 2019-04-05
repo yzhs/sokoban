@@ -343,6 +343,68 @@ impl CurrentLevel {
 
         Ok(moves)
     }
+
+    /// Push a crate towards a given position. That position needs to be in the same row or
+    /// column as the worker.
+    fn push_towards_position(
+        &self,
+        target_position: Position,
+        dynamic: &mut DynamicEntities,
+    ) -> Result<Vec<VerifiedMove>, FailedMove> {
+        let direction = if let DirectionResult::Neighbour { direction } =
+            direction(dynamic.worker_position, target_position)
+        {
+            direction
+        } else {
+            panic!("invalid target position: {:?}", target_position);
+        };
+        let mut moves = vec![];
+
+        while dynamic.worker_position != target_position {
+            let next_position = dynamic.worker_position.neighbour(direction);
+
+            if !self.is_empty(next_position) {
+                break;
+            }
+
+            moves.push(VerifiedMove {
+                worker_move: FromTo {
+                    from: dynamic.worker_position,
+                    to: next_position,
+                },
+                crate_move: None,
+            });
+
+            dynamic.worker_position = next_position;
+        }
+
+        while dynamic.worker_position != target_position {
+            let crate_position = dynamic.worker_position.neighbour(direction);
+            if !self.is_crate(crate_position) {
+                break;
+            }
+
+            let next_crate_position = crate_position.neighbour(direction);
+            if !self.is_empty(next_crate_position) {
+                break;
+            }
+
+            moves.push(VerifiedMove {
+                worker_move: FromTo {
+                    from: dynamic.worker_position,
+                    to: crate_position,
+                },
+                crate_move: Some(FromTo {
+                    from: crate_position,
+                    to: next_crate_position,
+                }),
+            });
+
+            dynamic.worker_position = crate_position;
+        }
+
+        Ok(moves)
+    }
 }
 
 /// Movement, i.e. everything that *does* change the `self`.
