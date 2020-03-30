@@ -456,7 +456,7 @@ impl CurrentLevel {
         if is_crate && *moves_crate {
             let new_crate_position = new_worker_position.neighbour(*direction);
 
-            if self.is_interior(new_worker_position) && dynamic.is_empty(new_crate_position) {
+            if self.is_interior(new_worker_position) && self.is_interior(new_crate_position) && dynamic.is_empty(new_crate_position) {
                 Ok(VerifiedMove {
                     worker_move: FromTo {
                         from: dynamic.worker_position,
@@ -771,6 +771,42 @@ mod test {
         assert!(&lvl.try_move(Left).is_err());
         assert!(&lvl.try_move(Up).is_err());
         assert!(&lvl.try_move(Down).is_err());
+    }
+
+    #[test]
+    fn test_cannot_move_crate_into_wall_horizontally() {
+        use self::Direction::*;
+        let mut lvl: CurrentLevel = Level::parse(
+            0,
+            "#####\n\
+             #@$.#\n\
+             #####\n",
+        )
+        .unwrap()
+        .into();
+        assert!(!&lvl.try_move(Right).is_err());
+        assert!(lvl.is_finished());
+        assert!(lvl.try_move(Right).is_err());
+    }
+
+    #[test]
+    fn test_cannot_move_crate_into_wall_vertically() {
+        use self::Direction::*;
+        let mut lvl: CurrentLevel = Level::parse(
+            0,
+            "###\n\
+             #.#\n\
+             #$#\n\
+             #@#\n\
+             ###\n",
+        )
+        .unwrap()
+        .into();
+        assert_eq!(lvl.dynamic.worker_position.x, 1);
+        assert_eq!(lvl.dynamic.worker_position.y, 3);
+        assert!(!&lvl.try_move(Up).is_err());
+        assert!(lvl.is_finished());
+        assert!(&lvl.try_move(Up).is_err());
     }
 
     #[test]
