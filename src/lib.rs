@@ -1,6 +1,5 @@
 #![feature(try_from)]
 #![cfg_attr(test, feature(plugin))]
-#![cfg_attr(test, plugin(quickcheck_macros))]
 #![warn(
     clippy::empty_enum,
     clippy::filter_map,
@@ -31,6 +30,13 @@ extern crate serde_derive;
 
 #[macro_use]
 extern crate lazy_static;
+
+#[cfg(test)]
+extern crate quickcheck;
+
+#[cfg(test)]
+#[macro_use]
+extern crate quickcheck_macros;
 
 mod collection;
 mod command;

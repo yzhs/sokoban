@@ -99,8 +99,6 @@ mod test {
 #[cfg(test)]
 impl Arbitrary for Direction {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        use rand;
-        use rand::Rng;
-        *g.choose(&DIRECTIONS).unwrap()
+        DIRECTIONS[g.next_u32() as usize % 4_usize]
     }
 }
