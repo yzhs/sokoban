@@ -2,7 +2,6 @@ use std::io;
 use std::path::PathBuf;
 
 use app_dirs::{app_dir, AppDataType, AppInfo};
-use quick_xml;
 
 pub const TITLE: &str = "Sokoban";
 

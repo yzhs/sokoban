@@ -1,4 +1,3 @@
-#![feature(try_from)]
 #![cfg_attr(test, feature(plugin))]
 #![warn(
     clippy::empty_enum,
@@ -108,7 +107,7 @@ fn gather_stats() -> Vec<CollectionStats> {
     // Find all level set files
     let mut paths: Vec<PathBuf> = fs::read_dir(ASSETS.join("levels"))
         .unwrap()
-        .map(|x| x.unwrap().path().to_owned())
+        .map(|x| x.unwrap().path())
         .collect();
     paths.sort_by(|x, y| ::natord::compare(file_stem(x), file_stem(y)));
 
