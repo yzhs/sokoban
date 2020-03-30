@@ -23,7 +23,6 @@
 extern crate glium;
 
 // Logging
-use colog;
 #[macro_use]
 extern crate log;
 
