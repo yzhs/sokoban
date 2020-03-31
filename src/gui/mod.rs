@@ -265,7 +265,7 @@ impl Gui {
         &self,
         cursor_position: &[f64],
     ) -> Option<(isize, isize)> {
-        let (offset_x, offset_y) = self.compute_offsets();;
+        let (offset_x, offset_y) = self.compute_offsets();
         let tile_size = self.tile_size();
 
         let x = ((cursor_position[0] - offset_x) / tile_size).trunc() as isize;
@@ -450,7 +450,7 @@ impl Gui {
             aspect_ratio,
         );
 
-        let txt = self.end_of_level_text();;
+        let txt = self.end_of_level_text();
 
         font_data.draw(
             target,
