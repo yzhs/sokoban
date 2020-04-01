@@ -78,7 +78,8 @@ impl Game {
         self.receiver = Some(receiver);
     }
 
-    fn set_current_level(&mut self, level: &Level) {
+    fn set_current_level(&mut self, level: &Level, rank: usize) {
+        self.rank = rank;
         self.current_level = level.into();
         for listener in &self.listeners.moves {
             self.current_level.subscribe(listener.clone());
@@ -125,8 +126,8 @@ impl Game {
         self.name = name.into();
         self.collection = Collection::parse(name)?;
         let level = self.collection.first_level().clone();
+        self.set_current_level(&level, 1);
         self.load_state(true);
-        self.set_current_level(&level);
         Ok(())
     }
 
@@ -141,7 +142,7 @@ impl Game {
                 return;
             }
         } {
-            if let Command::LoadCollection(ref name) = cmd {
+            if let Command::LevelManagement(LevelManagement::LoadCollection(ref name)) = cmd {
                 info!("Loading level collection {}.", name);
                 self.set_collection(name).unwrap();
             } else {
@@ -215,82 +216,105 @@ impl Game {
         }
     }
 
-    /// Execute whatever command we get from the frontend.
-    fn execute_helper(&mut self, command: &Command, executing_macro: bool) {
-        use crate::Command::*;
-
+    fn manage_level(&mut self, command: &LevelManagement) {
+        use crate::LevelManagement::*;
         let is_finished = self.current_level.is_finished();
 
-        if !is_finished {
-            self.send_command_to_macros(command, executing_macro);
-        }
-
         match *command {
-            Move(dir) if !is_finished => {
-                if let Err(event) = self.current_level.try_move(dir) {
-                    self.listeners.notify_move(&event);
-                }
-            }
-            MoveAsFarAsPossible {
-                direction,
-                may_push_crate,
-            } if !is_finished => self
-                .current_level
-                .move_as_far_as_possible(direction, may_push_crate),
-            MoveToPosition {
-                position,
-                may_push_crate,
-            } if !is_finished => {
-                self.current_level.move_to(position, may_push_crate);
-            }
-
-            MoveCrateToTarget { from, to } => {
-                info!(
-                    "Trying to move crate at position ({},{}) to position ({},{})",
-                    from.x, from.y, to.x, to.y
-                );
-                self.current_level.move_crate_to_target(from, to);
-            }
-
-            Undo if !is_finished => {
-                self.current_level.undo();
-            }
-            Redo if !is_finished => {
-                self.current_level.redo();
-            }
-            ResetLevel => self.reset_current_level(),
-
-            NextLevel => self.next_level().unwrap(),
+            ResetLevel => self.reset_level(),
+            NextLevel if !is_finished => self.next_level().unwrap(),
             PreviousLevel => self.previous_level().unwrap(),
 
-            Save => {
+            Save if !is_finished => {
                 let _ = self.save().unwrap();
             }
 
-            RecordMacro(slot) => {
+            // This is handled inside Game and never passed to this method.
+            LoadCollection(_) => unreachable!(),
+
+            _ => {}
+        };
+    }
+
+    fn execute_movement(&mut self, movement: &Movement) {
+        use crate::Movement::*;
+
+        match *movement {
+            Step { direction } => self.current_level.step(direction),
+            WalkTillObstacle { direction } => {
+                self.current_level.move_as_far_as_possible(direction, false)
+            }
+            PushTillObstacle { direction } => {
+                self.current_level.move_as_far_as_possible(direction, true)
+            }
+            WalkTowards { position } => {
+                self.current_level.move_to(position, false);
+            }
+            PushTowards { position } => {
+                self.current_level.move_to(position, true);
+            }
+            WalkToPosition { position } => {
+                self.current_level.move_to(position, false);
+            }
+            MoveCrateToTarget { from, to } => {
+                self.current_level.move_crate_to_target(from, to);
+            }
+
+            Undo => {
+                self.current_level.undo();
+            }
+            Redo => {
+                self.current_level.redo();
+            }
+        }
+    }
+
+    pub fn macro_command(&mut self, macro_command: &Macro) {
+        use crate::Macro::*;
+
+        match *macro_command {
+            Execute(slot) => self.execute_macro(slot),
+            Record(slot) => {
                 self.macros.start_recording(slot);
             }
-            StoreMacro => {
+            Store => {
                 let len = self.macros.stop_recording();
                 if len != 0 {
                     self.listeners.notify_move(&Event::MacroDefined);
                 }
             }
-            ExecuteMacro(slot) => self.execute_macro(slot),
+        }
+    }
 
-            // This is handled inside Game and never passed to this method.
-            LoadCollection(_) => unreachable!(),
+    /// Execute whatever command we get from the frontend.
+    fn execute_helper(&mut self, command: &Command, executing_macro: bool) {
+        use crate::Command::*;
 
-            Nothing
-            | Move(_)
-            | MoveAsFarAsPossible { .. }
-            | MoveToPosition { .. }
-            | Undo
-            | Redo => {}
-        };
+        let is_finished = self.current_level.is_finished();
+        if is_finished {
+            if let Command::LevelManagement(cmd) = command {
+                self.manage_level(cmd);
+            }
+        } else {
+            self.send_command_to_macros(command, executing_macro);
+
+            match *command {
+                Nothing => {}
+                Movement(ref movement) => self.execute_movement(movement),
+                LevelManagement(ref level_management) => self.manage_level(level_management),
+                Macro(ref m) => self.macro_command(m),
+            }
+        }
+
         if self.current_level.is_finished() {
             if self.rank() == self.collection.number_of_levels() {
                 self.state.collection_solved = true;
+            }
+            if !is_finished {
+                let len = self.macros.stop_recording();
+                if len != 0 {
+                    self.listeners.notify_move(&Event::MacroDefined);
+                }
             }
 
             // TODO Emit the events in one of the move() functions?
@@ -309,11 +333,7 @@ impl Game {
     fn execute_macro(&mut self, slot: u8) {
         // NOTE We have to clone the commands so we can borrow self mutably in the loop.
         let cmds = self.macros.get(slot).to_owned();
-        cmds.iter().for_each(|cmd| self.execute_macro_command(cmd));
-    }
-
-    fn execute_macro_command(&mut self, command: &Command) {
-        self.execute_helper(command, true);
+        cmds.iter().for_each(|cmd| self.execute_helper(cmd, true));
     }
 
     // Helpers for Collection::execute
@@ -323,9 +343,9 @@ impl Game {
     }
 
     /// Replace the current level by a clean copy.
-    fn reset_current_level(&mut self) {
+    fn reset_level(&mut self) {
         let current_level = self.get_level(self.rank());
-        self.set_current_level(&current_level);
+        self.set_current_level(&current_level, self.rank);
     }
 
     /// If `current_level` is finished, switch to the next level.
@@ -337,8 +357,8 @@ impl Game {
         let current_level_has_been_solved_before = n <= self.state.number_of_levels();
 
         if !is_last_level && (current_level_is_solved_now || current_level_has_been_solved_before) {
-            let next_level = self.get_level(self.rank() + 1);
-            self.set_current_level(&next_level);
+            let next_level = self.get_level(n + 1);
+            self.set_current_level(&next_level, n + 1);
             Ok(())
         } else if is_last_level {
             Err(NextLevelError::EndOfCollection)
@@ -354,13 +374,18 @@ impl Game {
             Err(())
         } else {
             let previous_level = self.get_level(n - 1);
-            self.set_current_level(&previous_level);
+            self.set_current_level(&previous_level, n - 1);
             Ok(())
         }
     }
 
     /// Load state stored on disc.
     fn load_state(&mut self, parse_levels: bool) {
+        info!(
+            "Loading collection state for collection={}...",
+            self.collection.short_name()
+        );
+
         // DEBT this is horrible, clean it up
         let state: CollectionState;
         if parse_levels {
@@ -369,7 +394,7 @@ impl Game {
                 let n = state.levels_finished();
 
                 let lvl = self.get_level(n + 1);
-                self.set_current_level(&lvl);
+                self.set_current_level(&lvl, n + 1);
                 self.rank = n + 1;
 
                 if n < state.number_of_levels() {
@@ -391,6 +416,12 @@ impl Game {
             state = CollectionState::load_stats(self.collection.short_name());
         }
         self.state = state;
+
+        info!(
+            "Successfully loaded collection state for collection={}: currently at level {:?}",
+            self.collection.short_name(),
+            self.state.levels_solved + 1,
+        );
     }
 
     /// Save the state of this collection including the state of the current level.
@@ -448,34 +479,57 @@ mod tests {
         assert_eq!(game.collection.number_of_levels(), 50);
         assert_eq!(game.collection.short_name(), name);
 
-        assert!(exec_ok(&mut game, &receiver, Command::Move(Up)));
         assert!(exec_ok(
             &mut game,
             &receiver,
-            Command::MoveAsFarAsPossible {
-                direction: Left,
-                may_push_crate: true
-            },
+            Command::Movement(Movement::Step { direction: Up })
         ));
-        assert!(!exec_ok(&mut game, &receiver, Command::Move(Left)));
-        assert!(exec_ok(&mut game, &receiver, Command::ResetLevel));
         assert!(exec_ok(
             &mut game,
             &receiver,
-            Command::MoveToPosition {
+            Command::Movement(Movement::PushTillObstacle { direction: Left }),
+        ));
+        assert!(!exec_ok(
+            &mut game,
+            &receiver,
+            Command::Movement(Movement::Step { direction: Left })
+        ));
+        assert!(exec_ok(
+            &mut game,
+            &receiver,
+            Command::LevelManagement(LevelManagement::ResetLevel)
+        ));
+        assert!(exec_ok(
+            &mut game,
+            &receiver,
+            Command::Movement(Movement::WalkToPosition {
                 position: Position::new(8_usize, 4),
-                may_push_crate: false
-            },
+            }),
         ));
         assert_eq!(game.current_level.number_of_moves(), 7);
-        assert!(exec_ok(&mut game, &receiver, Command::Move(Left)));
+        assert!(exec_ok(
+            &mut game,
+            &receiver,
+            Command::Movement(Movement::Step { direction: Left })
+        ));
         assert_eq!(game.current_level.number_of_pushes(), 1);
 
         assert_eq!(game.current_level.moves_to_string(), "ullluuuL");
-        assert!(exec_ok(&mut game, &receiver, Command::Undo));
+
+        assert!(exec_ok(
+            &mut game,
+            &receiver,
+            Command::Movement(Movement::Undo)
+        ));
+
         assert_eq!(game.current_level.all_moves_to_string(), "ullluuuL");
         assert_eq!(game.current_level.moves_to_string(), "ullluuu");
-        assert!(exec_ok(&mut game, &receiver, Command::Redo));
+        assert_eq!(game.current_level.number_of_pushes(), 0);
+        assert!(exec_ok(
+            &mut game,
+            &receiver,
+            Command::Movement(Movement::Redo)
+        ));
         assert_eq!(game.current_level.number_of_pushes(), 1);
     }
 
@@ -538,15 +592,35 @@ mod tests {
         move_dirs.truncate(10);
 
         let num_moves = move_dirs.len();
-        for dir in move_dirs {
-            game.execute_helper(&Command::Move(dir), false);
+        for direction in move_dirs {
+            game.execute_helper(&Command::Movement(Movement::Step { direction }), false);
         }
         for _ in 0..num_moves {
-            game.execute_helper(&Command::Undo, false);
+            game.execute_helper(&Command::Movement(Movement::Undo), false);
         }
 
         let current_lvl = game.current_level();
         current_lvl.worker_position() == lvl.worker_position()
             && current_lvl.number_of_moves() == lvl.number_of_moves()
+    }
+
+    #[test]
+    fn test_undo() {
+        let mut game = create_game();
+        let worker_position = game.worker_position();
+        let number_of_moves = game.number_of_moves();
+
+        game.execute_helper(
+            &Command::Movement(Movement::Step {
+                direction: Direction::Down,
+            }),
+            false,
+        );
+        game.execute_helper(&Command::Movement(Movement::Undo), false);
+
+        let current_lvl = game.current_level();
+
+        assert_eq!(current_lvl.worker_position(), worker_position);
+        assert_eq!(current_lvl.number_of_moves(), number_of_moves);
     }
 }

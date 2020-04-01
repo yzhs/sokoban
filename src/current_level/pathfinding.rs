@@ -19,9 +19,9 @@ impl CurrentLevel {
         let columns = self.columns();
         let rows = self.rows();
 
-        if self.worker_position == to || !self.is_empty(to) {
+        if self.dynamic.worker_position == to || !self.is_empty(to) {
             return Some(Path {
-                start: self.worker_position,
+                start: self.dynamic.worker_position,
                 steps: vec![],
             });
         }
@@ -34,7 +34,7 @@ impl CurrentLevel {
         queue.push_back(to);
 
         while let Some(pos) = queue.pop_front() {
-            if pos == self.worker_position {
+            if pos == self.dynamic.worker_position {
                 path_exists = true;
                 break;
             }
@@ -57,12 +57,12 @@ impl CurrentLevel {
         }
 
         let mut path = Path {
-            start: self.worker_position,
+            start: self.dynamic.worker_position,
             steps: vec![],
         };
 
         // Move worker along the path
-        let mut pos = self.worker_position;
+        let mut pos = self.dynamic.worker_position;
         while pos != to {
             for neighbour in self.empty_neighbours(pos) {
                 if distances[self.index(neighbour)] < distances[self.index(pos)] {
@@ -84,7 +84,7 @@ impl CurrentLevel {
 
     /// Follow the given path, if any.
     pub fn follow_path(&mut self, path: Path) {
-        assert_eq!(self.worker_position, path.start);
+        assert_eq!(self.dynamic.worker_position, path.start);
         for Move { direction, .. } in path.steps {
             let is_ok = self.try_move(direction).is_ok();
             assert!(is_ok);
@@ -113,7 +113,10 @@ impl CurrentLevel {
         self.try_move(crate_path.steps[0].direction).ok().unwrap();
 
         for i in 1..crate_path.steps.len() {
-            let crate_position = self.worker_position.neighbour(self.worker_direction());
+            let crate_position = self
+                .dynamic
+                .worker_position
+                .neighbour(self.worker_direction());
             self.move_worker_into_position(crate_position, &crate_path.steps[i])?;
             self.try_move(crate_path.steps[i].direction).ok().unwrap();
         }
@@ -178,14 +181,14 @@ impl CurrentLevel {
     }
 
     fn is_valid_for_path_with_crate(&self, from: Position, to: Position) -> Option<()> {
-        if from == to || !self.crates.contains_key(&from) || !self.is_empty(to) {
+        if from == to || !self.dynamic.crates.contains_key(&from) || !self.is_empty(to) {
             warn!(
                 "Cannot move crate from ({},{}) to ({},{}):",
                 from.x, from.y, to.x, to.y
             );
             if from == to {
                 warn!("same position");
-            } else if !self.crates.contains_key(&from) {
+            } else if !self.dynamic.crates.contains_key(&from) {
                 warn!("source is not a crate");
             } else {
                 warn!("target is not empty");
@@ -266,7 +269,7 @@ mod tests {
 
         sut.push_crate_along_path(path);
 
-        assert_eq!(sut.worker_position, Position { x: 19, y: 1 });
+        assert_eq!(sut.dynamic.worker_position, Position { x: 19, y: 1 });
     }
 
     #[test]
@@ -300,6 +303,6 @@ mod tests {
 
         sut.push_crate_along_path(path);
 
-        assert_eq!(sut.worker_position, Position { x: 3, y: 2 });
+        assert_eq!(sut.dynamic.worker_position, Position { x: 3, y: 2 });
     }
 }

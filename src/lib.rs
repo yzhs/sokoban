@@ -48,6 +48,7 @@ mod macros;
 mod move_;
 mod position;
 pub mod save;
+mod undo;
 mod util;
 
 use std::fs;
@@ -106,7 +107,7 @@ fn gather_stats() -> Vec<CollectionStats> {
     // Find all level set files
     let mut paths: Vec<PathBuf> = fs::read_dir(ASSETS.join("levels"))
         .unwrap()
-        .map(|x| x.unwrap().path().to_owned())
+        .map(|x| x.unwrap().path())
         .collect();
     paths.sort_by(|x, y| ::natord::compare(file_stem(x), file_stem(y)));
 

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::command::*;
+use crate::current_level::{BlockedEntity, FailedMove};
 use crate::direction::Direction;
 use crate::level::Background;
 use crate::position::Position;
@@ -52,5 +53,16 @@ impl Event {
             | MacroDefined => false,
             _ => true,
         }
+    }
+}
+
+impl From<FailedMove> for Event {
+    fn from(failed_move: FailedMove) -> Self {
+        let with_crate = if let BlockedEntity::Crate = failed_move.thing_blocked {
+            true
+        } else {
+            false
+        };
+        Event::CannotMove(WithCrate(with_crate), failed_move.obstacle_type)
     }
 }

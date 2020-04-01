@@ -79,15 +79,17 @@ impl CollectionState {
     }
 
     fn load_cbor(path: &Path, stats_only: bool) -> Option<Self> {
-        let file = File::open(path.with_extension("cbor")).ok();
+        let file = File::open(path.with_extension("cbor")).ok()?;
 
-        if stats_only {
-            let stats: Option<StatsOnlyCollectionState> =
-                file.and_then(|file| ::serde_cbor::from_reader(file).ok());
-            stats.map(Self::from_stats)
+        let result = if stats_only {
+            let stats: StatsOnlyCollectionState =
+                serde_cbor::from_reader(file).expect("Could not read cbor file");
+            Self::from_stats(stats)
         } else {
-            file.and_then(|file| ::serde_cbor::from_reader(file).ok())
-        }
+            serde_cbor::from_reader(file).expect("Could not read cbor file")
+        };
+
+        Some(result)
     }
 
     /// Save the current state to disc.

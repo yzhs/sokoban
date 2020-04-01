@@ -243,7 +243,8 @@ impl Gui {
             let target = backend::Position { x, y };
             if mouse_button == MouseButton::Left && modifiers.alt {
                 if let Some(from) = input_state.clicked_crate {
-                    let result = Command::MoveCrateToTarget { from, to: target };
+                    let result =
+                        Command::Movement(Movement::MoveCrateToTarget { from, to: target });
                     input_state.clicked_crate = None;
                     result
                 } else {
@@ -251,9 +252,20 @@ impl Gui {
                     Command::Nothing
                 }
             } else {
-                Command::MoveToPosition {
-                    position: target,
-                    may_push_crate: mouse_button == MouseButton::Right,
+                let worker = self.worker_position;
+                let same_row_or_column = target.x == worker.x || target.y == worker.y;
+                let can_move_crate = mouse_button == MouseButton::Right;
+
+                match (same_row_or_column, can_move_crate) {
+                    (true, true) => Command::Movement(Movement::PushTowards { position: target }),
+                    (true, false) => Command::Movement(Movement::WalkTowards { position: target }),
+                    (false, false) => {
+                        Command::Movement(Movement::WalkToPosition { position: target })
+                    }
+                    (false, true) => {
+                        warn!("Cannot push crate to a different row and column.");
+                        Command::Nothing
+                    }
                 }
             }
         } else {
@@ -405,9 +417,6 @@ impl Gui {
 
     /// Draw an overlay with some statistics.
     fn draw_end_of_level_overlay<S: Surface>(&self, target: &mut S) {
-        use self::texture::{DARKEN_SHADER, VERTEX_SHADER};
-        use glium::Program;
-
         let program =
             Program::from_source(&self.display, VERTEX_SHADER, DARKEN_SHADER, None).unwrap();
 
@@ -746,7 +755,7 @@ impl Gui {
                     | WindowEvent::MouseInput { .. }
                         if self.level_solved() =>
                     {
-                        cmd = Command::NextLevel
+                        cmd = Command::LevelManagement(LevelManagement::NextLevel)
                     }
                     WindowEvent::KeyboardInput {
                         input:
