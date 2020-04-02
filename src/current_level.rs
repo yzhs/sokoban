@@ -1,7 +1,7 @@
 pub mod graph;
 pub mod pathfinding;
 
-use std::{collections::HashMap, fmt, sync::mpsc::Sender};
+use std::{collections::{HashMap, HashSet}, fmt, sync::mpsc::Sender};
 
 use crate::command::Obstacle;
 use crate::direction::*;
@@ -36,12 +36,58 @@ impl DynamicEntities {
 }
 
 #[derive(Clone)]
+pub struct BackgroundEntities {
+    /// Positions of cells containing a wall
+    walls: HashSet<Position>,
+
+    /// Positions of cells containing a goal
+    goals: HashSet<Position>,
+
+    /// Positions of cells containing an empty floor
+    floor: HashSet<Position>,
+}
+
+impl BackgroundEntities {
+    pub fn new(level: &Level) -> Self {
+        let to_position= |i: usize| {
+            Position::new(i % level.columns, i / level.columns)
+        };
+        let walls = level.background.iter().enumerate().filter(|(_, &b)| b == Background::Wall).map(|(i, _)| to_position(i)).collect();
+        let goals = level.background.iter().enumerate().filter(|(_, &b)| b == Background::Goal).map(|(i, _)| to_position(i)).collect();
+        let floor = level.background.iter().enumerate().filter(|(_, &b)| b == Background::Floor).map(|(i, _)| to_position(i)).collect();
+        Self {walls, goals, floor}
+    }
+
+    pub fn is_outside(&self, pos: &Position) -> bool {
+        !self.walls.contains(pos) &&
+        !self.goals.contains(pos) &&
+        !self.floor.contains(pos)
+    }
+
+    pub fn is_interior(&self, pos: &Position) -> bool {
+        self.goals.contains(pos) ||
+        self.floor.contains(pos)
+    }
+
+    pub fn to_background(&self, pos: &Position) -> Background {
+        if self.floor.contains(pos) {
+            Background::Floor
+        } else if self.walls.contains(pos) {
+            Background::Wall
+        } else if self.goals.contains(pos) {
+            Background::Goal
+        } else {
+            Background::Empty
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct CurrentLevel {
     columns: usize,
     rows: usize,
 
-    /// `columns * rows` cells’ backgrounds in row-major order
-    background: Vec<Background>,
+    background: BackgroundEntities,
 
     dynamic: DynamicEntities,
 
@@ -72,10 +118,6 @@ impl CurrentLevel {
         Position::new(i % self.columns, i / self.columns)
     }
 
-    pub fn background(&self, pos: Position) -> &Background {
-        &self.background[self.index(pos)]
-    }
-
     /// A vector of all neighbours of the cell with the given position that contain neither a wall
     /// nor a crate.
     fn empty_neighbours(&self, position: Position) -> Vec<Position> {
@@ -101,7 +143,7 @@ impl CurrentLevel {
     }
 
     pub fn is_outside(&self, pos: Position) -> bool {
-        !self.in_bounds(pos) || *self.background(pos) == Background::Empty
+        !self.in_bounds(pos) || self.background.is_outside(&pos)
     }
 
     /// Is the cell with the given coordinates empty, i.e. could a crate be moved into it?
@@ -111,16 +153,7 @@ impl CurrentLevel {
 
     /// The cell at the given position is neither empty, nor does it contain a wall.
     pub fn is_interior(&self, pos: Position) -> bool {
-        use self::Background::*;
-
-        if !self.in_bounds(pos) {
-            return false;
-        }
-
-        match *self.background(pos) {
-            Floor | Goal => true,
-            _ => false,
-        }
+        self.in_bounds(pos) && self.background.is_interior(&pos)
     }
 
     /// Check whether the given level is completed, i.e. every goal has a crate on it, and every
@@ -161,8 +194,12 @@ impl CurrentLevel {
         crates.into_iter().map(|(&pos, _id)| pos).collect()
     }
 
-    pub fn background_cells(&self) -> &[Background] {
-        self.background.as_ref()
+    pub fn background(&self, pos: Position) -> Background {
+        self.background.to_background(&pos)
+    }
+
+    pub fn background_cells(&self) -> Vec<Background> {
+        (0..self.columns*self.rows).map(|i| self.background(self.position(i))).collect()
     }
 }
 // }}}
@@ -231,10 +268,10 @@ impl CurrentLevel {
         });
         self.dynamic.crates.insert(to, id);
 
-        if self.background(from) == &Background::Goal {
+        if self.background(from) == Background::Goal {
             self.dynamic.empty_goals += 1;
         }
-        if self.background(to) == &Background::Goal {
+        if self.background(to) == Background::Goal {
             self.dynamic.empty_goals -= 1;
         }
 
@@ -468,7 +505,7 @@ impl CurrentLevel {
                     }),
                 })
             } else {
-                let obstacle = match *self.background(new_crate_position) {
+                let obstacle = match self.background(new_crate_position) {
                     Background::Wall => Obstacle::Wall,
                     _ => Obstacle::Crate,
                 };
@@ -685,8 +722,8 @@ impl fmt::Display for CurrentLevel {
                 writeln!(f)?;
             }
             for j in 0..columns {
-                let background = self.background[j + i * self.columns];
                 let pos = Position::new(j, i);
+                let background = self.background(pos);
                 let foreground = if self.dynamic.worker_position == pos {
                     Foreground::Worker
                 } else if self.is_crate(pos) {
@@ -714,7 +751,7 @@ impl From<&Level> for CurrentLevel {
         let mut result = Self {
             columns: level.columns,
             rows: level.rows,
-            background: level.background.clone(),
+            background: BackgroundEntities::new(level),
             dynamic,
 
             undo: Undo::new(),
@@ -726,7 +763,7 @@ impl From<&Level> for CurrentLevel {
             .dynamic
             .crates
             .keys()
-            .filter(|&&pos| result.background(pos) != &Background::Goal)
+            .filter(|&&pos| result.background(pos) != Background::Goal)
             .count();
 
         result

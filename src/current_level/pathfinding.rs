@@ -163,7 +163,7 @@ impl CurrentLevel {
     /// Print a simple ASCII version of a graph in the context of the current level.
     fn visualise_graph(&self, graph: &Graph<Position>) {
         let mut line = "".to_string();
-        for (index, &bg) in self.background.iter().enumerate() {
+        for (index, &bg) in self.background_cells().iter().enumerate() {
             let pos = self.position(index);
             let c = if graph.neighbours.contains_key(&pos) {
                 '.'
