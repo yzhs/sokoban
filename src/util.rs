@@ -1,17 +1,15 @@
 use std::io;
 use std::path::PathBuf;
 
-use app_dirs::{app_dir, AppDataType, AppInfo};
+use directories::{ProjectDirs};
 
 pub const TITLE: &str = "Sokoban";
 
-const APP_INFO: AppInfo = AppInfo {
-    name: "sokoban",
-    author: "yzhs",
-};
-
 lazy_static! {
-    pub static ref DATA_DIR: PathBuf = app_dir(AppDataType::UserData, &APP_INFO, "").unwrap();
+    pub static ref DATA_DIR: PathBuf = {
+        let proj_dirs = ProjectDirs::from("de", "yzhs", "sokoban").unwrap();
+        proj_dirs.data_dir().into()
+    };
 
     /// Path to the assets directory
     pub static ref ASSETS: PathBuf = ::find_folder::Search::ParentsThenKids(3, 3)

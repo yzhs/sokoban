@@ -12,7 +12,7 @@ test = false
 [dependencies]
 glium = "0.22"
 ansi_term = "0.12.1"
-app_dirs = "1.2.1"
+directories = "4.0.1"
 clap = "2.33.0"
 colog = "1.0.0"
 failure = "0.1.7"
