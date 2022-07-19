@@ -1,13 +1,10 @@
-mod font;
 mod inputstate;
 mod sprite;
-mod text_objects;
 mod texture;
 
 use std::{
     cmp::min,
     collections::VecDeque,
-    rc::Rc,
     sync::mpsc::{channel, Receiver},
     thread, time,
 };
@@ -25,10 +22,8 @@ use glium::{
 
 use crate::backend;
 use crate::backend::*;
-use crate::gui::font::{FontData, FontStyle};
 use crate::gui::inputstate::*;
 use crate::gui::sprite::*;
-use crate::gui::text_objects::*;
 use crate::gui::texture::*;
 
 /// All we ever do is draw rectangles created from two triangles each, so we don’t need any other
@@ -75,9 +70,9 @@ pub struct Gui {
     display: Display,
     events_loop: glutin::EventsLoop,
     params: glium::DrawParameters<'static>,
-    font_data: Rc<FontData>,
-    text_object_manager: TextObjectManager,
-    stats_text_handle: TextObjectHandle,
+    // font_data: Rc<FontData>,
+    // text_object_manager: TextObjectManager,
+    // stats_text_handle: TextObjectHandle,
 
     matrix: [[f32; 4]; 4],
 
@@ -100,15 +95,6 @@ pub struct Gui {
     events: Receiver<backend::Event>,
 }
 
-fn init_stats_text(font_data: &Rc<FontData>) -> (TextObjectManager, TextObjectHandle) {
-    let mut text_object_manager = TextObjectManager::new(font_data.clone());
-    let position = [0.2, -0.9];
-    let scale = 0.025;
-    let stats_text_handle =
-        text_object_manager.create_text_object(position, scale, FontStyle::Mono, "");
-    (text_object_manager, stats_text_handle)
-}
-
 /// Constructor and getters
 impl Gui {
     /// Initialize the `Gui` struct by setting default values, and loading a collection and
@@ -124,11 +110,11 @@ impl Gui {
         display.gl_window().set_cursor(glutin::MouseCursor::Default);
 
         let textures = Textures::new(&display);
-        let font_data = Rc::new(FontData::new(
-            &display,
-            ASSETS.join("FiraSans-Regular.ttf"),
-            ASSETS.join("FiraMono-Regular.ttf"),
-        ));
+        // let font_data = Rc::new(FontData::new(
+        //     &display,
+        //     ASSETS.join("FiraSans-Regular.ttf"),
+        //     ASSETS.join("FiraMono-Regular.ttf"),
+        // ));
         let program = Program::from_source(
             &display,
             texture::VERTEX_SHADER,
@@ -142,7 +128,7 @@ impl Gui {
             ..Default::default()
         };
 
-        let (text_object_manager, stats_text_handle) = init_stats_text(&font_data);
+        // let (text_object_manager, stats_text_handle) = init_stats_text(&font_data);
 
         let worker = Sprite::new(game.worker_position(), texture::TileKind::Worker);
         // FIXME code duplicated from Gui::update_sprites()
@@ -170,9 +156,9 @@ impl Gui {
             display,
             events_loop,
             params,
-            font_data,
-            text_object_manager,
-            stats_text_handle,
+            // font_data,
+            // text_object_manager,
+            // stats_text_handle,
 
             matrix: IDENTITY,
             program,
@@ -432,43 +418,43 @@ impl Gui {
         let aspect_ratio = self.window_aspect_ratio();
 
         // Print text
-        let font_data = &self.font_data;
-        font_data.draw(
-            target,
-            "Congratulations!",
-            FontStyle::Heading,
-            0.08,
-            [-0.5, 0.2],
-            aspect_ratio,
-        );
+        // let font_data = &self.font_data;
+        // font_data.draw(
+        //     target,
+        //     "Congratulations!",
+        //     FontStyle::Heading,
+        //     0.08,
+        //     [-0.5, 0.2],
+        //     aspect_ratio,
+        // );
 
-        let stats_text = format!(
-            "You have finished the level {} using {} moves, \
-             {} of which moved a crate.",
-            self.rank,
-            self.game.number_of_moves(),
-            self.game.number_of_pushes()
-        );
+        // let stats_text = format!(
+        //     "You have finished the level {} using {} moves, \
+        //      {} of which moved a crate.",
+        //     self.rank,
+        //     self.game.number_of_moves(),
+        //     self.game.number_of_pushes()
+        // );
 
-        font_data.draw(
-            target,
-            &stats_text,
-            FontStyle::Text,
-            0.035,
-            [-0.5, -0.2],
-            aspect_ratio,
-        );
+        // font_data.draw(
+        //     target,
+        //     &stats_text,
+        //     FontStyle::Text,
+        //     0.035,
+        //     [-0.5, -0.2],
+        //     aspect_ratio,
+        // );
 
-        let txt = self.end_of_level_text();
+        // let txt = self.end_of_level_text();
 
-        font_data.draw(
-            target,
-            txt,
-            FontStyle::Text,
-            0.035,
-            [-0.5, -0.4],
-            aspect_ratio,
-        );
+        // font_data.draw(
+        //     target,
+        //     txt,
+        //     FontStyle::Text,
+        //     0.035,
+        //     [-0.5, -0.4],
+        //     aspect_ratio,
+        // );
     }
 
     fn end_of_level_text(&self) -> &str {
@@ -523,14 +509,14 @@ impl Gui {
 
     fn update_statistics_text(&mut self) {
         let text = self.statistics_text();
-        self.text_object_manager
-            .set_text(self.stats_text_handle, &text);
+        // self.text_object_manager
+        //     .set_text(self.stats_text_handle, &text);
     }
 
     fn draw_statistics_overlay<S: glium::Surface>(&mut self, target: &mut S) {
         let aspect_ratio = self.window_aspect_ratio();
-        self.text_object_manager
-            .draw_text_objects(target, aspect_ratio);
+        // self.text_object_manager
+        //     .draw_text_objects(target, aspect_ratio);
     }
 
     /// Render the current level.
