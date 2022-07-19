@@ -34,7 +34,7 @@ pub fn load(display: &dyn Facade, name: &str) -> Texture2d {
     let mut path = ASSETS.join("images");
     path.push(name);
     path.set_extension("png");
-    let image = image::open(path).unwrap().to_rgba();
+    let image = image::open(path).unwrap().into_rgba16();
     let image_dimensions = image.dimensions();
     let image =
         glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
