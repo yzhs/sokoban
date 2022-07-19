@@ -30,11 +30,15 @@ extern crate log;
 #[macro_use]
 extern crate lazy_static; // Mutable globals
 
+use backend::{LevelManagement, Command};
+use glium::glutin::{self, dpi, event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent}};
+
 use sokoban_backend as backend;
 
 mod gui;
+use crate::gui::inputstate::*;
 
-use std::env;
+use std::{env, collections::VecDeque, sync::mpsc::channel};
 
 use crate::backend::{
     convert_savegames, print_collections_table, print_stats, Collection, Game, TITLE,
@@ -96,6 +100,111 @@ fn main() {
 
     let collection = Collection::parse(&collection_name).expect("Failed to load level set");
     let game = Game::new(collection);
-    let gui = Gui::new(game);
-    gui.main_loop();
+    let event_loop = glutin::event_loop::EventLoop::new();
+    let mut gui = Gui::new(game, &event_loop);
+
+    let mut queue = VecDeque::new();
+    let mut input_state: InputState = Default::default();
+    let (sender, receiver) = channel();
+
+    gui.game.listen_to(receiver);
+
+    use glium::glutin::event::ElementState::*;
+
+    event_loop
+        .run(move |ev: Event<()>, _window, _controlFlow| match ev {
+            Event::WindowEvent { event, .. } => {
+                let mut cmd = Command::Nothing;
+
+                match event {
+                    WindowEvent::CloseRequested
+                    | WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                state: Pressed,
+                                virtual_keycode: Some(VirtualKeyCode::Q),
+                                ..
+                            },
+                        ..
+                    } => return,
+
+                    WindowEvent::KeyboardInput {
+                        input: KeyboardInput { state: Pressed, .. },
+                        ..
+                    }
+                    | WindowEvent::MouseInput { .. }
+                        if gui.level_solved() =>
+                    {
+                        cmd = Command::LevelManagement(LevelManagement::NextLevel)
+                    }
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                state: Pressed,
+                                virtual_keycode: Some(key),
+                                modifiers,
+                                ..
+                            },
+                        ..
+                    } => cmd = input_state.press_to_command(key, modifiers),
+
+                    WindowEvent::CursorMoved {
+                        position: dpi::PhysicalPosition { x, y },
+                        ..
+                    } => input_state.cursor_position = [x, y],
+                    WindowEvent::MouseInput {
+                        state: Released,
+                        button: btn,
+                        modifiers,
+                        ..
+                    } => cmd = gui.click_to_command(btn, modifiers, &mut input_state),
+
+                    WindowEvent::Resized(new_size) => {
+                        gui.window_size = [new_size.width, new_size.height];
+                        gui.background_texture = None;
+                        gui.need_to_redraw = true;
+                    }
+
+                    //WindowEvent::Refresh => gui.need_to_redraw = true,
+
+                    _ => (),
+                }
+
+                sender.send(cmd).unwrap();
+
+                gui.game.execute();
+            },
+
+            Event::RedrawRequested(_) => {
+                gui.render();
+
+                // We need to move the events from the channel into a deque so we can figure out how
+                // many events are left. This information is needed to adjust the animation speed if a
+                // large number of events is pending.
+                gui.events
+                    .try_iter()
+                    .for_each(|event| queue.push_back(event));
+                gui.handle_responses(&mut queue);
+            }
+
+            Event::Resumed
+            | Event::Suspended { .. }
+            | Event::DeviceEvent { .. }
+            | Event::NewEvents(_)
+            | Event::UserEvent(_)
+            | Event::MainEventsCleared
+            | Event::RedrawEventsCleared
+            | Event::LoopDestroyed => {
+                gui.render();
+
+                // We need to move the events from the channel into a deque so we can figure out how
+                // many events are left. This information is needed to adjust the animation speed if a
+                // large number of events is pending.
+                gui.events
+                    .try_iter()
+                    .for_each(|event| queue.push_back(event));
+                gui.handle_responses(&mut queue);
+            }
+        });
+
 }

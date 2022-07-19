@@ -1,4 +1,4 @@
-mod inputstate;
+pub mod inputstate;
 mod sprite;
 mod texture;
 
@@ -6,15 +6,13 @@ use std::{
     cmp::min,
     collections::VecDeque,
     sync::mpsc::{channel, Receiver},
-    thread, time,
 };
 
 use glium::{
     self,
     backend::glutin::Display,
-    glutin::{
-        self, dpi, Event, KeyboardInput, ModifiersState, MouseButton, VirtualKeyCode, WindowEvent,
-    },
+    glutin::{self, dpi},
+    glutin::event::{ModifiersState, MouseButton},
     index::{NoIndices, PrimitiveType},
     texture::Texture2d,
     Program, Surface,
@@ -52,62 +50,62 @@ enum State {
 pub struct Gui {
     // Game state
     /// The main back end data structure.
-    game: Game,
+    pub game: Game,
 
-    rank: usize,
-    rows: usize,
-    columns: usize,
+    pub rank: usize,
+    pub rows: usize,
+    pub columns: usize,
 
-    worker_position: backend::Position,
-    worker_direction: backend::Direction,
+    pub worker_position: backend::Position,
+    pub worker_direction: backend::Direction,
 
     /// Is the current level the last of this collection.
-    is_last_level: bool,
+    pub is_last_level: bool,
 
     state: State,
 
     // Graphics
-    display: Display,
-    events_loop: glutin::EventsLoop,
-    params: glium::DrawParameters<'static>,
+    pub display: Display,
+    pub params: glium::DrawParameters<'static>,
     // font_data: Rc<FontData>,
     // text_object_manager: TextObjectManager,
     // stats_text_handle: TextObjectHandle,
+    pub matrix: [[f32; 4]; 4],
 
-    matrix: [[f32; 4]; 4],
-
-    program: Program,
+    pub program: Program,
 
     /// The size of the window in pixels as `[width, height]`.
-    window_size: [u32; 2],
+    pub window_size: [u32; 2],
 
     /// Tile textures, i.e. wall, worker, crate, etc.
-    textures: Textures,
+    pub textures: Textures,
 
     /// Pre-rendered static part of the current level, i.e. walls, floors and goals.
-    background_texture: Option<Texture2d>,
+    pub background_texture: Option<Texture2d>,
 
-    worker: Sprite,
-    crates: Vec<Sprite>,
+    pub worker: Sprite,
+    pub crates: Vec<Sprite>,
 
-    need_to_redraw: bool,
+    pub need_to_redraw: bool,
 
-    events: Receiver<backend::Event>,
+    pub events: Receiver<backend::Event>,
 }
 
 /// Constructor and getters
 impl Gui {
     /// Initialize the `Gui` struct by setting default values, and loading a collection and
     /// textures.
-    pub fn new(mut game: Game) -> Self {
-        let window = glutin::WindowBuilder::new()
-            .with_dimensions(dpi::LogicalSize::new(800.0, 600.0))
+    pub fn new(mut game: Game, events_loop: &glutin::event_loop::EventLoop<()>) -> Self {
+        let window = glutin::window::WindowBuilder::new()
+            .with_inner_size(dpi::LogicalSize::new(800.0, 600.0))
             .with_title(TITLE.to_string() + " - " + game.name());
 
-        let events_loop = glutin::EventsLoop::new();
         let context = glutin::ContextBuilder::new();
-        let display = glium::Display::new(window, context, &events_loop).unwrap();
-        display.gl_window().window().set_cursor(glutin::MouseCursor::Default);
+        let display = glium::Display::new(window, context, events_loop).unwrap();
+        display
+            .gl_window()
+            .window()
+            .set_cursor_icon(glutin::window::CursorIcon::Default);
 
         let textures = Textures::new(&display);
         // let font_data = Rc::new(FontData::new(
@@ -154,12 +152,10 @@ impl Gui {
             state: State::Level,
 
             display,
-            events_loop,
             params,
             // font_data,
             // text_object_manager,
             // stats_text_handle,
-
             matrix: IDENTITY,
             program,
             window_size: [800, 600],
@@ -207,7 +203,7 @@ impl Gui {
     }
 
     /// Has the current level been solved, i.e. should the end-of-level overlay be rendered?
-    fn level_solved(&self) -> bool {
+    pub fn level_solved(&self) -> bool {
         match self.state {
             State::Level => false,
             _ => true,
@@ -217,7 +213,7 @@ impl Gui {
 
 impl Gui {
     /// Handle a mouse click.
-    fn click_to_command(
+    pub fn click_to_command(
         &self,
         mouse_button: MouseButton,
         modifiers: ModifiersState,
@@ -227,7 +223,7 @@ impl Gui {
             self.cursor_position_to_cell_if_in_bounds(&input_state.cursor_position)
         {
             let target = backend::Position { x, y };
-            if mouse_button == MouseButton::Left && modifiers.alt {
+            if mouse_button == MouseButton::Left && modifiers.alt() {
                 if let Some(from) = input_state.clicked_crate {
                     let result =
                         Command::Movement(Movement::MoveCrateToTarget { from, to: target });
@@ -565,7 +561,7 @@ impl Gui {
         }
     }
 
-    fn render(&mut self) {
+    pub fn render(&mut self) {
         match self.state {
             State::Level => {
                 self.render_level();
@@ -618,7 +614,7 @@ fn log_update_response(response: save::UpdateResponse) {
 impl Gui {
     /// Handle the queue of responses from the back end, updating the gui status and logging
     /// messages.
-    fn handle_responses(&mut self, queue: &mut VecDeque<crate::backend::Event>) {
+    pub fn handle_responses(&mut self, queue: &mut VecDeque<crate::backend::Event>) {
         const SKIP_FRAMES: u32 = 16;
         const QUEUE_LENGTH_THRESHOLD: usize = 100;
 
@@ -697,97 +693,5 @@ impl Gui {
         }
 
         false
-    }
-
-    pub fn main_loop(mut self) {
-        let mut queue = VecDeque::new();
-        let mut input_state: InputState = Default::default();
-        let (sender, receiver) = channel();
-        self.game.listen_to(receiver);
-
-        loop {
-            use glium::glutin::ElementState::*;
-            if self.need_to_redraw {
-                self.render();
-            } else {
-                thread::sleep(time::Duration::from_millis(16));
-            }
-
-            let mut events = vec![];
-            self.events_loop.poll_events(|ev: Event| match ev {
-                Event::Awakened | Event::Suspended(_) | Event::DeviceEvent { .. } => {}
-                Event::WindowEvent { event, .. } => events.push(event),
-            });
-
-            for event in events {
-                let mut cmd = Command::Nothing;
-
-                match event {
-                    WindowEvent::CloseRequested
-                    | WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                state: Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Q),
-                                ..
-                            },
-                        ..
-                    } => return,
-
-                    WindowEvent::KeyboardInput {
-                        input: KeyboardInput { state: Pressed, .. },
-                        ..
-                    }
-                    | WindowEvent::MouseInput { .. }
-                        if self.level_solved() =>
-                    {
-                        cmd = Command::LevelManagement(LevelManagement::NextLevel)
-                    }
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                state: Pressed,
-                                virtual_keycode: Some(key),
-                                modifiers,
-                                ..
-                            },
-                        ..
-                    } => cmd = input_state.press_to_command(key, modifiers),
-
-                    WindowEvent::CursorMoved {
-                        position: dpi::LogicalPosition { x, y },
-                        ..
-                    } => input_state.cursor_position = [x, y],
-                    WindowEvent::MouseInput {
-                        state: Released,
-                        button: btn,
-                        modifiers,
-                        ..
-                    } => cmd = self.click_to_command(btn, modifiers, &mut input_state),
-
-                    WindowEvent::Resized(new_size) => {
-                        let (width, height) = new_size.into();
-                        self.window_size = [width, height];
-                        self.background_texture = None;
-                        self.need_to_redraw = true;
-                    }
-
-                    WindowEvent::Refresh => self.need_to_redraw = true,
-
-                    _ => (),
-                }
-
-                sender.send(cmd).unwrap();
-            }
-            self.game.execute();
-
-            // We need to move the events from the channel into a deque so we can figure out how
-            // many events are left. This information is needed to adjust the animation speed if a
-            // large number of events is pending.
-            self.events
-                .try_iter()
-                .for_each(|event| queue.push_back(event));
-            self.handle_responses(&mut queue);
-        }
     }
 }

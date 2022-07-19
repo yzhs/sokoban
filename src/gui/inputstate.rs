@@ -1,4 +1,4 @@
-use glium::glutin::{ModifiersState, VirtualKeyCode};
+use glium::glutin::event::{ModifiersState, VirtualKeyCode};
 
 use crate::backend::{Command, Direction, LevelManagement, Macro, Movement, Position};
 
@@ -23,7 +23,7 @@ impl InputState {
             // Move
             Left | Right | Up | Down => {
                 let direction = key_to_direction(key);
-                return match (modifiers.ctrl, modifiers.shift) {
+                return match (modifiers.ctrl(), modifiers.shift()) {
                     (false, false) => Movement(Step { direction }),
                     (false, true) => Movement(WalkTillObstacle { direction }),
                     (true, false) => Movement(PushTillObstacle { direction }),
@@ -32,19 +32,19 @@ impl InputState {
             }
 
             // Undo and redo
-            Z if !modifiers.ctrl => {}
-            U if modifiers.ctrl => {}
-            U | Z if modifiers.shift => return Movement(Redo),
+            Z if !modifiers.ctrl() => {}
+            U if modifiers.ctrl() => {}
+            U | Z if modifiers.shift()=> return Movement(Redo),
             U | Z => return Movement(Undo),
 
             // Record or execute macro
             F1 | F2 | F3 | F4 | F5 | F6 | F7 | F8 | F9 | F10 | F11 | F12 => {
                 let n = key_to_num(key);
-                return Macro(if self.recording_macro && modifiers.ctrl {
+                return Macro(if self.recording_macro && modifiers.ctrl() {
                     // Finish recording
                     self.recording_macro = false;
                     Store
-                } else if modifiers.ctrl {
+                } else if modifiers.ctrl() {
                     // Start recording
                     self.recording_macro = true;
                     Record(n)
@@ -57,7 +57,7 @@ impl InputState {
             // TODO Open the main menu
             P => return LevelManagement(PreviousLevel),
             N => return LevelManagement(NextLevel),
-            S if modifiers.ctrl => return LevelManagement(Save),
+            S if modifiers.ctrl() => return LevelManagement(Save),
             Escape => return LevelManagement(ResetLevel),
 
             LAlt | LControl | LShift | LWin | RAlt | RControl | RShift | RWin => {}
