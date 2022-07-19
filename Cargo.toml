@@ -10,7 +10,7 @@ name = "sokoban"
 test = false
 
 [dependencies]
-glium = "0.22"
+glium = "0.23"
 ansi_term = "0.12.1"
 directories = "4.0.1"
 clap = "3.2.12"
