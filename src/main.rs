@@ -112,7 +112,7 @@ fn main() {
     use glium::glutin::event::ElementState::*;
 
     event_loop
-        .run(move |ev: Event<()>, _window, _controlFlow| match ev {
+        .run(move |ev: Event<()>, window, control_flow| match ev {
             Event::WindowEvent { event, .. } => {
                 let mut cmd = Command::Nothing;
 
@@ -193,8 +193,7 @@ fn main() {
             | Event::NewEvents(_)
             | Event::UserEvent(_)
             | Event::MainEventsCleared
-            | Event::RedrawEventsCleared
-            | Event::LoopDestroyed => {
+            | Event::RedrawEventsCleared => {
                 gui.render();
 
                 // We need to move the events from the channel into a deque so we can figure out how
@@ -205,6 +204,8 @@ fn main() {
                     .for_each(|event| queue.push_back(event));
                 gui.handle_responses(&mut queue);
             }
+
+            Event::LoopDestroyed => (),
         });
 
 }
