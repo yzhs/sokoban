@@ -98,7 +98,7 @@ mod test {
 
 #[cfg(test)]
 impl Arbitrary for Direction {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        DIRECTIONS[g.next_u32() as usize % 4_usize]
+    fn arbitrary(g: &mut Gen) -> Self {
+        DIRECTIONS[usize::arbitrary(g) % 4_usize]
     }
 }

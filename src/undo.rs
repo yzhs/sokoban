@@ -99,7 +99,7 @@ mod tests {
     use quickcheck::{Arbitrary, Gen};
 
     impl<A: Arbitrary + Clone> Arbitrary for Undo<A> {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        fn arbitrary(g: &mut Gen) -> Self {
             let actions = Vec::arbitrary(g);
             let actions_performed = usize::arbitrary(g) % (actions.len() + 1);
             Undo {
