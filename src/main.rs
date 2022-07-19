@@ -56,13 +56,13 @@ fn main() {
         .arg(
             Arg::with_name("list")
                 .help("Print a list of available level sets")
-                .short("l")
+                .short('l')
                 .long("list"),
         )
         .arg(
             Arg::with_name("stats")
                 .help("Print some statistics")
-                .short("s")
+                .short('s')
                 .long("stats"),
         )
         .arg(
