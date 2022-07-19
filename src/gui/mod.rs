@@ -107,7 +107,7 @@ impl Gui {
         let events_loop = glutin::EventsLoop::new();
         let context = glutin::ContextBuilder::new();
         let display = glium::Display::new(window, context, &events_loop).unwrap();
-        display.gl_window().set_cursor(glutin::MouseCursor::Default);
+        display.gl_window().window().set_cursor(glutin::MouseCursor::Default);
 
         let textures = Textures::new(&display);
         // let font_data = Rc::new(FontData::new(
