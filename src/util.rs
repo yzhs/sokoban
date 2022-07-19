@@ -18,37 +18,37 @@ lazy_static! {
 
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum SokobanError {
-    #[fail(display = "I/O error: {}", _0)]
-    IoError(io::Error),
+    #[error("I/O error: {0}")]
+    IoError(String),
 
-    #[fail(display = "XML error: {}", _0)]
-    XmlError(quick_xml::Error),
+    #[error("XML error: {0}")]
+    XmlError(String),
 
-    #[fail(display = "No worker in level #{}", _0)]
+    #[error("No worker in level #{0}")]
     NoWorker(usize),
 
-    #[fail(display = "More than one worker in level #{}", _0)]
+    #[error("More than one worker in level #{0}")]
     TwoWorkers(usize),
 
-    #[fail(display = "Level #{}: #crates - #goals = {}", _0, _1)]
+    #[error("Level #{0}: #crates - #goals = {1}")]
     CratesGoalsMismatch(usize, i32),
 
-    #[fail(display = "Empty description for level #{}", _0)]
+    #[error("Empty description for level #{0}")]
     NoLevel(usize),
 }
 
 /// Automatically wrap io errors
 impl From<io::Error> for SokobanError {
     fn from(err: io::Error) -> SokobanError {
-        SokobanError::IoError(err)
+        SokobanError::IoError(err.to_string())
     }
 }
 
 /// Automatically wrap XML reader errors
 impl From<quick_xml::Error> for SokobanError {
     fn from(e: quick_xml::Error) -> Self {
-        SokobanError::XmlError(e)
+        SokobanError::XmlError(e.to_string())
     }
 }

@@ -16,23 +16,24 @@ pub enum UpdateResponse {
     Update { moves: bool, pushes: bool },
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum SaveError {
-    #[fail(display = "Failed to create file: {}", _0)]
-    FailedToCreateFile(io::Error),
+    #[error("Failed to create file: {0}")]
+    FailedToCreateFile(String),
 
-    #[fail(display = "Failed to create CBOR: {}", _0)]
-    CBOREncodeError(::serde_cbor::error::Error),
+    #[error("Failed to create CBOR: {0}")]
+    CBOREncodeError(String),
 }
+
 
 impl From<io::Error> for SaveError {
     fn from(e: io::Error) -> Self {
-        self::SaveError::FailedToCreateFile(e)
+        self::SaveError::FailedToCreateFile(e.to_string())
     }
 }
 
 impl From<::serde_cbor::error::Error> for SaveError {
     fn from(e: ::serde_cbor::error::Error) -> Self {
-        self::SaveError::CBOREncodeError(e)
+        self::SaveError::CBOREncodeError(e.to_string())
     }
 }
