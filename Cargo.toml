@@ -22,10 +22,10 @@ lazy_static = "1.4.0"
 log = "0.4.17"
 natord = "1.0.9"
 quick-xml = "0.23.0"
-serde = "1.0.139"
+serde = "1.0.171"
 serde_cbor = "0.11.2"
-serde_derive = "1.0.139"
-serde_json = "1.0.82"
+serde_derive = "1.0.171"
+serde_json = "1.0.103"
 
 [dev-dependencies]
 quickcheck = "1.0.3"
