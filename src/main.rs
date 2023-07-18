@@ -49,49 +49,53 @@ use crate::backend::{
 
 fn main() {
     use crate::gui::Gui;
-    use clap::{App, Arg};
+    use clap::{Arg, ArgAction};
     colog::init();
 
-    let matches = App::new(TITLE)
+    let matches = clap::Command::new(TITLE)
         .author(env!("CARGO_PKG_AUTHORS"))
         .version(env!("CARGO_PKG_VERSION"))
         .arg(
-            Arg::with_name("collection")
+            Arg::new("collection")
+                .value_name("collection")
                 .help("The level collection to load during startup")
                 .index(1),
         )
         .arg(
-            Arg::with_name("list")
+            Arg::new("list")
                 .help("Print a list of available level sets")
                 .short('l')
-                .long("list"),
+                .long("list")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::with_name("stats")
+            Arg::new("stats")
                 .help("Print some statistics")
                 .short('s')
-                .long("stats"),
+                .long("stats")
+                .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::with_name("convert-savegames")
+            Arg::new("convert-savegames")
                 .help("Load and store all savegames to convert them to the latest file format")
-                .long("convert-savegames"),
+                .long("convert-savegames")
+                .action(ArgAction::SetTrue),
         )
         .get_matches();
 
-    if matches.is_present("convert-savegames") {
+    if matches.get_flag("convert-savegames") {
         convert_savegames();
         return;
-    } else if matches.is_present("list") {
+    } else if matches.get_flag("list") {
         print_collections_table();
         return;
-    } else if matches.is_present("stats") {
+    } else if matches.get_flag("stats") {
         print_stats();
         return;
     }
 
-    let collection_name = match matches.value_of("collection") {
-        None | Some("") => {
+    let collection_name = match matches.get_one::<&str>("collection") {
+        None | Some(&"") => {
             env::var("SOKOBAN_COLLECTION").unwrap_or_else(|_| "original".to_string())
         }
         Some(c) => c.to_string(),
