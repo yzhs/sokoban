@@ -1,4 +1,3 @@
-#![cfg_attr(test, feature(plugin))]
 #![warn(
     clippy::empty_enum,
     clippy::filter_map,
